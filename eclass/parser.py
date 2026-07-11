@@ -1,4 +1,8 @@
-"""HTML parsing for eClass (Moodle) pages.
+"""HTML parsing for eClass (Moodle) pages — the *scraping* data source.
+
+This module is only used for pages Moodle server-renders without a
+structured equivalent (currently: the user grade report). Everything that
+has an AJAX external function should go through :mod:`eclass.ajax` instead.
 
 Design notes on resilience
 --------------------------
@@ -19,16 +23,12 @@ inspect it — usually only a selector or header alias needs updating.
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Callable, Optional
 
 from bs4 import BeautifulSoup, Tag
 
+from .exceptions import ParseError
 from .models import GradeItem
-
-
-class ParseError(RuntimeError):
-    """Raised when an expected structure can't be found in the HTML."""
-
 
 # --------------------------------------------------------------------------
 # Small page-level extractors
@@ -120,7 +120,7 @@ def _header_positions(table: Tag) -> dict[str, int]:
     positions: dict[str, int] = {}
     claimed: set[int] = set()
 
-    def match(predicate) -> None:
+    def match(predicate: Callable[[str, str], bool]) -> None:
         for fieldname, (_cls, aliases) in _COLUMNS.items():
             if fieldname in positions:
                 continue

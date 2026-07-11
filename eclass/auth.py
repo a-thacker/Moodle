@@ -1,9 +1,6 @@
 """Authentication for eClass via Microsoft Entra ID SSO.
 
-Strategy
---------
-Moodle's token endpoints don't work because auth is delegated to Microsoft,
-so we authenticate exactly like a browser does:
+The flow is unchanged from the original design:
 
 1. Launch a *headed* Playwright browser.
 2. Navigate to the Moodle login page, which redirects to Microsoft.
@@ -22,6 +19,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from .exceptions import AuthenticationError
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://eclass.e.southern.edu"
@@ -29,10 +28,6 @@ DEFAULT_STATE_PATH = Path("state.json")
 
 # How long to wait (ms) for the user to finish the Microsoft login flow.
 LOGIN_TIMEOUT_MS = 5 * 60 * 1000
-
-
-class AuthError(RuntimeError):
-    """Raised when authentication fails or cannot be established."""
 
 
 def login_interactive(
@@ -83,7 +78,7 @@ def login_interactive(
             )
         except PlaywrightTimeout as exc:
             browser.close()
-            raise AuthError(
+            raise AuthenticationError(
                 "Timed out waiting for Microsoft login to complete."
             ) from exc
 

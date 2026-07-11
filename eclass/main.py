@@ -3,9 +3,12 @@
 Usage (from the project root)::
 
     python -m eclass.main login              # force a fresh Microsoft login
+    python -m eclass.main logout             # end the session, delete state.json
     python -m eclass.main courses            # list enrolled courses
     python -m eclass.main grades <courseid>  # show the grade report
     python -m eclass.main grades <courseid> --json
+    python -m eclass.main timeline           # upcoming due dates
+    python -m eclass.main timeline --limit 20 --json
 """
 
 from __future__ import annotations
@@ -42,19 +45,36 @@ def _print_grades(client: EclassClient, course_id: int, as_json: bool) -> None:
         print(f"\nCourse total: {total.grade or '-'} ({total.percentage or '-'})")
 
 
+def _print_timeline(client: EclassClient, limit: int, as_json: bool) -> None:
+    events = client.get_timeline(limit=limit)
+    if as_json:
+        print(json.dumps([e.to_dict() for e in events], indent=2))
+        return
+    if not events:
+        print("Nothing upcoming. Enjoy it.")
+        return
+    for event in events:
+        print(event)
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="eclass", description="eClass (Moodle) client")
-    parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
-    sub = parser.add_subparsers(dest="command", required=True)
+    cli = argparse.ArgumentParser(prog="eclass", description="eClass (Moodle) client")
+    cli.add_argument("-v", "--verbose", action="store_true", help="debug logging")
+    sub = cli.add_subparsers(dest="command", required=True)
 
     sub.add_parser("login", help="Force a fresh interactive Microsoft login")
+    sub.add_parser("logout", help="End the session and delete state.json")
     sub.add_parser("courses", help="List enrolled courses")
 
     grades = sub.add_parser("grades", help="Show the grade report for a course")
     grades.add_argument("course_id", type=int)
     grades.add_argument("--json", action="store_true", help="output raw JSON")
 
-    args = parser.parse_args(argv)
+    timeline = sub.add_parser("timeline", help="Show upcoming due dates")
+    timeline.add_argument("--limit", type=int, default=10)
+    timeline.add_argument("--json", action="store_true", help="output raw JSON")
+
+    args = cli.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
@@ -63,11 +83,16 @@ def main(argv: list[str] | None = None) -> int:
     client = EclassClient()
 
     if args.command == "login":
-        client.authenticate(force=True)
+        client.login(force=True)
         print("Logged in. Session saved to state.json.")
         return 0
 
-    client.authenticate()
+    client.login()
+
+    if args.command == "logout":
+        client.logout()
+        print("Logged out.")
+        return 0
 
     if args.command == "courses":
         for course in client.get_courses():
@@ -76,6 +101,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "grades":
         _print_grades(client, args.course_id, args.json)
+        return 0
+
+    if args.command == "timeline":
+        _print_timeline(client, args.limit, args.json)
         return 0
 
     return 1

@@ -1,23 +1,30 @@
 # eClass Client
 
-Python client for Southern's eClass (Moodle) instance. Authenticates through
-Microsoft Entra ID SSO with Playwright, then does everything else over plain
-HTTP with `requests`.
+A hybrid Python client for Southern's eClass (Moodle) instance. It
+authenticates through Microsoft Entra ID SSO with Playwright, then does
+everything else over plain HTTP — preferring Moodle's internal AJAX API and
+falling back to HTML scraping only where Moodle doesn't expose structured
+data.
 
 ## Setup
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium
+python -m playwright install chromium
 ```
 
 ## Usage
 
 ```bash
 python -m eclass.main login              # first-time interactive Microsoft login
-python -m eclass.main courses            # list enrolled courses (id, shortname, name)
+python -m eclass.main courses            # list enrolled courses
 python -m eclass.main grades 1234        # grade report for course 1234
-python -m eclass.main grades 1234 --json # same, as JSON
+python -m eclass.main timeline           # upcoming due dates
+python -m eclass.main timeline --limit 20 --json
+python -m eclass.main logout             # end session, delete state.json
+python -m eclass.main -v courses         # debug logging (endpoint, timing, source)
 ```
 
 Or from Python:
@@ -26,43 +33,118 @@ Or from Python:
 from eclass import EclassClient
 
 client = EclassClient()
-client.authenticate()  # reuses state.json; only opens a browser if expired
+client.login()  # reuses state.json; only opens a browser if expired
 
-for course in client.get_courses():
+for course in client.get_courses():      # AJAX
     print(course)
 
-report = client.get_grades(course.id)
-for item in report.items:
-    print(item)
+report = client.get_grades(course.id)    # HTML, behind the same facade
 print(report.course_total)
+
+for event in client.get_timeline(limit=10):  # AJAX
+    print(event)
 ```
 
-## How it works
+## Architecture
 
-1. **auth.py** — opens a headed Chromium window at the Moodle login page,
-   which redirects to Microsoft. You complete the login (MFA and all)
-   manually. Once the browser lands back on eClass with a live session,
-   the cookies are saved to `state.json`.
-2. **client.py** — loads those cookies into a `requests.Session`, probes
-   `/my/` to confirm the session is still alive, and only re-opens the
-   browser when the Moodle session cookie has expired. It also lazily
-   scrapes your `sesskey` and `userid` from the dashboard.
-3. **parser.py** — turns the grade report HTML into typed objects. Cells
-   are located by Moodle's `column-*` classes first and by header text
-   position as a fallback, so minor theme/markup changes shouldn't break it.
+```
+                 ┌────────────────────────────────────┐
+                 │            EclassClient            │  public API: typed models only
+                 └───────┬──────────────────┬─────────┘
+                         │                  │
+                  AJAX source          HTML source
+                 (eclass/ajax.py)    (client.get_page +
+                         │            eclass/parser.py)
+                         │                  │
+                 /lib/ajax/service.php   server-rendered pages
+                         │                  │
+                 ┌───────┴──────────────────┴─────────┐
+                 │   requests.Session (cookies from   │
+                 │   Playwright's saved state.json)   │
+                 └───────────────┬────────────────────┘
+                                 │
+                        eclass/auth.py — Playwright,
+                        interactive Microsoft SSO
+```
 
-Two implementation details worth knowing:
+| Module | Responsibility |
+|---|---|
+| `auth.py` | Interactive Microsoft SSO via Playwright; persists `state.json` |
+| `ajax.py` | Generic wrapper for Moodle external functions (`AjaxClient`) |
+| `parser.py` | HTML extraction (sesskey, userid, grade report) |
+| `client.py` | Session management + the public API facade |
+| `models.py` | Typed dataclasses (`Course`, `GradeReport`, `TimelineEvent`, ...) |
+| `exceptions.py` | `AuthenticationError`, `SessionExpired`, `MoodleAPIError`, `ParseError` |
 
-- `get_courses()` doesn't parse HTML — it calls Moodle's internal AJAX
-  service (`/lib/ajax/service.php`) with your session cookie + sesskey,
-  the same call the dashboard itself makes. This works without a web
-  service token and returns clean JSON. The same technique unlocks a lot
-  of the future features (calendar events, notifications, assignment
-  lists) since most of the modern Moodle UI is driven by these AJAX
-  methods.
-- `get_grades()` also works with `/grade/report/user/index.php?id=<courseid>`,
-  which shows your own grades without needing a userid — the parser handles
-  both since they render the same table.
+### Authentication flow
+
+1. `client.login()` loads cookies from `state.json` into `requests.Session`.
+2. It probes `/my/` with redirects disabled: HTTP 200 means the session is
+   alive; a redirect means it isn't. The **same probe response** is parsed
+   once for `sesskey` and `userid`, which are then cached — session identity
+   is never re-scraped from HTML unless the session changes.
+3. Only if the probe fails does Playwright open a headed browser for the
+   interactive Microsoft login, after which fresh cookies are saved and the
+   probe repeats.
+4. With `auto_relogin=True` (default), any request that hits an expired
+   session triggers exactly one interactive re-login and one retry.
+
+### The AJAX helper
+
+`AjaxClient.call(method, args)` POSTs to `/lib/ajax/service.php` with the
+sesskey and `info` query parameters, serializes the
+`[{"index": 0, "methodname": ..., "args": ...}]` payload, validates the
+response, and returns just the `data` payload. Moodle errors become typed
+exceptions: session-related error codes (`invalidsesskey`,
+`servicerequireslogin`, ...) raise `SessionExpired` (which the client can
+recover from automatically); everything else raises `MoodleAPIError` with
+the errorcode attached. `call_many([...])` batches several functions into
+one HTTP request.
+
+The sesskey is supplied by a *callable*, not a stored value, so a re-login
+mid-process transparently feeds the new key into subsequent calls.
+
+### How HTML and AJAX are combined
+
+Every public method returns model objects; callers never see which source
+served them. Current mapping:
+
+| Method | Source | Why |
+|---|---|---|
+| `get_courses()` | AJAX `core_course_get_enrolled_courses_by_timeline_classification` | Clean JSON, same call the dashboard makes |
+| `get_course(id)` | AJAX (filters `get_courses`) | |
+| `get_grades(id)` | **HTML** `/course/user.php?mode=grade` | Moodle exposes no AJAX-allowed grade-report function |
+| `get_timeline()` | AJAX `core_calendar_get_action_events_by_timesort` | |
+| `get_calendar()` | stub (`NotImplementedError`) | planned: `core_calendar_get_calendar_upcoming_view` |
+| `get_assignments()` | stub (`NotImplementedError`) | planned: `mod_assign_get_assignments` or derive from timeline |
+
+### Adding a new Moodle method
+
+1. Do the action in the browser with DevTools open; find the
+   `service.php?...&info=<methodname>` request and copy its args.
+2. Add a wrapper on `EclassClient`:
+
+   ```python
+   def get_notifications(self) -> list[Notification]:
+       data = self._with_relogin(lambda: self.ajax.call(
+           "message_popup_get_popup_notifications",
+           {"useridto": self.userid, "limit": 20, "offset": 0},
+       ))
+       return [Notification.from_api(raw) for raw in data.get("notifications", [])]
+   ```
+
+3. Add a dataclass in `models.py` with a defensive `from_api()`.
+
+That's the whole pattern. Wrap AJAX calls in `self._with_relogin(...)` so
+expired sessions self-heal, and only fall back to `self.get_page(...)` +
+a parser when no external function exists.
+
+### Logging
+
+`-v` on the CLI (or `logging.basicConfig(level=logging.DEBUG)` in code)
+logs each request's source (`AJAX`/`HTML GET`), methodname or path, HTTP
+status, and elapsed time. Cookies, sesskey values, and response bodies are
+never logged.
 
 ## Security notes
 
