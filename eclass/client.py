@@ -88,7 +88,7 @@ class EclassClient:
     # Authentication & session management
     # ==================================================================
 
-    def login(self, force: bool = False) -> None:
+    def login(self, force: bool = False, interactive: bool = True) -> None:
         """Ensure this client has a valid Moodle session.
 
         Order of operations:
@@ -98,10 +98,22 @@ class EclassClient:
            extra HTML fetches are needed later.
         3. Only if that fails (or ``force=True``), open a browser for an
            interactive Microsoft login, then reload the fresh cookies.
+
+        Args:
+            force: Skip the saved-session check and re-login.
+            interactive: If False, never open a browser — raise
+                ``SessionExpired`` instead when the saved session is
+                missing or dead. For unattended/scheduled callers.
         """
         if not force and self._load_saved_cookies() and self._probe():
             logger.info("Reusing saved session from %s", self.state_path)
             return
+
+        if not interactive:
+            raise SessionExpired(
+                "Saved session is missing or expired and interactive "
+                "login is disabled; run `python -m eclass.main login`."
+            )
 
         logger.info("Saved session missing or expired; starting interactive login.")
         auth.login_interactive(self.base_url, self.state_path)
@@ -316,27 +328,74 @@ class EclassClient:
         )
         return [TimelineEvent.from_api(raw) for raw in data.get("events", [])]
 
-    def get_calendar(self) -> list[CalendarEvent]:
-        """Calendar events. Not implemented yet.
+    def get_calendar(
+        self,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        course_id: Optional[int] = None,
+    ) -> list[CalendarEvent]:
+        """Calendar events. Source: AJAX.
 
-        Planned source: AJAX (``core_calendar_get_calendar_monthly_view``
-        or ``core_calendar_get_calendar_upcoming_view``).
+        With no arguments, returns the "upcoming events" view — everything
+        within the site-configured lookahead window
+        (``core_calendar_get_calendar_upcoming_view``).
+
+        With ``year`` and ``month``, returns every event in that month
+        (``core_calendar_get_calendar_monthly_view``), including past ones.
+
+        Args:
+            year: Four-digit year (requires ``month``).
+            month: Month 1-12 (requires ``year``).
+            course_id: Restrict to one course. Defaults to all courses
+                (Moodle's site course, id 1, means "no filter").
         """
-        raise NotImplementedError(
-            "get_calendar() is planned. Likely implementation: "
-            "self.ajax.call('core_calendar_get_calendar_upcoming_view', "
-            "{'courseid': 1, 'categoryid': 0}) and map to CalendarEvent."
-        )
+        if (year is None) != (month is None):
+            raise ValueError("Pass both year and month, or neither.")
+        courseid = course_id if course_id is not None else 1
 
-    def get_assignments(self) -> list[Assignment]:
-        """Assignments across courses. Not implemented yet.
+        if year is None:
+            data = self._with_relogin(
+                lambda: self.ajax.call(
+                    "core_calendar_get_calendar_upcoming_view",
+                    {"courseid": courseid, "categoryid": 0},
+                )
+            )
+            raw_events = data.get("events", [])
+        else:
+            data = self._with_relogin(
+                lambda: self.ajax.call(
+                    "core_calendar_get_calendar_monthly_view",
+                    {
+                        "year": year,
+                        "month": month,
+                        "day": 1,
+                        "courseid": courseid,
+                        "categoryid": 0,
+                        "includenavigation": False,
+                    },
+                )
+            )
+            raw_events = [
+                event
+                for week in data.get("weeks", [])
+                for day in week.get("days", [])
+                for event in day.get("events", [])
+            ]
+        return [CalendarEvent.from_api(raw) for raw in raw_events]
 
-        Planned source: AJAX (``mod_assign_get_assignments``) if it is
-        AJAX-allowed on this instance; otherwise derive from timeline
-        events with ``module == 'assign'``.
+    def get_assignments(self, limit: int = 50) -> list[Assignment]:
+        """Upcoming assignments across courses. Source: AJAX (timeline).
+
+        ``mod_assign_get_assignments`` is not AJAX-allowed on this Moodle
+        instance (it returns ``servicenotavailable``), so assignments are
+        derived from timeline events with ``module == "assign"``. That
+        means only assignments with a due date from today onward appear.
+
+        Args:
+            limit: Maximum number of timeline events to scan.
         """
-        raise NotImplementedError(
-            "get_assignments() is planned. Check whether "
-            "'mod_assign_get_assignments' is AJAX-allowed; if not, filter "
-            "get_timeline() for module == 'assign'."
-        )
+        return [
+            Assignment.from_timeline(event)
+            for event in self.get_timeline(limit=limit)
+            if event.module == "assign"
+        ]

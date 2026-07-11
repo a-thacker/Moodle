@@ -57,6 +57,32 @@ def _print_timeline(client: EclassClient, limit: int, as_json: bool) -> None:
         print(event)
 
 
+def _print_calendar(
+    client: EclassClient, year: int | None, month: int | None, as_json: bool
+) -> None:
+    events = client.get_calendar(year=year, month=month)
+    if as_json:
+        print(json.dumps([e.to_dict() for e in events], indent=2))
+        return
+    if not events:
+        print("No calendar events.")
+        return
+    for event in events:
+        print(event)
+
+
+def _print_assignments(client: EclassClient, limit: int, as_json: bool) -> None:
+    assignments = client.get_assignments(limit=limit)
+    if as_json:
+        print(json.dumps([a.to_dict() for a in assignments], indent=2))
+        return
+    if not assignments:
+        print("No upcoming assignments.")
+        return
+    for assignment in assignments:
+        print(assignment)
+
+
 def main(argv: list[str] | None = None) -> int:
     cli = argparse.ArgumentParser(prog="eclass", description="eClass (Moodle) client")
     cli.add_argument("-v", "--verbose", action="store_true", help="debug logging")
@@ -74,7 +100,18 @@ def main(argv: list[str] | None = None) -> int:
     timeline.add_argument("--limit", type=int, default=10)
     timeline.add_argument("--json", action="store_true", help="output raw JSON")
 
+    calendar = sub.add_parser("calendar", help="Show calendar events")
+    calendar.add_argument("--year", type=int, help="with --month: show that month")
+    calendar.add_argument("--month", type=int, help="with --year: show that month")
+    calendar.add_argument("--json", action="store_true", help="output raw JSON")
+
+    assignments = sub.add_parser("assignments", help="Show upcoming assignments")
+    assignments.add_argument("--limit", type=int, default=50)
+    assignments.add_argument("--json", action="store_true", help="output raw JSON")
+
     args = cli.parse_args(argv)
+    if args.command == "calendar" and (args.year is None) != (args.month is None):
+        calendar.error("--year and --month must be given together")
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
@@ -105,6 +142,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "timeline":
         _print_timeline(client, args.limit, args.json)
+        return 0
+
+    if args.command == "calendar":
+        _print_calendar(client, args.year, args.month, args.json)
+        return 0
+
+    if args.command == "assignments":
+        _print_assignments(client, args.limit, args.json)
         return 0
 
     return 1

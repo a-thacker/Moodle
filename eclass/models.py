@@ -152,10 +152,11 @@ class TimelineEvent:
 
 @dataclass
 class CalendarEvent:
-    """A calendar event. Provisional model for the future ``get_calendar()``.
+    """A calendar event.
 
-    Expected source: ``core_calendar_get_calendar_monthly_view`` or
-    ``core_calendar_get_calendar_upcoming_view``.
+    Source: ``core_calendar_get_calendar_upcoming_view`` or
+    ``core_calendar_get_calendar_monthly_view`` (both use the same event
+    exporter, so one ``from_api`` covers both).
     """
 
     id: int
@@ -168,32 +169,73 @@ class CalendarEvent:
     location: Optional[str] = None
     url: Optional[str] = None
 
+    @classmethod
+    def from_api(cls, raw: dict[str, Any]) -> "CalendarEvent":
+        course = raw.get("course") or {}
+        start_ts = int(raw.get("timestart") or 0)
+        duration = int(raw.get("timeduration") or 0)
+        return cls(
+            id=int(raw["id"]),
+            name=raw.get("name", ""),
+            start=datetime.fromtimestamp(start_ts),
+            end=datetime.fromtimestamp(start_ts + duration) if duration else None,
+            event_type=raw.get("eventtype"),
+            course_id=int(course["id"]) if course.get("id") is not None else None,
+            course_name=course.get("fullname"),
+            location=raw.get("location") or None,
+            url=raw.get("url"),
+        )
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["start"] = self.start.isoformat()
         data["end"] = self.end.isoformat() if self.end else None
         return data
 
+    def __str__(self) -> str:
+        course = f" — {self.course_name}" if self.course_name else ""
+        return f"{self.start:%a %b %d %I:%M %p}  {self.name}{course}"
+
 
 @dataclass
 class Assignment:
-    """An assignment. Provisional model for the future ``get_assignments()``.
+    """An upcoming assignment.
 
-    Likely source: ``mod_assign_get_assignments`` if it is AJAX-allowed on
-    this Moodle instance; otherwise assignments can be derived from
-    timeline events with ``module == "assign"``.
+    Source: derived from timeline events with ``module == "assign"``
+    (``mod_assign_get_assignments`` is not AJAX-allowed on this instance,
+    so ``id`` is the *calendar event* id, not the assignment instance id).
     """
 
     id: int
     name: str
-    course_id: int
+    course_id: Optional[int] = None
+    course_name: Optional[str] = None
     due: Optional[datetime] = None
     cutoff: Optional[datetime] = None
     intro: Optional[str] = None
     url: Optional[str] = None
+    overdue: bool = False
+
+    @classmethod
+    def from_timeline(cls, event: TimelineEvent) -> "Assignment":
+        return cls(
+            id=event.id,
+            name=event.activity_name or event.name,
+            course_id=event.course_id,
+            course_name=event.course_name,
+            due=event.due,
+            url=event.url,
+            overdue=event.overdue,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["due"] = self.due.isoformat() if self.due else None
         data["cutoff"] = self.cutoff.isoformat() if self.cutoff else None
         return data
+
+    def __str__(self) -> str:
+        due = f"{self.due:%a %b %d %I:%M %p}" if self.due else "no due date"
+        course = f" — {self.course_name}" if self.course_name else ""
+        flag = " [OVERDUE]" if self.overdue else ""
+        return f"{due}  {self.name}{course}{flag}"

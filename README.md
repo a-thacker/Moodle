@@ -23,9 +23,30 @@ python -m eclass.main courses            # list enrolled courses
 python -m eclass.main grades 1234        # grade report for course 1234
 python -m eclass.main timeline           # upcoming due dates
 python -m eclass.main timeline --limit 20 --json
+python -m eclass.main calendar           # upcoming calendar events
+python -m eclass.main calendar --year 2026 --month 4
+python -m eclass.main assignments        # upcoming assignments
 python -m eclass.main logout             # end session, delete state.json
 python -m eclass.main -v courses         # debug logging (endpoint, timing, source)
 ```
+
+## Grades tracker
+
+The `tracker/` package watches for grade changes (see PLAN.md for the
+design). It fetches every visible course's grade report, diffs it against
+the last snapshot in `snapshots/`, and notifies about anything new — via
+native macOS notifications by default, console otherwise:
+
+```bash
+python -m tracker check            # fetch, diff, notify, save snapshots
+python -m tracker check --notify console
+python -m tracker status           # stored snapshots + recent runs
+```
+
+The first run silently saves baselines. The tracker never opens a browser:
+if the eClass session has expired it sends a "please re-login" notification
+and exits with code 2 — run `python -m eclass.main login` and the next
+scheduled run picks up where it left off.
 
 Or from Python:
 
@@ -115,8 +136,8 @@ served them. Current mapping:
 | `get_course(id)` | AJAX (filters `get_courses`) | |
 | `get_grades(id)` | **HTML** `/course/user.php?mode=grade` | Moodle exposes no AJAX-allowed grade-report function |
 | `get_timeline()` | AJAX `core_calendar_get_action_events_by_timesort` | |
-| `get_calendar()` | stub (`NotImplementedError`) | planned: `core_calendar_get_calendar_upcoming_view` |
-| `get_assignments()` | stub (`NotImplementedError`) | planned: `mod_assign_get_assignments` or derive from timeline |
+| `get_calendar()` | AJAX `core_calendar_get_calendar_upcoming_view` (or `..._monthly_view` with year/month) | |
+| `get_assignments()` | AJAX (derived from timeline, `module == "assign"`) | `mod_assign_get_assignments` is not AJAX-allowed on this instance |
 
 ### Adding a new Moodle method
 
