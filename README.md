@@ -1,3 +1,37 @@
+# Personal Command Center
+
+A modular dashboard of personal tools for daily life — grades, deadlines,
+a shared grocery list, notifications, and more over time. Full vision and
+roadmap: `docs/PROJECT_HANDOFF.md`.
+
+| Piece | What it is |
+|---|---|
+| `eclass/` | Python client for Southern's eClass (Moodle) — docs below |
+| `agent/` | Local sync agent: polls eClass, diffs grades, notifies (ntfy/macOS), pushes to Supabase |
+| `hub/` | React dashboard on Netlify: login, grades + deadlines widgets, shared grocery list |
+| `supabase/` | Database schema + migrations (Postgres, RLS, Realtime) |
+| `docs/` | Project handoff, architecture notes |
+
+## Cloud setup (one-time)
+
+1. **Supabase:** create a project → SQL editor → run
+   `supabase/migrations/001_initial_schema.sql`. In Auth settings disable
+   signups, create the two users, and insert their `profiles` rows (see the
+   comment in the SQL). Grab the URL + anon key + service-role key.
+2. **Agent:** `cp .env.example .env`, fill in `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, and a long random `NTFY_TOPIC` (subscribe to
+   it in the ntfy phone app). Schedule with
+   `agent/launchd/edu.southern.command-center.agent.plist`.
+3. **Hub:** push to GitHub, connect the repo in Netlify (`netlify.toml` does
+   the rest), set `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` in the
+   site's env vars. Local dev: `cd hub && cp .env.example .env && npm
+   install && npm run dev`.
+
+The service-role key stays in `.env` on this machine only — it never goes
+to Netlify or into `hub/` code.
+
+---
+
 # eClass Client
 
 A hybrid Python client for Southern's eClass (Moodle) instance. It
@@ -30,23 +64,25 @@ python -m eclass.main logout             # end session, delete state.json
 python -m eclass.main -v courses         # debug logging (endpoint, timing, source)
 ```
 
-## Grades tracker
+## Sync agent
 
-The `tracker/` package watches for grade changes (see PLAN.md for the
-design). It fetches every visible course's grade report, diffs it against
-the last snapshot in `snapshots/`, and notifies about anything new — via
-native macOS notifications by default, console otherwise:
+The `agent/` package watches for grade changes. It fetches every visible
+course's grade report, diffs it against the last snapshot in `snapshots/`,
+notifies about anything new (ntfy when configured, else macOS/console),
+and — with Supabase configured in `.env` — pushes courses, grade history,
+change events, and the upcoming timeline for the Hub to display:
 
 ```bash
-python -m tracker check            # fetch, diff, notify, save snapshots
-python -m tracker check --notify console
-python -m tracker status           # stored snapshots + recent runs
+python -m agent check              # fetch, diff, notify, save, push
+python -m agent check --notify console
+python -m agent status             # stored snapshots + recent runs
 ```
 
-The first run silently saves baselines. The tracker never opens a browser:
+The first run silently saves baselines. The agent never opens a browser:
 if the eClass session has expired it sends a "please re-login" notification
 and exits with code 2 — run `python -m eclass.main login` and the next
-scheduled run picks up where it left off.
+scheduled run picks up where it left off. A failed Supabase push logs a
+warning but never aborts the local run.
 
 Or from Python:
 

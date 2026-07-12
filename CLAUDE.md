@@ -19,14 +19,17 @@ architecture (local Sync Agent / cloud Hub), and standing preferences.
   even though docs/PROJECT_HANDOFF.md §2 still calls them stubs.
   `mod_assign_get_assignments` is not AJAX-allowed on this instance;
   assignments derive from timeline events.
-- `tracker/` — working grades tracker (fetch → diff → notify → snapshot),
-  the seed of the Sync Agent described in the handoff. It already handles
-  auth expiry unattended: `EclassClient(auto_relogin=False)` +
-  `login(interactive=False)` — no browser ever opens on a schedule.
+- `agent/` — the Sync Agent (fetch → diff → notify → snapshot → Supabase
+  push). Handles auth expiry unattended: `EclassClient(auto_relogin=False)`
+  + `login(interactive=False)` — no browser ever opens on a schedule.
+  Cloud pieces (Supabase, ntfy) are optional and env-configured via `.env`.
+- `hub/` — React/Vite dashboard (login, grades + deadlines widgets,
+  realtime grocery list), deployed via netlify.toml. Builds clean; not yet
+  connected to a real Supabase project.
+- `supabase/` — schema.sql + migration 001, not yet applied (waiting on
+  Alden to create the Supabase project and the two auth users).
 - `docs/PLAN.md` — the tracker-era architecture doc; superseded by
   docs/PROJECT_HANDOFF.md where they disagree.
-- Hub (React/Netlify), Supabase schema, and ntfy are being built per the
-  handoff's Phase 1.
 
 ## Non-negotiables
 

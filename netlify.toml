@@ -1,0 +1,15 @@
+# Netlify config for the Hub. Set VITE_SUPABASE_URL and
+# VITE_SUPABASE_ANON_KEY in the Netlify site's environment variables —
+# they're injected at build time (anon key only; the service-role key
+# never leaves the local machine).
+
+[build]
+  base = "hub"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so refreshes on any route serve the app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
