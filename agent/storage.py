@@ -1,4 +1,4 @@
-"""Snapshot persistence for the grades tracker.
+"""Snapshot persistence for the sync agent.
 
 One JSON file per course under the snapshot directory, holding the last
 seen ``GradeReport.to_dict()`` plus a little metadata. JSON on disk (not a

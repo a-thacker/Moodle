@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Scheduled sync agent run, every 4 hours.
+
+  Install:
+    1. Replace __PROJECT_DIR__ below with the absolute repo path
+       (e.g. /Users/aldenthacker/Downloads/Projects/Moodle).
+    2. cp agent/launchd/edu.southern.command-center.agent.plist \
+         ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/edu.southern.command-center.agent.plist
+
+  Uninstall: launchctl unload <same path>; rm the file.
+
+  When the eClass session expires the agent exits 2 after sending a
+  "please re-login" notification — launchd just tries again next interval,
+  so runs resume automatically once you've done `python -m eclass.main login`.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>edu.southern.command-center.agent</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT_DIR__/eclass/.venv/bin/python</string>
+    <string>-m</string>
+    <string>agent</string>
+    <string>check</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>StartInterval</key>
+  <integer>14400</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/snapshots/agent.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/snapshots/agent.err.log</string>
+</dict>
+</plist>

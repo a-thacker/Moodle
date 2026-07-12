@@ -1,4 +1,4 @@
-"""Allows `python -m tracker <command>`."""
+"""Allows `python -m agent <command>`."""
 
 import sys
 
