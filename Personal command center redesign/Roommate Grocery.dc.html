@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-6658c5cb-9796-49b5-8461-03176e4af34c/styles.css">
+<script src="_ds/nocturne-6658c5cb-9796-49b5-8461-03176e4af34c/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  ::-webkit-scrollbar { width: 7px; } ::-webkit-scrollbar-thumb { background: var(--color-neutral-800); border-radius: 8px; }
+  .row-hover { transition: background .12s; border-radius: var(--radius-md); }
+  .row-hover:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+  @keyframes glow { 0%,100%{opacity:.45} 50%{opacity:1} }
+  .pulse { animation: glow 2.4s ease-in-out infinite; }
+</style>
+</helmet>
+
+<div data-screen-label="Roommate — Grocery" style="min-height:100vh; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body); display:flex; justify-content:center; padding:var(--space-8) var(--space-6);">
+  <div style="width:100%; max-width:440px; display:flex; flex-direction:column; gap:var(--space-6);">
+
+    <!-- header -->
+    <header style="display:flex; align-items:center; gap:12px;">
+      <div style="width:40px; height:40px; border-radius:var(--radius-md); border:1px solid var(--color-accent); display:flex; align-items:center; justify-content:center; color:var(--color-accent);"><i class="ph ph-basket" style="font-size:20px;"></i></div>
+      <div style="flex:1;">
+        <div style="font-family:var(--font-heading); font-size:19px; line-height:1.1;">Apartment Grocery</div>
+        <div style="font-size:12px; color:var(--color-neutral-500); display:flex; align-items:center; gap:6px; margin-top:2px;"><span class="pulse" style="width:6px; height:6px; border-radius:50%; background:#6bbf8a; display:inline-block;"></span>live · shared with Alden</div>
+      </div>
+      <div title="Sam" style="width:34px; height:34px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-100); display:flex; align-items:center; justify-content:center; font-family:var(--font-heading); font-size:14px;">S</div>
+    </header>
+
+    <!-- add -->
+    <div style="display:flex; gap:8px;">
+      <input class="input" placeholder="Add an item…" style="flex:1;">
+      <button class="btn btn-primary" style="flex:none; padding-inline:var(--space-4);"><i class="ph ph-plus"></i>Add</button>
+    </div>
+
+    <!-- to get -->
+    <section class="card" style="padding:var(--space-6); gap:var(--space-3);">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--color-neutral-500);">To get</span>
+        <span style="font-size:11px; color:var(--color-neutral-500);">5 items</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:20px;"></i><span style="flex:1; font-size:15px;">Eggs <span style="color:var(--color-neutral-500);">· 2 dozen</span></span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+        <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:20px;"></i><span style="flex:1; font-size:15px;">Coffee beans</span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+        <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:20px;"></i><span style="flex:1; font-size:15px;">Chicken thighs</span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+        <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:20px;"></i><span style="flex:1; font-size:15px;">Dish soap</span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+        <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:20px;"></i><span style="flex:1; font-size:15px;">Jasmine rice</span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+      </div>
+    </section>
+
+    <!-- done -->
+    <section style="display:flex; flex-direction:column; gap:var(--space-2);">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0 var(--space-2);">
+        <span style="font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--color-neutral-500);">Done</span>
+        <button class="btn btn-ghost" style="font-size:12px;">Clear</button>
+      </div>
+      <label class="row-hover" style="display:flex; align-items:center; gap:12px; padding:11px 10px; cursor:pointer; opacity:.65;"><i class="ph-fill ph-check-circle" style="color:var(--color-accent); font-size:20px;"></i><span style="flex:1; font-size:15px; color:var(--color-neutral-500); text-decoration:line-through;">Oat milk</span><span style="width:22px; height:22px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+    </section>
+
+    <div style="text-align:center; font-size:11px; color:var(--color-neutral-600); margin-top:var(--space-2);">Changes appear on Alden's dashboard instantly.</div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

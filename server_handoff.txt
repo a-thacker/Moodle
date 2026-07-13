@@ -1,0 +1,324 @@
+Command Center Project Handoff
+
+You are helping me build my personal Command Center, a self-hosted web application running on an Ubuntu Server. This is a long-term project intended to become my personal assistant and central hub for school, work, notes, scheduling, and automation.
+
+Primary Goal
+
+This is not a ChatGPT clone.
+
+The goal is to build a platform that owns my data and uses an LLM as one component.
+
+The application should eventually:
+
+Track assignments
+Track schedules
+Store notes
+Manage projects
+Search documents
+Learn my habits
+Generate daily plans
+Send personalized notifications
+Answer questions using my own data
+Integrate with future services
+
+The AI should never be the source of truth. PostgreSQL should always own the data.
+
+Current Progress
+
+The following has already been completed:
+
+Ubuntu Server installed
+Tailscale installed and working
+Server accessible remotely over SSH
+Project directory created
+Initial docker-compose.yml created
+
+Current project structure:
+
+command-center/
+├── docker-compose.yml
+├── .env
+├── backend/
+├── frontend/
+├── postgres/
+├── data/
+│ ├── postgres/
+│ └── ollama/
+└── README.md
+
+The current compose file contains services for:
+
+PostgreSQL
+Ollama
+Open WebUI
+Backend
+Frontend
+
+It may need improvements.
+
+Design Philosophy
+
+I care much more about architecture than quickly getting features working.
+
+Priorities:
+
+Clean architecture
+Maintainability
+Strong typing
+Modular code
+Scalability
+Security
+Documentation
+
+Do not generate large monolithic files.
+
+Preferred Tech Stack
+
+Backend:
+
+Python
+FastAPI
+SQLAlchemy
+Alembic
+Pydantic
+
+Database:
+
+PostgreSQL
+
+AI:
+
+Ollama
+
+Frontend:
+
+React
+Vite
+TypeScript
+
+Containerization:
+
+Docker Compose
+
+Future integrations:
+
+Moodle
+Google Calendar
+ntfy
+Email
+PDFs
+Local document search
+High-Level Architecture
+
+Browser
+
+↓
+
+React Dashboard
+
+↓
+
+FastAPI Backend
+
+↓
+
+PostgreSQL
+
+↓
+
+AI Service Layer
+
+↓
+
+Ollama
+
+The backend should be the only component communicating with the database.
+
+The frontend should never access PostgreSQL directly.
+
+The LLM should never access PostgreSQL directly.
+
+Everything should flow through the backend.
+
+Long-Term AI Design
+
+The LLM should interact through tools/functions.
+
+Examples:
+
+get_assignments()
+
+get_schedule()
+
+search_notes()
+
+search_documents()
+
+create_task()
+
+complete_task()
+
+send_notification()
+
+The LLM should not rely on huge prompts.
+
+Planned Database
+
+The schema should be designed for future growth.
+
+Expected tables include:
+
+users
+
+assignments
+
+courses
+
+notes
+
+calendar_events
+
+projects
+
+tasks
+
+documents
+
+notifications
+
+habits
+
+goals
+
+conversation_history
+
+More tables may be added later.
+
+Project Roadmap
+
+Phase 1
+
+Server infrastructure
+
+Docker
+
+PostgreSQL
+
+FastAPI
+
+Basic frontend
+
+Completed or in progress.
+
+Phase 2
+
+Authentication
+
+Database models
+
+REST API
+
+Frontend layout
+
+Phase 3
+
+Assignments
+
+Tasks
+
+Notes
+
+Calendar
+
+Projects
+
+CRUD operations
+
+Phase 4
+
+Ollama integration
+
+Chat endpoint
+
+Conversation history
+
+Tool calling
+
+Phase 5
+
+RAG
+
+PDF indexing
+
+Vector search
+
+Semantic search
+
+Phase 6
+
+Automation
+
+Background jobs
+
+Daily briefing
+
+Deadline reminders
+
+ntfy integration
+
+Phase 7
+
+Advanced intelligence
+
+Scheduling suggestions
+
+Productivity insights
+
+Workload analysis
+
+Personal recommendations
+
+Coding Standards
+
+Use:
+
+Type hints everywhere
+SQLAlchemy 2.x style
+Pydantic v2
+Async FastAPI where appropriate
+Environment variables
+Proper logging
+Dependency injection
+Separation of routers/services/models/schemas
+
+Avoid:
+
+Business logic inside routes
+Duplicate code
+Massive files
+Global mutable state
+Immediate Next Tasks
+
+I would like to continue from where the project currently is.
+
+Please:
+
+Inspect the existing project structure.
+Improve the Docker setup if needed.
+Create a proper backend structure.
+Create a FastAPI application.
+Configure PostgreSQL connection.
+Add SQLAlchemy.
+Add Alembic.
+Create configuration management.
+Create the initial User model.
+Create health-check endpoints.
+Verify everything works through Docker.
+
+Do not jump ahead into AI features yet.
+
+I want to build a solid backend first.
+
+After each major milestone, explain what was added and why before moving to the next step.
+
+Think like a senior software architect, not a code generator.

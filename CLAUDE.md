@@ -7,10 +7,28 @@ module of a larger project: a **Personal Command Center** — a modular
 dashboard of personal tools for daily life (grades, deadlines, a shared
 grocery list with a roommate, notifications, and more over time).
 
-**Read `docs/PROJECT_HANDOFF.md` before planning or building anything.**
-It defines the full vision, the phased roadmap (Netlify/Supabase now →
-self-hosted later → Ollama AI layer → physical device), the two-zone
-architecture (local Sync Agent / cloud Hub), and standing preferences.
+**Read `docs/PROJECT_HANDOFF.md` AND `server_handoff.txt` before planning or
+building anything.** PROJECT_HANDOFF.md has the original vision + roadmap.
+`server_handoff.txt` is the NEWER direction and takes precedence where they
+conflict.
+
+### ARCHITECTURE PIVOT (2026-07-13): self-hosted, Postgres is source of truth
+The project moved off Netlify/Supabase to a **self-hosted stack** on an
+Ubuntu server (`athacker-cc`, reached via Tailscale; user builds locally in
+`command-center/` and syncs to `~/command-center` there). New stack:
+FastAPI + PostgreSQL + Alembic + Ollama, all in Docker Compose. **Postgres
+is the single source of truth; the backend is the only thing that touches
+it** — frontend and the future LLM go through the API. Build backend-first;
+AI (Ollama tool-calling) is a later phase, not now.
+
+- `command-center/` — the new self-hosted app (see its own README). This is
+  where active backend work happens.
+- `hub/` + `supabase/` — the OLD Netlify/Supabase Hub. Being superseded by
+  command-center. Don't extend it; the agent will later repoint from
+  Supabase to the FastAPI backend.
+- `Personal command center redesign/` — Nocturne dark-UI redesign
+  (`DESIGN_HANDOFF.md`). Visual source of truth for the NEW frontend
+  (React+Vite+TypeScript talking to FastAPI, not Supabase). Not yet ported.
 
 ## Current state (update as things land)
 

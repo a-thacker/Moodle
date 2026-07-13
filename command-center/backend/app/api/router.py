@@ -1,0 +1,17 @@
+"""Aggregate router for versioned feature resources.
+
+`app.main` mounts this under the API prefix (e.g. `/api/v1`). Health checks
+are intentionally *not* here — they live at the root (see `app.main`) because
+infra probes expect `/health`, not a versioned path. Add feature routers
+(assignments, tasks, notes, ...) here as Phase 3 lands them.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+api_router = APIRouter()
+
+# Feature routers get included here, e.g.:
+#   from app.api.routes import assignments
+#   api_router.include_router(assignments.router)

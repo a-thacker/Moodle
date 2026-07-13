@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-6658c5cb-9796-49b5-8461-03176e4af34c/styles.css">
+<script src="_ds/nocturne-6658c5cb-9796-49b5-8461-03176e4af34c/_ds_bundle.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  ::-webkit-scrollbar { width: 7px; height: 7px; }
+  ::-webkit-scrollbar-thumb { background: var(--color-neutral-800); border-radius: 8px; }
+  .rail-link { position: relative; color: var(--color-neutral-400); transition: color .15s, background .15s; }
+  .rail-link:hover { color: var(--color-text); background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+  .rail-link.active { color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+  .rail-link.active::before { content:""; position:absolute; left:-14px; top:50%; transform:translateY(-50%); width:3px; height:20px; border-radius:2px; background:var(--color-accent); }
+  .row-hover { transition: background .12s; border-radius: var(--radius-sm); }
+  .row-hover:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+  @keyframes glow { 0%,100%{opacity:.45} 50%{opacity:1} }
+  .pulse { animation: glow 2.4s ease-in-out infinite; }
+  .bento-col { display:flex; flex-direction:column; gap:var(--space-6); min-width:0; }
+</style>
+</helmet>
+
+<div data-clock-scope data-screen-label="Command Center" style="width:100vw; height:100vh; display:flex; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body); overflow:hidden;">
+
+  <!-- ══════════ LAUNCHER RAIL ══════════ -->
+  <nav style="width:66px; flex-shrink:0; background:var(--color-neutral-900); border-right:1px solid var(--color-divider); display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:4px;">
+    <div style="width:38px; height:38px; border-radius:var(--radius-md); border:1px solid var(--color-accent); display:flex; align-items:center; justify-content:center; color:var(--color-accent); margin-bottom:14px;"><i class="ph-fill ph-command" style="font-size:19px;"></i></div>
+
+    <a href="#" class="rail-link active" title="Dashboard" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);"><i class="ph ph-squares-four" style="font-size:21px;"></i></a>
+    <a href="#" class="rail-link" title="Grades" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);"><i class="ph ph-exam" style="font-size:21px;"></i></a>
+    <a href="#" class="rail-link" title="Deadlines" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);"><i class="ph ph-calendar-dots" style="font-size:21px;"></i></a>
+    <a href="#" class="rail-link" title="Grocery — shared" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);"><i class="ph ph-basket" style="font-size:21px;"></i></a>
+
+    <div style="width:26px; height:1px; background:var(--color-divider); margin:8px 0;"></div>
+
+    <a href="#" class="rail-link" title="Notes — planned" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md); opacity:.42;"><i class="ph ph-note" style="font-size:21px;"></i></a>
+    <a href="#" class="rail-link" title="Scripts — planned" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md); opacity:.42;"><i class="ph ph-terminal-window" style="font-size:21px;"></i></a>
+    <a href="#" class="rail-link" title="Assistant — planned" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md); opacity:.42;"><i class="ph ph-sparkle" style="font-size:21px;"></i></a>
+
+    <div style="margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <a href="#" class="rail-link" title="Settings" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);"><i class="ph ph-gear-six" style="font-size:20px;"></i></a>
+      <div title="Alden · owner" style="width:34px; height:34px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); display:flex; align-items:center; justify-content:center; font-family:var(--font-heading); font-size:14px; font-weight:500;">A</div>
+    </div>
+  </nav>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+    <!-- top bar -->
+    <header style="display:flex; align-items:center; gap:var(--space-6); padding:var(--space-4) var(--space-8); border-bottom:1px solid var(--color-divider); flex-shrink:0;">
+      <div style="flex:1; min-width:0; display:flex; align-items:center; gap:10px; max-width:460px; background:var(--color-surface); border:1px solid var(--color-divider); border-radius:var(--radius-md); padding:8px 12px;">
+        <i class="ph ph-magnifying-glass" style="color:var(--color-accent); font-size:16px;"></i>
+        <span style="color:var(--color-neutral-500); font-size:13px;">Search or jump to a tool…</span>
+        <span style="margin-left:auto; font-size:11px; color:var(--color-neutral-500); border:1px solid var(--color-divider); border-radius:var(--radius-sm); padding:1px 7px;">⌘K</span>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:var(--space-8);">
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--color-neutral-400);">
+          <span class="pulse" style="width:7px; height:7px; border-radius:50%; background:#6bbf8a; display:inline-block;"></span>
+          <span>agent synced <span style="color:var(--color-text);">2h ago</span></span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-heading); font-size:17px;"><span data-clock="hm">--:--</span> <span style="color:var(--color-neutral-500); font-size:12px;">{{ ampm }}</span></div>
+          <div style="font-size:11px; color:var(--color-neutral-500);">{{ dateLong }}</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- bento: three flex columns -->
+    <div style="flex:1; display:flex; gap:var(--space-6); padding:var(--space-8); min-height:0; overflow:auto;">
+
+      <!-- ── COLUMN A ── -->
+      <div class="bento-col" style="flex:1.45;">
+
+        <!-- HERO -->
+        <section style="background:radial-gradient(120% 150% at 90% 0%, var(--color-section-glow), var(--color-section) 58%); border:1px solid var(--color-accent-800); border-radius:var(--radius-lg); padding:var(--space-8); position:relative; overflow:hidden; flex-shrink:0;">
+          <div style="position:absolute; right:-60px; top:-70px; width:220px; height:220px; border-radius:50%; background:radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 34%, transparent), transparent);"></div>
+          <div style="position:relative;">
+            <div style="font-size:12px; letter-spacing:.04em; color:var(--color-accent-200); opacity:.85;">{{ dateLong }} · Collegedale, TN</div>
+            <h1 style="font-size:32px; margin:6px 0 0;">{{ greeting }}, Alden.</h1>
+            <div style="display:flex; align-items:stretch; gap:12px; margin-top:var(--space-6); flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:9px; background:color-mix(in srgb, var(--color-neutral-900) 45%, transparent); border:1px solid var(--color-accent-800); border-radius:var(--radius-md); padding:9px 13px;">
+                <i class="ph ph-clock-countdown" style="color:var(--color-accent-200); font-size:18px;"></i>
+                <div><div style="font-size:10px; letter-spacing:.06em; color:var(--color-accent-200); opacity:.8;">NEXT DUE</div><div style="font-size:13px;">JE #2 · <span style="color:var(--color-accent-100);">tomorrow 11:59 PM</span></div></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:9px; background:color-mix(in srgb, var(--color-neutral-900) 45%, transparent); border:1px solid var(--color-accent-800); border-radius:var(--radius-md); padding:9px 13px;">
+                <i class="ph ph-bell-ringing" style="color:var(--color-accent-200); font-size:18px;"></i>
+                <div><div style="font-size:10px; letter-spacing:.06em; color:var(--color-accent-200); opacity:.8;">SINCE LAST VISIT</div><div style="font-size:13px;">1 new grade · 1 due this week</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- DEADLINES -->
+        <section class="card" style="padding:var(--space-6); flex-shrink:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4);">
+            <div style="display:flex; align-items:center; gap:8px;"><i class="ph ph-calendar-dots" style="color:var(--color-accent);"></i><span class="card-title" style="font-size:15px;">Deadlines</span></div>
+            <span style="font-size:11px; color:var(--color-neutral-500);">from eClass timeline</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:var(--space-2);">
+
+            <div class="row-hover" style="display:flex; gap:12px; padding:10px 8px;">
+              <div style="width:34px; height:34px; flex:none; border-radius:var(--radius-md); background:var(--color-accent-900); color:var(--color-accent-200); display:flex; align-items:center; justify-content:center;"><i class="ph ph-file-text" style="font-size:17px;"></i></div>
+              <div style="flex:1; min-width:0;"><div style="font-size:13px;">Journal Entry #2</div><div style="font-size:11px; color:var(--color-neutral-500); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Service-Learning Project</div></div>
+              <span class="tag tag-outline" style="align-self:flex-start; white-space:nowrap;">Tomorrow</span>
+            </div>
+
+            <div class="row-hover" style="display:flex; gap:12px; padding:10px 8px;">
+              <div style="width:34px; height:34px; flex:none; border-radius:var(--radius-md); background:var(--color-neutral-800); color:var(--color-neutral-300); display:flex; align-items:center; justify-content:center;"><i class="ph ph-file-text" style="font-size:17px;"></i></div>
+              <div style="flex:1; min-width:0;"><div style="font-size:13px;">Reflection Paper</div><div style="font-size:11px; color:var(--color-neutral-500); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Service-Learning Project</div></div>
+              <span style="align-self:flex-start; font-size:12px; color:var(--color-neutral-400); white-space:nowrap;">Jul 22</span>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px; margin-top:var(--space-2); padding:10px 10px; border:1px dashed var(--color-divider); border-radius:var(--radius-md);">
+              <i class="ph ph-tree-structure" style="color:var(--color-neutral-500); font-size:15px;"></i>
+              <span style="font-size:12px; color:var(--color-neutral-500);">More arrive as Fall '26 activities open on eClass.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── COLUMN B ── -->
+      <div class="bento-col" style="flex:1;">
+
+        <!-- GRADES -->
+        <section class="card" style="padding:var(--space-6); flex-shrink:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-4);">
+            <div style="display:flex; align-items:center; gap:8px;"><i class="ph ph-exam" style="color:var(--color-accent);"></i><span class="card-title" style="font-size:15px;">Grades</span></div>
+            <span style="font-size:11px; color:var(--color-neutral-500);">S26 · 1 course</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:var(--space-4);">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;"><span style="font-size:13px;">Service-Learning Project</span><span style="font-family:var(--font-heading); font-size:13px; color:var(--color-accent-200);">100%</span></div>
+              <div style="height:5px; background:var(--color-neutral-800); border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:var(--color-accent);"></div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:var(--space-2); padding:9px 11px; border:1px dashed var(--color-divider); border-radius:var(--radius-md);">
+              <i class="ph ph-calendar-plus" style="color:var(--color-neutral-500); font-size:15px;"></i>
+              <span style="font-size:12px; color:var(--color-neutral-500);">Fall '26 courses populate here after the agent's next sync.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- SYNC AGENT -->
+        <section class="card" style="padding:var(--space-6); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:var(--space-4);"><i class="ph ph-heartbeat" style="color:var(--color-accent);"></i><span class="card-title" style="font-size:15px;">Sync agent</span></div>
+          <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--color-neutral-400);">eClass session</span><span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:7px; height:7px; border-radius:50%; background:#6bbf8a;"></span>healthy</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--color-neutral-400);">Last run</span><span>2h ago · ok</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--color-neutral-400);">Next run</span><span style="color:var(--color-neutral-300);">in ~2h</span></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--color-neutral-400);">Notify</span><span style="display:inline-flex; align-items:center; gap:5px;"><i class="ph ph-device-mobile" style="font-size:13px; color:var(--color-neutral-400);"></i>ntfy → phone</span></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ── COLUMN C ── -->
+      <div class="bento-col" style="flex:1;">
+
+        <!-- GROCERY -->
+        <section class="card" style="padding:var(--space-6); flex-shrink:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:8px;"><i class="ph ph-basket" style="color:var(--color-accent);"></i><span class="card-title" style="font-size:15px;">Grocery</span></div>
+            <span class="tag tag-neutral" style="display:inline-flex; align-items:center; gap:5px;"><i class="ph ph-users-three" style="font-size:12px;"></i>shared</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin:var(--space-2) 0 var(--space-4);">
+            <input class="input" placeholder="Add an item…" style="min-height:32px; font-size:13px;">
+            <button class="btn btn-primary btn-icon" style="width:32px; height:32px; flex:none;"><i class="ph ph-plus"></i></button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph-fill ph-check-circle" style="color:var(--color-accent); font-size:18px;"></i><span style="flex:1; font-size:13px; color:var(--color-neutral-500); text-decoration:line-through;">Oat milk</span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:18px;"></i><span style="flex:1; font-size:13px;">Eggs <span style="color:var(--color-neutral-500);">· 2 dozen</span></span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:18px;"></i><span style="flex:1; font-size:13px;">Coffee beans</span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:18px;"></i><span style="flex:1; font-size:13px;">Chicken thighs</span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:18px;"></i><span style="flex:1; font-size:13px;">Dish soap</span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-accent-800); color:var(--color-accent-100); font-size:10px; display:flex; align-items:center; justify-content:center;">A</span></label>
+            <label class="row-hover" style="display:flex; align-items:center; gap:10px; padding:7px 8px; cursor:pointer;"><i class="ph ph-circle" style="color:var(--color-neutral-600); font-size:18px;"></i><span style="flex:1; font-size:13px;">Jasmine rice</span><span style="width:20px; height:20px; border-radius:50%; background:var(--color-neutral-800); color:var(--color-neutral-200); font-size:10px; display:flex; align-items:center; justify-content:center;">S</span></label>
+          </div>
+          <div class="card-meta" style="margin-top:var(--space-3); padding-top:var(--space-3); border-top:1px solid var(--color-divider);"><i class="ph ph-lightning" style="font-size:12px;"></i>live · syncs with Sam's phone · 1 of 6 done</div>
+        </section>
+
+        <!-- WHAT CHANGED -->
+        <section class="card" style="padding:var(--space-6); flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:var(--space-4);"><i class="ph ph-arrows-clockwise" style="color:var(--color-accent);"></i><span class="card-title" style="font-size:15px;">What changed</span></div>
+          <div style="display:flex; flex-direction:column; gap:var(--space-3);">
+            <div style="display:flex; gap:10px;">
+              <span class="tag tag-accent" style="align-self:flex-start; flex:none;">graded</span>
+              <div style="min-width:0;"><div style="font-size:13px;">Proposal Form → <span style="color:var(--color-accent-200);">100%</span></div><div style="font-size:11px; color:var(--color-neutral-500); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">“Your answers moved my heart…” — C. Craven</div></div>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <span class="tag tag-neutral" style="align-self:flex-start; flex:none;">synced</span>
+              <div style="min-width:0;"><div style="font-size:13px;">10 activities tracked</div><div style="font-size:11px; color:var(--color-neutral-500);">Service-Learning · 2 days ago</div></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    const scope = document.querySelector('[data-clock-scope]') || document;
+    const p2 = (n) => String(n).padStart(2, '0');
+    const tick = () => {
+      const d = new Date();
+      const h = d.getHours(), m = d.getMinutes();
+      const h12 = ((h + 11) % 12) + 1;
+      scope.querySelectorAll('[data-clock="hm"]').forEach((el) => { el.textContent = `${h12}:${p2(m)}`; });
+    };
+    tick();
+    this._t = setInterval(tick, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  renderVals() {
+    const d = new Date();
+    const h = d.getHours();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return {
+      ampm: h < 12 ? 'AM' : 'PM',
+      dateLong: `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`,
+      greeting: h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening',
+    };
+  }
+}
+</script>
+</body>
+</html>
