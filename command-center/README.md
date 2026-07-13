@@ -29,6 +29,13 @@ command-center/
 │       ├── schemas/        # Pydantic v2 request/response models
 │       ├── services/       # business logic (routes stay thin)
 │       └── api/            # routers: health at root, features under /api/v1
+├── frontend/               # React + Vite + TypeScript dashboard (Nocturne UI)
+│   └── src/
+│       ├── components/     # OwnerDashboard + cards, RoommateGrocery
+│       ├── hooks/          # useClock, useGrocery (live API + sample fallback)
+│       ├── api/            # typed FastAPI client (the data seam)
+│       ├── data/sample.ts  # sample data until backend endpoints land
+│       └── styles/         # nocturne.css (design tokens) + app.css
 └── data/                   # bind-mounted volumes (gitignored)
     ├── postgres/
     └── ollama/
@@ -50,6 +57,25 @@ curl http://localhost:8000/health/db       # readiness (checks Postgres)
 
 docker compose --profile ai up -d          # later: adds Ollama + Open WebUI
 ```
+
+## Frontend
+
+React + Vite + TypeScript, styled with the Nocturne design system. The owner
+dashboard (launcher rail, hero, grades/deadlines/grocery/sync-agent/what-changed
+cards) and the roommate grocery-only view are ported from the design mockups.
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173  (proxies /api → :8000)
+npm run build      # tsc -b && vite build → dist/
+```
+
+View the roommate layout at `http://localhost:5173/?view=roommate` (until
+auth lands, the role is a query param). Cards read sample data from
+`src/data/sample.ts`; the grocery list already calls the API via
+`src/api/client.ts` and falls back to sample data when the backend routes
+(Phase 3) aren't up yet.
 
 ## Migrations
 

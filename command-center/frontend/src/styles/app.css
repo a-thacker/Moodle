@@ -1,0 +1,108 @@
+/* App-level styles ported from the Nocturne design mockups (the shared
+   interaction classes that the .dc.html files defined inline). Everything
+   colour/space/radius still derives from Nocturne tokens in nocturne.css. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-800);
+  border-radius: 8px;
+}
+
+/* Launcher-rail links */
+.rail-link {
+  position: relative;
+  color: var(--color-neutral-400);
+  transition:
+    color 0.15s,
+    background 0.15s;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+.rail-link:hover {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.rail-link.active {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+.rail-link.active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+.rail-link.dim {
+  opacity: 0.42;
+}
+
+/* Hover affordance for list rows */
+.row-hover {
+  transition: background 0.12s;
+  border-radius: var(--radius-sm);
+}
+.row-hover:hover {
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
+/* Status pulse */
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pulse {
+  animation: glow 2.4s ease-in-out infinite;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #6bbf8a; /* healthy green — outside the Nocturne accent family
+                          on purpose, a semantic status colour */
+}
+
+/* One bento column of stacked cards. DESIGN_HANDOFF: columns of
+   content-sized cards, NOT a fixed 3-row 1fr grid (which starved the middle
+   row and caused overlap). */
+.bento-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* Reset the button element for icon/ghost buttons that carry Nocturne classes */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
