@@ -12,7 +12,7 @@ import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -25,16 +25,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Inject the runtime database URL (async driver) into Alembic's config.
-config.set_main_option("sqlalchemy.url", str(get_settings().database_url))
-
+# The URL comes straight from app settings — never through Alembic's config
+# parser, whose ConfigParser interpolation would choke on the '%' characters
+# in a percent-encoded password. One source of truth, no escaping games.
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     """Emit SQL to a script without a live DBAPI connection."""
     context.configure(
-        url=config.get_main_option("sqlalchemy.url"),
+        url=get_settings().database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -55,11 +55,8 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    """Run migrations against a live async engine."""
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-    )
+    """Run migrations against a live async engine built from app settings."""
+    connectable = create_async_engine(get_settings().database_url)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

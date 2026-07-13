@@ -28,7 +28,11 @@ services:
     #   - "5432:5432"
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      # Use the host network during build so pip can resolve/reach PyPI
+      # (this host's BuildKit has flaky DNS on the default build network).
+      network: host
     restart: unless-stopped
     depends_on:
       postgres:
@@ -47,7 +51,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
       interval: 15s
       timeout: 5s
       retries: 5

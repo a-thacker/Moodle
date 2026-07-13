@@ -8,11 +8,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System deps: none required at runtime (asyncpg ships wheels). curl is handy
-# for the compose healthcheck.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+# No apt packages needed: asyncpg ships wheels, and the compose healthcheck
+# uses Python's stdlib (urllib) rather than curl — which also avoids relying
+# on the Debian mirror being reachable from inside the build.
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
