@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-api_router = APIRouter()
+from app.api.routes import grocery
 
-# Feature routers get included here, e.g.:
+api_router = APIRouter()
+api_router.include_router(grocery.router)
+
+# More feature routers get included here as Phase 3 lands them, e.g.:
 #   from app.api.routes import assignments
 #   api_router.include_router(assignments.router)
