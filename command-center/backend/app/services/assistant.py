@@ -114,6 +114,20 @@ async def _apply_actions(session: AsyncSession, user: User, reply: str) -> str:
     return out
 
 
+async def _call_claude_bridge(url: str, message: str, user_id) -> dict:
+    """POST to the host Claude bridge. It runs headless `claude -p` on the
+    subscription and manages its own per-user conversation memory (via
+    --resume), so we neither replay history nor parse ADD_TASK — Claude acts on
+    the data directly through the `cc` CLI."""
+    async with httpx.AsyncClient(timeout=260) as client:
+        resp = await client.post(
+            f"{url.rstrip('/')}/chat",
+            json={"message": message, "user_id": str(user_id)},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
 async def _call_anthropic(system: str, messages: list[dict], key: str, model: str) -> str:
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
@@ -139,9 +153,25 @@ async def _call_ollama(system: str, messages: list[dict], url: str, model: str) 
 
 async def chat(session: AsyncSession, user: User, message: str) -> dict:
     settings = get_settings()
+
+    # Preferred provider: the host Claude bridge (subscription, free, and it
+    # can act on the dashboard via `cc`). It owns conversation memory, so we
+    # just relay the message and persist both turns for the UI history.
+    if settings.claude_bridge_url:
+        try:
+            result = await _call_claude_bridge(settings.claude_bridge_url, message, user.id)
+        except httpx.HTTPError as exc:
+            logger.warning("Claude bridge call failed: %s", exc)
+            return {"reply": f"Assistant is unreachable right now ({exc}).", "available": False}
+        reply = (result.get("reply") or "(no response)").strip()
+        session.add(ChatMessage(user_id=user.id, role="user", content=message))
+        session.add(ChatMessage(user_id=user.id, role="assistant", content=reply))
+        await session.commit()
+        return {"reply": reply, "available": bool(result.get("available", True))}
+
     if not settings.anthropic_api_key and not settings.ollama_model:
         return {
-            "reply": "The assistant isn't configured yet — set ANTHROPIC_API_KEY (Claude) or OLLAMA_MODEL (local).",
+            "reply": "The assistant isn't configured yet — set CLAUDE_BRIDGE_URL (subscription), ANTHROPIC_API_KEY (Claude API), or OLLAMA_MODEL (local).",
             "available": False,
         }
 

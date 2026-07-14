@@ -42,12 +42,16 @@ services:
     # network and supplies non-secret defaults.
     env_file:
       - .env
+    # Reach the host's Claude bridge (headless `claude -p` on the subscription).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       APP_NAME: ${APP_NAME:-Command Center}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      CLAUDE_BRIDGE_URL: ${CLAUDE_BRIDGE_URL:-}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER}

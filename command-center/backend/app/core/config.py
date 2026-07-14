@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     roommate_name: str = "Roommate"
 
     # --- Assistant ------------------------------------------------------
+    # Claude bridge (preferred): a tiny host service that runs headless
+    # `claude -p` on Alden's subscription login. Free (counts against the
+    # existing Claude quota, not the pay-as-you-go API) and it can act on the
+    # dashboard through the `cc` CLI. When set it takes precedence over
+    # Anthropic/Ollama. e.g. "http://host.docker.internal:8787".
+    claude_bridge_url: str = ""
     # Ollama (local, free, slower on CPU).
     ollama_url: str = "http://ollama:11434"
     ollama_model: str = ""  # e.g. "gemma3:4b"; empty disables local model
