@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.models.user import User
 from app.services import eclass as eclass_service
 from app.services import grocery as grocery_service
@@ -56,7 +58,7 @@ async def current_weather() -> str | None:
 
 
 async def build_user_context(session: AsyncSession, user: User) -> str:
-    now = datetime.now()
+    now = datetime.now(ZoneInfo(get_settings().timezone))
     lines = [
         f"Current date/time: {now:%A, %B %d, %Y, %-I:%M %p}.",
         f"User: {user.display_name} ({user.role}). Location: {_PLACE}.",

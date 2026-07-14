@@ -42,6 +42,7 @@ async def create_task(
         title=data.title.strip(),
         body=data.body,
         due_date=data.due_date,
+        due_time=data.due_time,
         position=(max_pos or 0.0) + 1.0,
     )
     session.add(task)
@@ -60,6 +61,10 @@ async def update_task(
         task.body = fields["body"]
     if "due_date" in fields:
         task.due_date = fields["due_date"]
+        task.notified_before = task.notified_after = False
+    if "due_time" in fields:
+        task.due_time = fields["due_time"]
+        task.notified_before = task.notified_after = False
     if "position" in fields and fields["position"] is not None:
         task.position = fields["position"]
     if "done" in fields and fields["done"] is not None:

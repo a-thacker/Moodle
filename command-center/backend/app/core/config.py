@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     api_v1_prefix: str = "/api/v1"
+    # The user's local timezone — the container runs in UTC, so anything that
+    # reasons about "now" or a wall-clock due time uses this instead.
+    timezone: str = "America/New_York"
 
     # CORS: the frontend origins allowed to call this API. Stored as a raw
     # comma-separated string (e.g. "http://localhost:5173,https://cc.lan")
@@ -61,6 +64,12 @@ class Settings(BaseSettings):
     # server's .env.
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
+
+    # --- Notifications (ntfy) -------------------------------------------
+    ntfy_topic: str = ""  # from NTFY_TOPIC; empty disables reminders
+    ntfy_server: str = "https://ntfy.sh"
+    remind_before_minutes: int = 15  # notify this long before a timed event
+    remind_after_minutes: int = 30   # nudge this long after, if not done
 
     # --- PostgreSQL ------------------------------------------------------
     postgres_host: str = "postgres"

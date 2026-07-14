@@ -8,7 +8,7 @@ holds longer note text when a one-line title isn't enough.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     BigInteger,
@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     Uuid,
     func,
 )
@@ -41,8 +42,12 @@ class Task(Base):
     body: Mapped[str | None] = mapped_column(Text, default=None)
     done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, default=None, index=True)
+    due_time: Mapped[time | None] = mapped_column(Time, default=None)
     # Manual sort order (within a day / list). Lower = higher up.
     position: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    # ntfy reminders sent for a timed event (reset when the time changes).
+    notified_before: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notified_after: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), index=True, nullable=False
     )

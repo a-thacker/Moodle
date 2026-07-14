@@ -8,6 +8,7 @@ app trivial to construct in tests.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -19,6 +20,7 @@ from app.api.router import api_router
 from app.api.routes import health
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.services.reminders import reminder_loop
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,9 @@ async def lifespan(app: FastAPI):
         __version__,
         settings.environment,
     )
+    reminders = asyncio.create_task(reminder_loop())
     yield
+    reminders.cancel()
     logger.info("Shutting down %s", settings.app_name)
 
 

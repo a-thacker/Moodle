@@ -122,10 +122,10 @@ export const api = {
 
   tasks: {
     list: () => apiFetch<Task[]>("/api/v1/tasks"),
-    add: (title: string, dueDate?: string | null) =>
+    add: (title: string, dueDate?: string | null, dueTime?: string | null) =>
       apiFetch<Task>("/api/v1/tasks", {
         method: "POST",
-        body: JSON.stringify({ title, due_date: dueDate ?? null }),
+        body: JSON.stringify({ title, due_date: dueDate ?? null, due_time: dueTime ?? null }),
       }),
     update: (id: number, patch: TaskPatch) =>
       apiFetch<Task>(`/api/v1/tasks/${id}`, {

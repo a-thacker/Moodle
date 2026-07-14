@@ -22,6 +22,7 @@ from app.models.user import User
 from app.schemas.task import TaskCreate
 from app.services import task as task_service
 from app.services.context import build_user_context
+from app.services.when import parse_when
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,13 @@ _SYSTEM = (
     "practical. Use the LIVE CONTEXT below to answer specifically; if something "
     "isn't there, say so rather than inventing it.\n\n"
     "ADDING TASKS: When (and only when) the user in their most recent message "
-    "asks you to add/create/schedule/remind them of something, put each new "
-    "task on its own line at the very end of your reply, EXACTLY:\n"
-    "  ADD_TASK: <title> @ YYYY-MM-DD   (for a specific day)\n"
-    "  ADD_TASK: <title> @ every        (to add it to every day this week)\n"
-    "  ADD_TASK: <title>                (no date)\n"
+    "asks you to add/create/schedule/remind them of something, add a line at "
+    "the end of your reply for each task, EXACTLY:\n"
+    "  ADD_TASK: <title> <when>\n"
+    "where <when> is optional and may be natural language — e.g. 'tomorrow', "
+    "'next tuesday 2pm', 'friday -3pm', '2026-08-01', or 'every' (= every day "
+    "this week). The system resolves the date/time and cleans the title, so "
+    "keep the whole request on one ADD_TASK line.\n"
     "Rules: only add what THIS message asks for. NEVER re-add tasks from "
     "earlier in the conversation or from the context. Don't mention this format."
 )
@@ -86,23 +89,24 @@ async def _apply_actions(session: AsyncSession, user: User, reply: str) -> str:
     created: list[str] = []
     for m in _ADD_TASK_RE.finditer(reply):
         rest = m.group(1).strip()
-        days: list[date | None] = [None]
-        dm = _DATE_RE.search(rest)
-        if dm:
-            try:
-                days = [date.fromisoformat(dm.group(1))]
-                rest = rest[: dm.start()]
-            except ValueError:
-                pass
-        elif _EVERY_RE.search(rest):
-            days = list(_week_days())
+        every = bool(_EVERY_RE.search(rest))
+        if every:
             rest = _EVERY_RE.sub("", rest)
-        rest = _TRAILING_AT_RE.sub("", rest).rstrip(" -—–|@·:").strip()
-        if not rest or rest.lower() in existing:
+        # Resolve natural-language date/time ("next tuesday -2pm", ...).
+        title, due, tm = parse_when(rest)
+        title = _TRAILING_AT_RE.sub("", title).rstrip(" -—–|@·:").strip()
+        if not title or title.lower() in existing:
             continue  # empty, or already on the list — don't duplicate
-        for due in days:
-            await task_service.create_task(session, user.id, TaskCreate(title=rest, due_date=due))
-        created.append(rest + (" (every day this week)" if len(days) > 1 else (f" (due {days[0]:%b %d})" if days[0] else "")))
+        days: list[date | None] = list(_week_days()) if every else [due]
+        for d in days:
+            await task_service.create_task(
+                session, user.id, TaskCreate(title=title, due_date=d, due_time=tm)
+            )
+        when_txt = (
+            " (every day this week)" if every
+            else (f" (due {due:%b %d}" + (f" {tm:%-I:%M %p}" if tm else "") + ")" if due else (f" ({tm:%-I:%M %p})" if tm else ""))
+        )
+        created.append(title + when_txt)
 
     out = _ADD_TASK_RE.sub("", reply).strip()
     if created:

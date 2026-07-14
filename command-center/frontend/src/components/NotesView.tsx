@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 
 import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types";
+import { extractTime, fmtTime } from "../utils/time";
 
 function dueLabel(due: string | null): string | null {
   if (!due) return null;
@@ -30,6 +31,7 @@ function TaskRow({ task, onToggle, onRemove }: { task: Task; onToggle: () => voi
         )}
       </button>
       <span style={{ flex: 1, fontSize: 14, color: task.done ? "var(--cc-dim)" : "var(--cc-text)", textDecoration: task.done ? "line-through" : "none" }}>
+        {task.dueTime && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cc-accent-soft)", marginRight: 6 }}>{fmtTime(task.dueTime)}</span>}
         {task.title}
       </span>
       {due && (
@@ -54,8 +56,9 @@ export default function NotesView() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
-    add(title, due || null);
+    const parsed = extractTime(title);
+    if (!parsed.title.trim()) return;
+    add(parsed.title, due || null, parsed.time);
     setTitle("");
     setDue("");
   }

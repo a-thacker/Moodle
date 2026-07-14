@@ -73,6 +73,7 @@ export interface Task {
   body: string | null;
   done: boolean;
   dueDate: string | null; // YYYY-MM-DD
+  dueTime: string | null; // HH:MM:SS
   position: number;
   createdAt: string;
   doneAt: string | null;
@@ -83,6 +84,7 @@ export interface TaskPatch {
   body?: string | null;
   done?: boolean;
   due_date?: string | null;
+  due_time?: string | null;
   position?: number;
 }
 

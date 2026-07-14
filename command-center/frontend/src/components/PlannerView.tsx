@@ -7,6 +7,7 @@ import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react
 
 import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types";
+import { extractTime, fmtTime } from "../utils/time";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -46,7 +47,10 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
       <button type="button" onClick={onToggle} style={{ background: "none", border: "none", padding: 0, display: "flex", marginTop: 1 }}>
         {task.done ? <i className="ph-fill ph-check-circle" style={{ color: "var(--cc-accent)", fontSize: 16 }} /> : <i className="ph ph-circle" style={{ color: "var(--cc-muted)", fontSize: 16 }} />}
       </button>
-      <span style={{ flex: 1, color: task.done ? "var(--cc-dim)" : "var(--cc-text)", textDecoration: task.done ? "line-through" : "none", wordBreak: "break-word" }}>{task.title}</span>
+      <span style={{ flex: 1, color: task.done ? "var(--cc-dim)" : "var(--cc-text)", textDecoration: task.done ? "line-through" : "none", wordBreak: "break-word" }}>
+        {task.dueTime && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cc-accent-soft)", marginRight: 6 }}>{fmtTime(task.dueTime)}</span>}
+        {task.title}
+      </span>
       <button type="button" onClick={onRemove} title="Delete" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0 }}>
         <i className="ph ph-x" style={{ fontSize: 12 }} />
       </button>
@@ -115,8 +119,17 @@ export default function PlannerView() {
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const shownDays = mode === "week" ? weekDays : [anchor];
 
-  const byKey = (k: string | null): Task[] =>
-    tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate)).sort((a, b) => a.position - b.position);
+  const byKey = (k: string | null): Task[] => {
+    const list = tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate));
+    if (!k) return list.sort((a, b) => a.position - b.position);
+    // Dated columns: timed events first (by time), then untimed by position.
+    return list.sort((a, b) => {
+      if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : a.dueTime > b.dueTime ? 1 : a.position - b.position;
+      if (a.dueTime) return -1;
+      if (b.dueTime) return 1;
+      return a.position - b.position;
+    });
+  };
 
   function endDrag() { dragRef.current = null; setOverKey(null); setIndicator(null); setDragActive(false); }
 
@@ -147,9 +160,9 @@ export default function PlannerView() {
   function addTo(dateStr: string | null, e: FormEvent) {
     e.preventDefault();
     const key = dateStr ?? "none";
-    const title = (drafts[key] ?? "").trim();
-    if (!title) return;
-    add(title, dateStr);
+    const { title, time } = extractTime(drafts[key] ?? "");
+    if (!title.trim()) return;
+    add(title, dateStr, time);
     setDrafts((s) => ({ ...s, [key]: "" }));
   }
 

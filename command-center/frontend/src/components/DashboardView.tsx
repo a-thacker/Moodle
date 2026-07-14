@@ -24,6 +24,15 @@ import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
 import type { ClaudeUsage, Deadline, ScriptInfo } from "../types";
 import { relativeDay } from "../utils/format";
+import { fmtTime } from "../utils/time";
+
+function untilMidnight(): string {
+  const now = new Date();
+  const mid = new Date(now);
+  mid.setHours(24, 0, 0, 0);
+  const mins = Math.round((mid.getTime() - now.getTime()) / 60000);
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
 
 const MONO = "var(--font-mono)";
 
@@ -138,10 +147,15 @@ export default function DashboardView() {
   const firstName = (user?.display_name ?? "there").split(" ")[0];
   const topCourse = courses[0];
   const grocOutstanding = grocery.filter((g) => !g.done);
-  const weekTasks = tasks
-    .filter((t) => !t.done && t.dueDate)
-    .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))
-    .slice(0, 7);
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  const todayTasks = tasks
+    .filter((t) => !t.done && t.dueDate === todayStr)
+    .sort((a, b) => {
+      if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : 1;
+      if (a.dueTime) return -1;
+      if (b.dueTime) return 1;
+      return a.position - b.position;
+    });
 
   // Inner content per widget (closes over the live data above).
   const content = useMemo<Record<WidgetId, ReactNode>>(() => ({
@@ -182,14 +196,14 @@ export default function DashboardView() {
     ),
     agenda: (
       <>
-        <Label extra="this week">PLANNER</Label>
+        <Label extra="today">PLANNER</Label>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", minHeight: 0, fontSize: 13 }}>
-          {weekTasks.length === 0 ? (
-            <div style={{ color: "var(--cc-muted)" }}>No dated tasks yet — plan some in the week planner.</div>
+          {todayTasks.length === 0 ? (
+            <div style={{ color: "var(--cc-muted)" }}>Nothing planned today — tap to plan your day.</div>
           ) : (
-            weekTasks.map((t) => (
+            todayTasks.map((t) => (
               <div key={t.id} style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
-                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 12, width: 58, flexShrink: 0 }}>{relativeDay(t.dueDate + "T00:00:00")}</span>
+                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 12, width: 62, flexShrink: 0 }}>{t.dueTime ? fmtTime(t.dueTime) : "—"}</span>
                 <span style={{ flex: 1, color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
               </div>
             ))
@@ -253,6 +267,7 @@ export default function DashboardView() {
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today est</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} · ~${usage?.week?.costEst ?? 0}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>all time</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.totals?.io)} · ~${usage?.totals?.costEst ?? 0}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--cc-dim)", fontSize: 11 }}><span>daily resets in</span><span>{untilMidnight()}</span></div>
           <div style={{ color: "var(--cc-dim)", fontSize: 11 }}>+{fmtTok(usage?.today?.tokens)} ctx read today</div>
           {!usage && <div style={{ color: "var(--cc-muted)" }}>Run `agent claude-usage`.</div>}
         </div>
@@ -270,7 +285,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, weekTasks, tasks]);
+  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, todayTasks, tasks]);
 
   return (
     <div className="cc-grid">
