@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Keeps the eClass session warm so it doesn't idle-timeout between the
+  4-hourly `check` runs. Probes /my/ every 15 minutes; never opens a browser.
+
+  Install (replace __PROJECT_DIR__ with the absolute repo path):
+    cp agent/launchd/edu.southern.command-center.keepalive.plist \
+       ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/edu.southern.command-center.keepalive.plist
+
+  Pair this with the 4-hourly edu.southern.command-center.agent.plist (the
+  full sync). Together: keepalive holds the session; check does the work.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>edu.southern.command-center.keepalive</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT_DIR__/eclass/.venv/bin/python</string>
+    <string>-m</string>
+    <string>agent</string>
+    <string>keepalive</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>StartInterval</key>
+  <integer>900</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/snapshots/keepalive.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/snapshots/keepalive.err.log</string>
+</dict>
+</plist>

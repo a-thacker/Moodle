@@ -154,6 +154,27 @@ def status(store: SnapshotStore) -> int:
     return 0
 
 
+def keepalive(store: SnapshotStore) -> int:
+    """Touch the eClass session to reset its idle timer, without a full sync.
+
+    Moodle expires sessions on inactivity; probing /my/ on a short schedule
+    (every ~15 min) keeps the session warm so it survives far longer between
+    the interactive Microsoft re-logins. Never opens a browser; stays quiet
+    (the 4-hourly `check` is what notifies on expiry) — just logs alive/expired
+    so runs.log accumulates real session-lifetime data.
+    """
+    client = EclassClient(auto_relogin=False)
+    try:
+        client.login(interactive=False)  # cookie reuse + /my/ probe
+    except SessionExpired:
+        store.log_run("keepalive expired")
+        print("eClass session expired.")
+        return 2
+    store.log_run("keepalive alive")
+    print("eClass session kept alive.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     cli = argparse.ArgumentParser(
         prog="agent", description="Personal Command Center sync agent"
@@ -176,6 +197,9 @@ def main(argv: list[str] | None = None) -> int:
         help="notification channel (auto = ntfy if configured, else mac/console)",
     )
     sub.add_parser("status", help="Show stored snapshots and recent runs")
+    sub.add_parser(
+        "keepalive", help="Probe eClass to keep the session warm (no full sync)"
+    )
 
     args = cli.parse_args(argv)
     logging.basicConfig(
@@ -214,6 +238,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         return status(store)
+
+    if args.command == "keepalive":
+        return keepalive(store)
 
     return 1
 

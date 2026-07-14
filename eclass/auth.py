@@ -65,6 +65,8 @@ def login_interactive(
         page.goto(f"{base_url}/login/index.php")
 
         print("\n>>> Complete the Microsoft login in the browser window.")
+        print('>>> Tip: choose "Yes" on "Stay signed in?" — it makes future')
+        print(">>>      re-logins faster (no password/MFA each time).")
         print(">>> This window will close automatically once you're in.\n")
 
         try:
