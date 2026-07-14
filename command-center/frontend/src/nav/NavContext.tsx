@@ -16,6 +16,7 @@ export type View =
   | "deadlines"
   | "grocery"
   | "notes"
+  | "planner"
   | "scripts"
   | "settings";
 

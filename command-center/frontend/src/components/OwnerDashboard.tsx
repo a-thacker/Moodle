@@ -11,6 +11,7 @@ import GradesCard from "./GradesCard.tsx";
 import DeadlinesCard from "./DeadlinesCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
 import NotesView from "./NotesView.tsx";
+import PlannerView from "./PlannerView.tsx";
 import ScriptsView from "./ScriptsView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -40,6 +41,8 @@ function ActiveView() {
       );
     case "notes":
       return <NotesView />;
+    case "planner":
+      return <PlannerView />;
     case "scripts":
       return <ScriptsView />;
     case "settings":
