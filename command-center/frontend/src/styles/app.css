@@ -146,3 +146,35 @@ button {
   font-family: inherit;
   cursor: pointer;
 }
+
+/* Drag-to-rearrange: a grip that appears on tile hover. */
+.cc-slot {
+  position: relative;
+}
+.cc-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  cursor: grab;
+  color: var(--cc-dim);
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 3px;
+  border-radius: 6px;
+}
+.cc-slot:hover .cc-handle {
+  opacity: 1;
+}
+.cc-handle:hover {
+  color: var(--cc-accent-soft);
+  background: #ffffff0d;
+}
+.cc-handle:active {
+  cursor: grabbing;
+}
+/* Highlight compatible drop targets while dragging. */
+.cc-slot.cc-drop-ok {
+  outline: 1px dashed var(--cc-accent);
+  outline-offset: -1px;
+}
