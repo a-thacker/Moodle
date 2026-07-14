@@ -42,11 +42,16 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
 
+    # In production, don't expose the interactive docs / OpenAPI schema.
+    is_prod = settings.environment == "production"
     app = FastAPI(
         title=settings.app_name,
         version=__version__,
         debug=settings.debug,
         lifespan=lifespan,
+        docs_url=None if is_prod else "/docs",
+        redoc_url=None if is_prod else "/redoc",
+        openapi_url=None if is_prod else "/openapi.json",
     )
 
     app.add_middleware(

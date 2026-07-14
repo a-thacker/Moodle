@@ -90,6 +90,28 @@ docker compose exec backend alembic upgrade head
 Alembic reads the database URL and target metadata from the app's own
 settings and models, so migrations never drift from runtime config.
 
+## AI layer (Ollama) — engine up, model pending
+
+`docker compose up -d ollama` runs the Ollama engine (image from Docker Hub).
+**No model is loaded yet:** this server's egress firewall blocks the model
+registries (`registry.ollama.ai` on IPv4, `hf.co`) while allowing Docker Hub
+and PyPI. To load a model, either:
+
+- allow `registry.ollama.ai` / `hf.co` through the firewall, then
+  `docker compose exec ollama ollama pull llama3.2:3b` (3B is a good fit for
+  this box — 4 CPU cores, 30 GB RAM, no GPU); or
+- transfer a GGUF manually: download on a machine with access, `scp` it to
+  the server, and `ollama create <name> -f Modelfile` pointing at the GGUF.
+
+Open WebUI is intentionally not run — its image is on ghcr.io (also blocked),
+and the assistant UI will live in the Hub/backend instead.
+
+### Server egress note
+Reachable from the server: Docker Hub, PyPI, `huggingface.co`. Blocked:
+`github.com`, `ghcr.io`, `registry.ollama.ai` (IPv4 — IPv6 works but Docker
+uses IPv4), `hf.co`. Deploy code with `rsync` (not `git clone`); build images
+with `network: host` so pip/npm resolve.
+
 ## Roadmap
 
 Backend-first. Phase 2 (current): config, DB, models, migrations, health,
