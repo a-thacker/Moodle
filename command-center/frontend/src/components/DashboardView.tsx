@@ -59,7 +59,7 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   hero: { footprint: "wide", style: { background: "linear-gradient(135deg,#8b7cf0,#6857c8)", borderRadius: "var(--cc-radius)", padding: "26px 28px", color: "#100f1c", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" } },
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
   agenda: { footprint: "tall", className: "cc-tile cc-clickable", view: "planner" },
-  assistant: { footprint: "tall", style: { background: "linear-gradient(180deg,#181a2b,#141420)", border: "1px solid #2a2550", borderRadius: "var(--cc-radius)", padding: "22px 24px", display: "flex", flexDirection: "column", minHeight: 0 } },
+  assistant: { footprint: "tall", view: "assistant", style: { cursor: "pointer", background: "linear-gradient(180deg,#181a2b,#141420)", border: "1px solid #2a2550", borderRadius: "var(--cc-radius)", padding: "22px 24px", display: "flex", flexDirection: "column", minHeight: 0 } },
   scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
   claude: { footprint: "small", className: "cc-tile" },
@@ -206,9 +206,9 @@ export default function DashboardView() {
           <span className="pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--cc-accent)" }} />
           <span style={{ fontFamily: MONO, fontSize: 12, letterSpacing: ".08em", color: "var(--cc-accent-soft)" }}>ASSISTANT · ollama</span>
         </div>
-        <div style={{ fontSize: 14, lineHeight: 1.55, color: "#dcdfea" }}>The local assistant lives here once a model is loaded. It'll read your grades, deadlines, and notes to help you plan.</div>
+        <div style={{ fontSize: 14, lineHeight: 1.55, color: "#dcdfea" }}>Ask about your schedule or tell me to add tasks. I know your grades, deadlines, weather, and lists.</div>
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 10, background: "#0f101a", border: "1px solid #2a2e42", borderRadius: 11, padding: "11px 14px" }}>
-          <span style={{ color: "var(--cc-muted)", fontSize: 14, flex: 1 }}>Ask anything… (soon)</span>
+          <span style={{ color: "var(--cc-accent-soft)", fontSize: 14, flex: 1 }}>Open the assistant →</span>
           <span style={{ color: "var(--cc-accent)", fontSize: 16 }}>↑</span>
         </div>
       </>
@@ -246,16 +246,14 @@ export default function DashboardView() {
       <>
         <Label extra={usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}>CLAUDE USAGE</Label>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--cc-bright)", lineHeight: 1 }}>{fmtTok(usage?.today?.tokens)}</span>
-          <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>tok today</span>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--cc-bright)", lineHeight: 1 }}>{fmtTok(usage?.today?.io)}</span>
+          <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>generated today</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 14, fontSize: 12, fontFamily: MONO }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.tokens)} · ~${usage?.week?.costEst ?? 0}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>all time</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.totals?.tokens)} · ~${usage?.totals?.costEst ?? 0}</span></div>
-          {usage?.byModel && Object.keys(usage.byModel)[0] && (
-            <div style={{ color: "var(--cc-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>top: {Object.keys(usage.byModel)[0].replace("claude-", "")}</div>
-          )}
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today est</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} · ~${usage?.week?.costEst ?? 0}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>all time</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.totals?.io)} · ~${usage?.totals?.costEst ?? 0}</span></div>
+          <div style={{ color: "var(--cc-dim)", fontSize: 11 }}>+{fmtTok(usage?.today?.tokens)} ctx read today</div>
           {!usage && <div style={{ color: "var(--cc-muted)" }}>Run `agent claude-usage`.</div>}
         </div>
       </>

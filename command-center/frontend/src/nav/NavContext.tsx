@@ -18,6 +18,7 @@ export type View =
   | "notes"
   | "planner"
   | "scripts"
+  | "assistant"
   | "settings";
 
 interface NavState {

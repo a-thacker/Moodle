@@ -23,6 +23,20 @@ class ChatReply(BaseModel):
     available: bool
 
 
+class ChatMessageOut(BaseModel):
+    role: str
+    content: str
+
+
+@router.get("/history", response_model=list[ChatMessageOut])
+async def history(
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_owner),
+) -> list[ChatMessageOut]:
+    msgs = await assistant_service.list_history(session, user.id)
+    return [ChatMessageOut(role=m.role, content=m.content) for m in msgs]
+
+
 @router.post("/chat", response_model=ChatReply)
 async def chat(
     payload: ChatRequest,

@@ -88,6 +88,7 @@ export interface TaskPatch {
 
 export interface UsageBucket {
   tokens: number;
+  io?: number; // input+output ("real work", excludes cache reads)
   costEst: number;
 }
 

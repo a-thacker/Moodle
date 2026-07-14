@@ -17,10 +17,11 @@ const TOOLS: RailTool[] = [
   { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
   { icon: "ph-note", title: "Notes & Tasks", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },
+  { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
   { icon: "ph-terminal-window", title: "Scripts", view: "scripts" },
 ];
 
-const PLANNED = [{ icon: "ph-sparkle", title: "Assistant — planned" }];
+const PLANNED: { icon: string; title: string }[] = [];
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();

@@ -52,10 +52,15 @@ class Settings(BaseSettings):
     roommate_password: str | None = None
     roommate_name: str = "Roommate"
 
-    # --- Assistant (Ollama) ---------------------------------------------
+    # --- Assistant ------------------------------------------------------
+    # Ollama (local, free, slower on CPU).
     ollama_url: str = "http://ollama:11434"
-    # Empty until a model is pulled on the server; set e.g. "llama3.2:3b".
-    ollama_model: str = ""
+    ollama_model: str = ""  # e.g. "gemma3:4b"; empty disables local model
+    # Anthropic (Claude) API — smart + fast. When a key is set it takes
+    # precedence over Ollama. Pay-as-you-go; the key lives only in the
+    # server's .env.
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
 
     # --- PostgreSQL ------------------------------------------------------
     postgres_host: str = "postgres"

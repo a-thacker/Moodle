@@ -101,6 +101,9 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ message }),
       }),
+    history: () =>
+      apiFetch<{ role: string; content: string }[]>("/api/v1/assistant/history"),
+    clear: () => apiFetch<void>("/api/v1/assistant/history", { method: "DELETE" }),
   },
 
   grocery: {

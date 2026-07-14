@@ -19,6 +19,7 @@ const COMMANDS: Command[] = [
   { view: "grocery", label: "Grocery", icon: "ph-basket", hint: "Shared list" },
   { view: "notes", label: "Notes & Tasks", icon: "ph-note", hint: "Quick capture" },
   { view: "planner", label: "Week planner", icon: "ph-calendar-check", hint: "Plan tasks by day" },
+  { view: "assistant", label: "Assistant", icon: "ph-sparkle", hint: "Chat with the AI" },
   { view: "scripts", label: "Scripts", icon: "ph-terminal-window", hint: "Run commands" },
   { view: "settings", label: "Settings", icon: "ph-gear-six", hint: "Password & account" },
 ];

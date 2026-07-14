@@ -37,6 +37,7 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     today = datetime.now().astimezone().date()
     by_model: dict[str, dict[str, float]] = {}
     day_tokens: dict[str, int] = {}
+    day_io: dict[str, int] = {}  # input+output — the "real work" (no cache)
     day_cost: dict[str, float] = {}
     totals = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "cost": 0.0}
     messages = 0
@@ -85,6 +86,7 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
                 try:
                     day = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().date().isoformat()
                     day_tokens[day] = day_tokens.get(day, 0) + tokens
+                    day_io[day] = day_io.get(day, 0) + inp + out
                     day_cost[day] = day_cost.get(day, 0.0) + cost
                 except ValueError:
                     pass
@@ -99,9 +101,9 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "messages": messages,
-        "totals": {"tokens": total_tokens, "costEst": round(totals["cost"], 2), **{k: totals[k] for k in ("input", "output", "cacheRead", "cacheWrite")}},
-        "today": {"tokens": day_tokens.get(today_key, 0), "costEst": round(day_cost.get(today_key, 0.0), 2)},
-        "week": {"tokens": int(week_sum(day_tokens)), "costEst": round(week_sum(day_cost), 2)},
+        "totals": {"tokens": total_tokens, "io": totals["input"] + totals["output"], "costEst": round(totals["cost"], 2), **{k: totals[k] for k in ("input", "output", "cacheRead", "cacheWrite")}},
+        "today": {"tokens": day_tokens.get(today_key, 0), "io": day_io.get(today_key, 0), "costEst": round(day_cost.get(today_key, 0.0), 2)},
+        "week": {"tokens": int(week_sum(day_tokens)), "io": int(week_sum(day_io)), "costEst": round(week_sum(day_cost), 2)},
         "byModel": {m: {"tokens": v["tokens"], "costEst": round(v["cost"], 2)} for m, v in sorted(by_model.items(), key=lambda kv: -kv[1]["tokens"])},
     }
 

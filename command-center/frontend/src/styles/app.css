@@ -158,8 +158,11 @@ button {
   z-index: 2;
   cursor: grab;
   color: var(--cc-dim);
-  opacity: 0;
-  transition: opacity 0.15s;
+  opacity: 0.4; /* always faintly visible so tiles read as draggable */
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    background 0.15s;
   padding: 2px 3px;
   border-radius: 6px;
 }
@@ -168,7 +171,7 @@ button {
 }
 .cc-handle:hover {
   color: var(--cc-accent-soft);
-  background: #ffffff0d;
+  background: #ffffff14;
 }
 .cc-handle:active {
   cursor: grabbing;
