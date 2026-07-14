@@ -15,13 +15,11 @@ const TOOLS: RailTool[] = [
   { icon: "ph-exam", title: "Grades", view: "grades" },
   { icon: "ph-calendar-dots", title: "Deadlines", view: "deadlines" },
   { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
+  { icon: "ph-note", title: "Notes & Tasks", view: "notes" },
   { icon: "ph-terminal-window", title: "Scripts", view: "scripts" },
 ];
 
-const PLANNED = [
-  { icon: "ph-note", title: "Notes — planned" },
-  { icon: "ph-sparkle", title: "Assistant — planned" },
-];
+const PLANNED = [{ icon: "ph-sparkle", title: "Assistant — planned" }];
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();

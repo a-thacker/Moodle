@@ -15,6 +15,7 @@ export type View =
   | "grades"
   | "deadlines"
   | "grocery"
+  | "notes"
   | "scripts"
   | "settings";
 

@@ -121,6 +121,20 @@ def main() -> None:
 
     check("roommate GET /courses -> 403", client.get("/api/v1/courses", headers=room_auth).status_code == 403)
 
+    # --- tasks (per-user) ---
+    r = client.post("/api/v1/tasks", json={"title": "Write reflection essay", "due_date": "2026-07-18"}, headers=owner_auth)
+    body = r.json()
+    check("create task -> 201, camelCase dueDate",
+          r.status_code == 201 and body["dueDate"] == "2026-07-18" and body["done"] is False)
+    task_id = body["id"]
+    r = client.patch(f"/api/v1/tasks/{task_id}", json={"done": True}, headers=owner_auth)
+    check("toggle task done -> doneAt set", r.status_code == 200 and r.json()["doneAt"] is not None)
+    check("owner lists 1 task", len(client.get("/api/v1/tasks", headers=owner_auth).json()) == 1)
+    check("roommate sees no owner tasks", len(client.get("/api/v1/tasks", headers=room_auth).json()) == 0)
+    check("roommate can't touch owner task -> 404",
+          client.patch(f"/api/v1/tasks/{task_id}", json={"done": False}, headers=room_auth).status_code == 404)
+    check("delete task -> 204", client.delete(f"/api/v1/tasks/{task_id}", headers=owner_auth).status_code == 204)
+
     os.unlink(_db.name)
     print(f"\n{'ALL PASSED' if not failures else f'{len(failures)} FAILURE(S): ' + ', '.join(failures)}")
     raise SystemExit(1 if failures else 0)

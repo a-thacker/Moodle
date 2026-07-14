@@ -17,6 +17,7 @@ const COMMANDS: Command[] = [
   { view: "grades", label: "Grades", icon: "ph-exam", hint: "Course totals" },
   { view: "deadlines", label: "Deadlines", icon: "ph-calendar-dots", hint: "Upcoming due dates" },
   { view: "grocery", label: "Grocery", icon: "ph-basket", hint: "Shared list" },
+  { view: "notes", label: "Notes & Tasks", icon: "ph-note", hint: "Quick capture" },
   { view: "scripts", label: "Scripts", icon: "ph-terminal-window", hint: "Run commands" },
   { view: "settings", label: "Settings", icon: "ph-gear-six", hint: "Password & account" },
 ];

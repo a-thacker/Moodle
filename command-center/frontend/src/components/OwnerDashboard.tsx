@@ -10,6 +10,7 @@ import FocusView from "./FocusView.tsx";
 import GradesCard from "./GradesCard.tsx";
 import DeadlinesCard from "./DeadlinesCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
+import NotesView from "./NotesView.tsx";
 import ScriptsView from "./ScriptsView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
@@ -37,6 +38,8 @@ function ActiveView() {
           <GroceryCard />
         </FocusView>
       );
+    case "notes":
+      return <NotesView />;
     case "scripts":
       return <ScriptsView />;
     case "settings":

@@ -66,3 +66,20 @@ export interface RunResult {
   duration_ms: number;
   timed_out: boolean;
 }
+
+export interface Task {
+  id: number;
+  title: string;
+  body: string | null;
+  done: boolean;
+  dueDate: string | null; // YYYY-MM-DD
+  createdAt: string;
+  doneAt: string | null;
+}
+
+export interface TaskPatch {
+  title?: string;
+  body?: string | null;
+  done?: boolean;
+  due_date?: string | null;
+}

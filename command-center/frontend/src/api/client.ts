@@ -11,6 +11,8 @@ import type {
   GroceryItem,
   RunResult,
   ScriptInfo,
+  Task,
+  TaskPatch,
 } from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -104,6 +106,22 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ done }),
       }),
+  },
+
+  tasks: {
+    list: () => apiFetch<Task[]>("/api/v1/tasks"),
+    add: (title: string, dueDate?: string | null) =>
+      apiFetch<Task>("/api/v1/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title, due_date: dueDate ?? null }),
+      }),
+    update: (id: number, patch: TaskPatch) =>
+      apiFetch<Task>(`/api/v1/tasks/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      }),
+    remove: (id: number) =>
+      apiFetch<void>(`/api/v1/tasks/${id}`, { method: "DELETE" }),
   },
 
   // eClass reads (owner only).
