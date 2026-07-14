@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.grocery import GroceryItem
+from app.models.user import User
 from app.schemas.grocery import GroceryItemCreate, GroceryItemUpdate
 
 
@@ -30,10 +31,14 @@ async def get_item(session: AsyncSession, item_id: int) -> GroceryItem | None:
 
 
 async def create_item(
-    session: AsyncSession, data: GroceryItemCreate
+    session: AsyncSession, data: GroceryItemCreate, added_by: User
 ) -> GroceryItem:
-    # added_by_* default to the owner until auth supplies the real user.
-    item = GroceryItem(name=data.name.strip(), quantity=data.quantity)
+    item = GroceryItem(
+        name=data.name.strip(),
+        quantity=data.quantity,
+        added_by_initial=(added_by.display_name[:1] or "?").upper(),
+        added_by_owner=added_by.role == "owner",
+    )
     session.add(item)
     await session.commit()
     await session.refresh(item)

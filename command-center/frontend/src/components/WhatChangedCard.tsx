@@ -17,6 +17,11 @@ export default function WhatChangedCard({ events }: { events: GradeEvent[] }) {
         <span className="card-title" style={{ fontSize: 15 }}>What changed</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
+        {events.length === 0 && (
+          <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>
+            No changes yet — the agent posts new grades and feedback here.
+          </span>
+        )}
         {events.map((event) => (
           <div key={event.id} style={{ display: "flex", gap: 10 }}>
             <span className={tagClass(event.kind)} style={{ alignSelf: "flex-start", flex: "none" }}>

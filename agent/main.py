@@ -28,6 +28,7 @@ import requests
 from eclass import EclassClient
 from eclass.exceptions import EclassError, SessionExpired
 
+from .backend_push import BackendWriter
 from .config import AgentConfig
 from .diff import diff_reports
 from .notify import Notifier, get_notifier
@@ -36,21 +37,24 @@ from .supabase_push import SupabaseWriter
 
 logger = logging.getLogger(__name__)
 
+# Either push target — they share the same method interface.
+Writer = SupabaseWriter | BackendWriter
+
 
 def _push(description: str, operation) -> bool:
-    """Run one Supabase write; a failed push warns but never aborts the run."""
+    """Run one remote write; a failed push warns but never aborts the run."""
     try:
         operation()
         return True
     except requests.RequestException as exc:
-        logger.warning("Supabase push failed (%s): %s", description, exc)
+        logger.warning("Remote push failed (%s): %s", description, exc)
         return False
 
 
 def check(
     store: SnapshotStore,
     notifier: Notifier,
-    supabase: Optional[SupabaseWriter] = None,
+    writer: Optional[Writer] = None,
 ) -> int:
     """One fetch → diff → notify → save → push cycle across all courses."""
     client = EclassClient(auto_relogin=False)
@@ -66,8 +70,8 @@ def check(
         return 2
 
     courses = [c for c in client.get_courses() if not c.hidden]
-    if supabase is not None:
-        _push("courses", lambda: supabase.upsert_courses(courses))
+    if writer is not None:
+        _push("courses", lambda: writer.upsert_courses(courses))
 
     checked = 0
     baselined = 0
@@ -89,10 +93,10 @@ def check(
             store.save(course.id, course.fullname, report)
             baselined += 1
             logger.info("Baseline saved for %s.", course.shortname)
-            if supabase is not None:
+            if writer is not None:
                 _push(
                     f"baseline {course.id}",
-                    lambda: supabase.insert_snapshot(course.id, report),
+                    lambda: writer.insert_snapshot(course.id, report),
                 )
             continue
 
@@ -102,25 +106,25 @@ def check(
             summary = "\n".join(str(change) for change in changes)
             logger.info("%s: %d change(s)\n%s", course.shortname, len(changes), summary)
             notifier.send(f"Grades: {course.shortname}", summary)
-            if supabase is not None:
+            if writer is not None:
                 _push(
                     f"snapshot {course.id}",
-                    lambda: supabase.insert_snapshot(course.id, report),
+                    lambda: writer.insert_snapshot(course.id, report),
                 )
                 _push(
                     f"events {course.id}",
-                    lambda: supabase.insert_grade_events(course.id, changes),
+                    lambda: writer.insert_grade_events(course.id, changes),
                 )
         store.save(course.id, course.fullname, report)
 
-    # Mirror "what's upcoming" for the Hub's Deadlines widget.
-    if supabase is not None:
+    # Mirror "what's upcoming" for the Deadlines widget.
+    if writer is not None:
         try:
             timeline = client.get_timeline(limit=50)
         except EclassError as exc:
             logger.warning("Timeline fetch failed: %s", exc)
         else:
-            if _push("timeline", lambda: supabase.replace_timeline(timeline)):
+            if _push("timeline", lambda: writer.replace_timeline(timeline)):
                 logger.info("Timeline mirrored: %d upcoming event(s).", len(timeline))
 
     store.log_run(
@@ -184,15 +188,21 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "check":
         notifier = get_notifier(args.notify, config)
-        supabase = None
-        if config.supabase_enabled:
-            supabase = SupabaseWriter(
+        # Prefer the self-hosted Command Center backend; fall back to the old
+        # Supabase Hub; else run fully local (snapshots + notifications only).
+        writer = None
+        if config.backend_enabled:
+            writer = BackendWriter(config.cc_api_url, config.cc_api_key)
+            logger.info("Pushing to Command Center backend at %s", config.cc_api_url)
+        elif config.supabase_enabled:
+            writer = SupabaseWriter(
                 config.supabase_url, config.supabase_service_role_key
             )
+            logger.info("Pushing to Supabase.")
         else:
-            logger.info("Supabase not configured; running local-only.")
+            logger.info("No push target configured; running local-only.")
         try:
-            return check(store, notifier, supabase)
+            return check(store, notifier, writer)
         except SessionExpired:
             # Session died mid-run (after the initial probe succeeded).
             notifier.send(

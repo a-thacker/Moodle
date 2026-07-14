@@ -15,7 +15,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.grocery import (
     GroceryItemCreate,
     GroceryItemRead,
@@ -23,7 +25,10 @@ from app.schemas.grocery import (
 )
 from app.services import grocery as grocery_service
 
-router = APIRouter(prefix="/grocery", tags=["grocery"])
+# Grocery is the shared tool: any authenticated user (owner or roommate).
+router = APIRouter(
+    prefix="/grocery", tags=["grocery"], dependencies=[Depends(get_current_user)]
+)
 
 
 @router.get("", response_model=list[GroceryItemRead])
@@ -34,9 +39,11 @@ async def list_grocery(session: AsyncSession = Depends(get_db)) -> list[GroceryI
 
 @router.post("", response_model=GroceryItemRead, status_code=status.HTTP_201_CREATED)
 async def add_grocery(
-    payload: GroceryItemCreate, session: AsyncSession = Depends(get_db)
+    payload: GroceryItemCreate,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> GroceryItemRead:
-    item = await grocery_service.create_item(session, payload)
+    item = await grocery_service.create_item(session, payload, current_user)
     return GroceryItemRead.model_validate(item)
 
 

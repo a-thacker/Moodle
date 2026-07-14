@@ -1,15 +1,39 @@
+import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
+import Login from "./components/Login.tsx";
 import OwnerDashboard from "./components/OwnerDashboard.tsx";
 import RoommateGrocery from "./components/RoommateGrocery.tsx";
-import type { Role } from "./types";
 
-// Which view to show. Until backend auth lands (Phase 2), the role is chosen
-// by a `?view=roommate` query param; afterwards it comes from the logged-in
-// user's profile role (owner sees everything, roommate sees grocery only).
-function currentRole(): Role {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("view") === "roommate" ? "roommate" : "owner";
+// Role now comes from the authenticated user (owner sees everything, roommate
+// sees grocery only) — replacing the old ?view= query param.
+function Routed() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--color-bg)",
+          color: "var(--color-neutral-500)",
+          fontFamily: "var(--font-body)",
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+  if (!user) return <Login />;
+  return user.role === "owner" ? <OwnerDashboard /> : <RoommateGrocery />;
 }
 
 export default function App() {
-  return currentRole() === "roommate" ? <RoommateGrocery /> : <OwnerDashboard />;
+  return (
+    <AuthProvider>
+      <Routed />
+    </AuthProvider>
+  );
 }

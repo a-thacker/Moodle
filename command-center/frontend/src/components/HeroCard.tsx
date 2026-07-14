@@ -4,7 +4,7 @@
 import type { ReactNode } from "react";
 
 import { useClock } from "../hooks/useClock";
-import { OWNER_NAME } from "../data/sample";
+import { useAuth } from "../auth/AuthContext.tsx";
 import type { Deadline, GradeEvent } from "../types";
 import { relativeDay, timeLabel } from "../utils/format";
 
@@ -39,6 +39,8 @@ function Chip({ icon, label, value }: { icon: string; label: string; value: Reac
 
 export default function HeroCard({ deadlines, gradeEvents }: HeroProps) {
   const clock = useClock();
+  const { user } = useAuth();
+  const firstName = (user?.display_name ?? "there").split(" ")[0];
   const next = deadlines[0];
   const gradedCount = gradeEvents.filter((e) => e.kind === "graded").length;
   const dueThisWeek = deadlines.filter(
@@ -75,7 +77,7 @@ export default function HeroCard({ deadlines, gradeEvents }: HeroProps) {
           {clock.dateLong} · Collegedale, TN
         </div>
         <h1 style={{ fontSize: 32, margin: "6px 0 0" }}>
-          {clock.greeting}, {OWNER_NAME}.
+          {clock.greeting}, {firstName}.
         </h1>
         <div style={{ display: "flex", alignItems: "stretch", gap: 12, marginTop: "var(--space-6)", flexWrap: "wrap" }}>
           {next && (

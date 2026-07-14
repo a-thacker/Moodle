@@ -13,14 +13,14 @@ import GradesCard from "./GradesCard.tsx";
 import SyncAgentCard from "./SyncAgentCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
 import WhatChangedCard from "./WhatChangedCard.tsx";
-import {
-  sampleAgentStatus,
-  sampleCourses,
-  sampleDeadlines,
-  sampleGradeEvents,
-} from "../data/sample";
+import { useDashboardData } from "../hooks/useDashboardData";
+import { sampleAgentStatus } from "../data/sample";
 
 export default function OwnerDashboard() {
+  // eClass data is live from the backend; the agent-status panel is still
+  // sample data until an agent-status endpoint exists.
+  const { courses, deadlines, gradeEvents } = useDashboardData();
+
   return (
     <div
       style={{
@@ -49,18 +49,18 @@ export default function OwnerDashboard() {
           }}
         >
           <div className="bento-col" style={{ flex: 1.45 }}>
-            <HeroCard deadlines={sampleDeadlines} gradeEvents={sampleGradeEvents} />
-            <DeadlinesCard deadlines={sampleDeadlines} />
+            <HeroCard deadlines={deadlines} gradeEvents={gradeEvents} />
+            <DeadlinesCard deadlines={deadlines} />
           </div>
 
           <div className="bento-col" style={{ flex: 1 }}>
-            <GradesCard courses={sampleCourses} />
+            <GradesCard courses={courses} />
             <SyncAgentCard agent={sampleAgentStatus} />
           </div>
 
           <div className="bento-col" style={{ flex: 1 }}>
             <GroceryCard />
-            <WhatChangedCard events={sampleGradeEvents} />
+            <WhatChangedCard events={gradeEvents} />
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 // Left 66px launcher rail. Active tool highlighted; planned tools (Notes,
 // Scripts, Assistant) are dimmed until their backends exist.
 
-import { OWNER_NAME } from "../data/sample";
+import { useAuth } from "../auth/AuthContext.tsx";
 
 interface RailTool {
   icon: string;
@@ -35,6 +35,8 @@ function RailLink({ tool }: { tool: RailTool }) {
 }
 
 export default function LauncherRail() {
+  const { user, logout } = useAuth();
+  const name = user?.display_name ?? "?";
   return (
     <nav
       style={{
@@ -84,11 +86,17 @@ export default function LauncherRail() {
           gap: 8,
         }}
       >
-        <a href="#" className="rail-link" title="Settings">
-          <i className="ph ph-gear-six" style={{ fontSize: 20 }} />
-        </a>
+        <button
+          type="button"
+          className="rail-link"
+          title="Sign out"
+          onClick={logout}
+          style={{ background: "none", border: "none" }}
+        >
+          <i className="ph ph-sign-out" style={{ fontSize: 20 }} />
+        </button>
         <div
-          title={`${OWNER_NAME} · owner`}
+          title={`${name} · owner`}
           style={{
             width: 34,
             height: 34,
@@ -103,7 +111,7 @@ export default function LauncherRail() {
             fontWeight: 500,
           }}
         >
-          {OWNER_NAME.charAt(0)}
+          {name.charAt(0)}
         </div>
       </div>
     </nav>

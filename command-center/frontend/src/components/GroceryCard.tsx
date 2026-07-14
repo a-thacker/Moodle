@@ -8,7 +8,7 @@ import { ROOMMATE_NAME } from "../data/sample";
 import GroceryRow from "./GroceryRow.tsx";
 
 export default function GroceryCard() {
-  const { items, live, add, toggle } = useGrocery();
+  const { items, loaded, add, toggle } = useGrocery();
   const [draft, setDraft] = useState("");
   const doneCount = items.filter((i) => i.done).length;
 
@@ -55,7 +55,7 @@ export default function GroceryCard() {
         style={{ marginTop: "var(--space-3)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--color-divider)" }}
       >
         <i className="ph ph-lightning" style={{ fontSize: 12 }} />
-        {live ? "live" : "sample"} · syncs with {ROOMMATE_NAME}'s phone · {doneCount} of {items.length} done
+        {loaded ? "live" : "syncing…"} · syncs with {ROOMMATE_NAME}'s phone · {doneCount} of {items.length} done
       </div>
     </section>
   );

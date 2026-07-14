@@ -37,6 +37,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # All secrets (JWT_SECRET, AGENT_API_KEY, OWNER_*, ...) come from .env;
+    # the explicit environment below overrides the DB host for the compose
+    # network and supplies non-secret defaults.
+    env_file:
+      - .env
     environment:
       APP_NAME: ${APP_NAME:-Command Center}
       ENVIRONMENT: ${ENVIRONMENT:-development}

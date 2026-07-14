@@ -38,6 +38,10 @@ def load_env_file(path: Path | str = DEFAULT_ENV_PATH) -> None:
 
 @dataclass
 class AgentConfig:
+    # Command Center self-hosted backend (the current target).
+    cc_api_url: Optional[str] = None
+    cc_api_key: Optional[str] = None
+    # Supabase (the old Hub — kept as a fallback push target).
     supabase_url: Optional[str] = None
     supabase_service_role_key: Optional[str] = None
     ntfy_topic: Optional[str] = None
@@ -47,6 +51,8 @@ class AgentConfig:
     def from_env(cls, env_path: Path | str = DEFAULT_ENV_PATH) -> "AgentConfig":
         load_env_file(env_path)
         return cls(
+            cc_api_url=os.environ.get("CC_API_URL") or None,
+            cc_api_key=os.environ.get("CC_API_KEY") or None,
             supabase_url=os.environ.get("SUPABASE_URL") or None,
             supabase_service_role_key=(
                 os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or None
@@ -56,6 +62,10 @@ class AgentConfig:
                 "NTFY_SERVER", DEFAULT_NTFY_SERVER
             ).rstrip("/"),
         )
+
+    @property
+    def backend_enabled(self) -> bool:
+        return bool(self.cc_api_url and self.cc_api_key)
 
     @property
     def supabase_enabled(self) -> bool:

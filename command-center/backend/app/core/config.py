@@ -36,6 +36,22 @@ class Settings(BaseSettings):
     # on a plain comma-separated string.
     cors_origins: str = "http://localhost:5173"
 
+    # --- Auth ------------------------------------------------------------
+    # Signing secret for JWTs (maps to JWT_SECRET in the environment).
+    jwt_secret: str = "dev-insecure-change-me"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days (personal app)
+    # Shared secret the local sync agent presents to write eClass data
+    # (X-API-Key). Read endpoints use user JWTs instead.
+    agent_api_key: str | None = None
+
+    # One-time user seeding (read by scripts/seed_users.py).
+    owner_email: str | None = None
+    owner_password: str | None = None
+    owner_name: str = "Alden"
+    roommate_email: str | None = None
+    roommate_password: str | None = None
+    roommate_name: str = "Roommate"
+
     # --- PostgreSQL ------------------------------------------------------
     postgres_host: str = "postgres"
     postgres_port: int = 5432

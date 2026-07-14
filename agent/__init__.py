@@ -14,6 +14,7 @@ a browser: an expired eClass session becomes a "please re-login"
 notification and exit code 2 (see docs/PROJECT_HANDOFF.md §2).
 """
 
+from .backend_push import BackendWriter
 from .config import AgentConfig
 from .diff import GradeChange, diff_reports
 from .notify import ConsoleNotifier, MacNotifier, Notifier, NtfyNotifier, get_notifier
@@ -22,6 +23,7 @@ from .supabase_push import SupabaseWriter
 
 __all__ = [
     "AgentConfig",
+    "BackendWriter",
     "GradeChange",
     "diff_reports",
     "Notifier",
