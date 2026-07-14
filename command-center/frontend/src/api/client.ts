@@ -95,6 +95,7 @@ export const api = {
         body: JSON.stringify({ script, args: args || null }),
       }),
     jobs: () => apiFetch<ScriptJob[]>("/api/v1/scripts/jobs"),
+    clearJobs: () => apiFetch<void>("/api/v1/scripts/jobs", { method: "DELETE" }),
   },
 
   assistant: {

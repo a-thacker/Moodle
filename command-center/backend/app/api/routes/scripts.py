@@ -52,6 +52,11 @@ async def jobs(session: AsyncSession = Depends(get_db)) -> list[ScriptJobOut]:
     return [ScriptJobOut.model_validate(j) for j in await scripts_service.list_jobs(session)]
 
 
+@router.delete("/jobs", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_owner)])
+async def clear_jobs(session: AsyncSession = Depends(get_db)) -> None:
+    await scripts_service.clear_finished_jobs(session)
+
+
 # --- Mac poller (agent key) ---------------------------------------------
 @router.put("/registry", dependencies=[Depends(require_agent_key)])
 async def put_registry(

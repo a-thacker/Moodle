@@ -1,8 +1,11 @@
-// The omni-bar: a persistent bottom bar that changes what it does by mode.
-//   plain text  → adds a Task
-//   "?…"        → asks the assistant
-// The leading "?" switches mode live; the mode chip is also clickable to
-// cycle. Results appear in a panel above the bar.
+// The omni-bar: a persistent bottom bar with three modes.
+//   task (default)  → adds a Task            (leading "- " switches back to it)
+//   ask             → asks the assistant     (leading "?")
+//   script          → runs a Mac script      (leading "/")
+// The mode is STICKY: a leading special character switches it and is consumed,
+// then it stays until another special character (or the mode chip is clicked).
+// Results — task confirmations, assistant replies, script output — appear in a
+// panel above the bar.
 
 import {
   useEffect,
@@ -17,14 +20,16 @@ import { useClock } from "../hooks/useClock";
 import { notifyTasksChanged } from "../hooks/useTasks";
 import { useNav } from "../nav/NavContext.tsx";
 import { parseTaskInput } from "../utils/time";
+import type { ScriptInfo } from "../types";
 
-type Mode = "task" | "ai";
+type Mode = "task" | "ask" | "script";
 
 const MODES: Record<Mode, { icon: string; label: string; placeholder: string; prefix: string }> = {
   task: { icon: "ph-note", label: "Task", placeholder: "Add a task…", prefix: "" },
-  ai: { icon: "ph-sparkle", label: "Ask", placeholder: "Ask the assistant…", prefix: "?" },
+  ask: { icon: "ph-sparkle", label: "Ask", placeholder: "Ask the assistant…", prefix: "?" },
+  script: { icon: "ph-terminal-window", label: "Run", placeholder: "Run a script — e.g. gamdl p.zp6… (type its name)", prefix: "/" },
 };
-const CYCLE: Mode[] = ["task", "ai"];
+const CYCLE: Mode[] = ["task", "ask", "script"];
 
 interface Entry {
   id: number;
@@ -35,29 +40,44 @@ interface Entry {
   pending: boolean;
 }
 
-function parse(input: string): { mode: Mode; text: string } {
-  if (input.startsWith("?")) return { mode: "ai", text: input.slice(1) };
-  return { mode: "task", text: input };
-}
-
 export default function CommandBar() {
   const clock = useClock();
   const { setPaletteOpen } = useNav();
+  const [mode, setMode] = useState<Mode>("task");
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
+  const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const { mode, text } = parse(input);
+  const timers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
 
   useEffect(() => {
     panelRef.current?.scrollTo(0, panelRef.current.scrollHeight);
   }, [entries]);
 
+  // Keep the script registry handy for name resolution while in script mode.
+  useEffect(() => {
+    if (mode !== "script") return;
+    api.scripts.list().then(setScripts).catch(() => {});
+  }, [mode]);
+
+  // Clear any polling intervals on unmount.
+  useEffect(() => {
+    const set = timers.current;
+    return () => set.forEach(clearInterval);
+  }, []);
+
+  // Consume a leading mode-switch character and flip the sticky mode.
+  function onChange(v: string) {
+    if (v.startsWith("?")) { setMode("ask"); setInput(v.slice(1).replace(/^ /, "")); return; }
+    if (v.startsWith("/")) { setMode("script"); setInput(v.slice(1)); return; }
+    if (v.startsWith("- ")) { setMode("task"); setInput(v.slice(2)); return; }
+    setInput(v);
+  }
+
   function cycleMode() {
-    const next = CYCLE[(CYCLE.indexOf(mode) + 1) % CYCLE.length];
-    setInput(MODES[next].prefix + text);
+    setMode(CYCLE[(CYCLE.indexOf(mode) + 1) % CYCLE.length]);
     inputRef.current?.focus();
   }
 
@@ -65,9 +85,44 @@ export default function CommandBar() {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   }
 
+  function resolveScript(query: string): ScriptInfo | null {
+    const q = query.toLowerCase();
+    return (
+      scripts.find((s) => s.id.toLowerCase() === q) ||
+      scripts.find((s) => s.label.toLowerCase() === q) ||
+      scripts.find((s) => s.id.toLowerCase().startsWith(q)) ||
+      scripts.find((s) => s.id.toLowerCase().includes(q) || s.label.toLowerCase().includes(q)) ||
+      null
+    );
+  }
+
+  // Poll a queued script job until it finishes, streaming status into its entry.
+  function pollJob(entryId: number, jobId: number) {
+    const iv = setInterval(async () => {
+      try {
+        const job = (await api.scripts.jobs()).find((j) => j.id === jobId);
+        if (!job) return;
+        if (job.status === "done" || job.status === "failed") {
+          clearInterval(iv);
+          timers.current.delete(iv);
+          const out = [job.stdout, job.stderr].filter(Boolean).join("\n").trim();
+          update(entryId, { output: out || `(exit ${job.exit_code})`, ok: job.status === "done", pending: false });
+        } else {
+          update(entryId, { output: job.status === "running" ? "Running on your Mac…" : "Queued…", pending: true });
+        }
+      } catch {
+        clearInterval(iv);
+        timers.current.delete(iv);
+      }
+    }, 2000);
+    timers.current.add(iv);
+    // Safety stop after 20 minutes.
+    setTimeout(() => { clearInterval(iv); timers.current.delete(iv); }, 20 * 60 * 1000);
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const body = text.trim();
+    const body = input.trim();
     if (!body || busy) return;
     const id = Date.now();
     setEntries((prev) => [...prev.slice(-24), { id, mode, input: body, output: "", ok: true, pending: true }]);
@@ -82,8 +137,21 @@ export default function CommandBar() {
         notifyTasksChanged();
         const suffix = dates.length > 1 ? ` on ${dates.length} days` : dates.length === 1 ? ` for ${dates[0]}` : "";
         update(id, { output: `Added "${title}"${time ? ` at ${time}` : ""}${suffix}.`, ok: true, pending: false });
+      } else if (mode === "script") {
+        const name = body.split(/\s+/)[0];
+        const argStr = body.slice(name.length).trim();
+        const match = resolveScript(name);
+        if (!match) {
+          const avail = scripts.map((s) => s.id).join(", ") || "(none — is the Mac runner online?)";
+          update(id, { output: `No script matching "${name}". Available: ${avail}`, ok: false, pending: false });
+        } else {
+          const job = await api.scripts.run(match.id, argStr || undefined);
+          update(id, { input: `${match.id}${argStr ? ` ${argStr}` : ""}`, output: "Queued…", ok: true, pending: true });
+          pollJob(id, job.id);
+        }
       } else {
         const r = await api.assistant.chat(body);
+        notifyTasksChanged(); // the assistant may have changed tasks via cc
         update(id, { output: r.reply, ok: r.available, pending: false });
       }
     } catch {
@@ -130,7 +198,7 @@ export default function CommandBar() {
                 <span style={{ color: "var(--cc-muted)" }}>{MODES[e.mode].prefix || "•"}</span> {e.input}
               </div>
               {e.pending ? (
-                <div style={{ color: "var(--cc-muted)" }}>…</div>
+                <div style={{ color: "var(--cc-muted)" }}>{e.output || "…"}</div>
               ) : (
                 <pre style={{ margin: "2px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word", color: e.ok ? "var(--cc-text)" : "#f08e79" }}>{e.output}</pre>
               )}
@@ -143,7 +211,7 @@ export default function CommandBar() {
         <button
           type="button"
           onClick={cycleMode}
-          title="Switch mode (type / or ? to switch instantly)"
+          title="Switch mode — or type ? (ask), / (script), '- ' (task)"
           style={{ display: "flex", alignItems: "center", gap: 7, background: "#181a26", border: "1px solid #262a3b", borderRadius: 9, padding: "6px 11px", color: "var(--cc-accent-soft)", fontFamily: "var(--font-mono)", fontSize: 12, cursor: "pointer", flexShrink: 0 }}
         >
           <i className={`ph ${m.icon}`} style={{ fontSize: 15 }} />
@@ -153,10 +221,12 @@ export default function CommandBar() {
           <input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={m.placeholder}
-            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--cc-bright)", fontSize: 15, fontFamily: "inherit" }}
+            spellCheck={mode === "script" ? false : undefined}
+            autoCapitalize={mode === "script" ? "off" : undefined}
+            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--cc-bright)", fontSize: 15, fontFamily: mode === "script" ? "var(--font-mono)" : "inherit" }}
           />
         </form>
         {busy && <span style={{ color: "var(--cc-muted)", fontSize: 12, fontFamily: "var(--font-mono)" }}>…</span>}

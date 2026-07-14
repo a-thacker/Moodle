@@ -23,7 +23,7 @@ import { useGrocery } from "../hooks/useGrocery";
 import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, Task } from "../types";
+import type { ClaudeUsage, Deadline, ScriptInfo, Task } from "../types";
 import { relativeDay } from "../utils/format";
 import { fmtTime } from "../utils/time";
 
@@ -45,7 +45,7 @@ function fmtTok(n?: number): string {
   return String(n);
 }
 
-type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "claude" | "lists";
+type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "scripts" | "claude" | "lists";
 type Footprint = "wide" | "big" | "small";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
@@ -54,14 +54,15 @@ const SLOTS: Record<Footprint, CSSProperties[]> = {
   small: [
     { gridColumn: "1", gridRow: "3" },
     { gridColumn: "2", gridRow: "3" },
-    { gridColumn: "3 / 5", gridRow: "3" },
+    { gridColumn: "3", gridRow: "3" },
+    { gridColumn: "4", gridRow: "3" },
   ],
 };
 
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
   big: ["planner"],
-  small: ["grades", "claude", "lists"],
+  small: ["grades", "scripts", "lists", "claude"],
 };
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
@@ -69,6 +70,7 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
   planner: { footprint: "big", className: "cc-tile cc-clickable", view: "planner" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
+  scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
   claude: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
 };
@@ -140,11 +142,14 @@ export default function DashboardView() {
   const { items: grocery } = useGrocery();
   const { tasks } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
+  const [scripts, setScripts] = useState<ScriptInfo[]>([]);
+  const [ranScript, setRanScript] = useState<string | null>(null);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
   useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
+  useEffect(() => { api.scripts.list().then(setScripts).catch(() => {}); }, []);
   useEffect(() => setArrangement(loadArrangement(user?.id)), [user?.id]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
@@ -162,6 +167,16 @@ export default function DashboardView() {
       [arr[i], arr[j]] = [arr[j], arr[i]];
       return { ...prev, [fp]: arr };
     });
+  }
+
+  async function runScript(id: string) {
+    try {
+      await api.scripts.run(id);
+      setRanScript(id);
+      setTimeout(() => setRanScript((r) => (r === id ? null : r)), 1600);
+    } catch {
+      /* the Scripts view surfaces failures */
+    }
   }
 
   const firstName = (user?.display_name ?? "there").split(" ")[0];
@@ -253,6 +268,25 @@ export default function DashboardView() {
         </div>
       </>
     ),
+    scripts: (
+      <>
+        <div className="cc-label" style={{ marginBottom: 12 }}>SCRIPTS <span style={{ color: "var(--cc-dim)" }}>· one-tap</span></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {scripts.slice(0, 3).map((s) => (
+            <button
+              key={s.id}
+              onClick={(e) => { e.stopPropagation(); runScript(s.id); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: "#0f101a", border: "1px solid #262a3b", borderRadius: 9, padding: "8px 11px", cursor: "pointer" }}
+            >
+              <span style={{ color: "var(--cc-accent-soft)", fontFamily: MONO, fontSize: 12 }}>▸</span>
+              <span style={{ flex: 1, color: "var(--cc-text)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+              {ranScript === s.id && <span style={{ color: "var(--cc-good)", fontSize: 11, fontFamily: MONO }}>queued ✓</span>}
+            </button>
+          ))}
+          {scripts.length === 0 && <span style={{ color: "var(--cc-muted)", fontSize: 12.5 }}>Mac runner offline.</span>}
+        </div>
+      </>
+    ),
     claude: (
       <>
         <Label extra={usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}>CLAUDE USAGE</Label>
@@ -282,7 +316,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, grocery, grocOutstanding, topCourse, usage, todayTasks, tomorrowTasks, openCount, now, tmr]);
+  }), [clock, firstName, deadlines, courses, grocery, grocOutstanding, topCourse, usage, scripts, ranScript, todayTasks, tomorrowTasks, openCount, now, tmr]);
 
   return (
     <div className="cc-grid">

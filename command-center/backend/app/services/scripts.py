@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.script import ScriptJob, ScriptRegistry
@@ -50,6 +50,13 @@ async def list_jobs(session: AsyncSession, limit: int = _JOBS_LIMIT) -> list[Scr
         select(ScriptJob).order_by(ScriptJob.created_at.desc()).limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def clear_finished_jobs(session: AsyncSession) -> None:
+    """Delete completed jobs (done/failed); leave pending/running alone so an
+    in-flight run isn't orphaned from its result."""
+    await session.execute(delete(ScriptJob).where(ScriptJob.status.in_(("done", "failed"))))
+    await session.commit()
 
 
 async def claim_pending(session: AsyncSession, limit: int = 10) -> list[ScriptJob]:
