@@ -33,6 +33,11 @@ async def authenticate(
     return user
 
 
+async def set_password(session: AsyncSession, user: User, new_password: str) -> None:
+    user.hashed_password = hash_password(new_password)
+    await session.commit()
+
+
 async def upsert_user(
     session: AsyncSession, *, email: str, password: str, display_name: str, role: str
 ) -> User:

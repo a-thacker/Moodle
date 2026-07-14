@@ -4,7 +4,14 @@
 // every request; a 401 on a normal request broadcasts `cc-unauthorized` so the
 // auth layer can log the user out.
 
-import type { Course, Deadline, GradeEvent, GroceryItem } from "../types";
+import type {
+  Course,
+  Deadline,
+  GradeEvent,
+  GroceryItem,
+  RunResult,
+  ScriptInfo,
+} from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const TOKEN_KEY = "cc_token";
@@ -69,6 +76,20 @@ export const api = {
         silent401: true,
       }),
     me: () => apiFetch<CurrentUser>("/api/v1/auth/me"),
+    changePassword: (current_password: string, new_password: string) =>
+      apiFetch<void>("/api/v1/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ current_password, new_password }),
+      }),
+  },
+
+  scripts: {
+    list: () => apiFetch<ScriptInfo[]>("/api/v1/scripts"),
+    run: (body: { script_id?: string; command?: string }) =>
+      apiFetch<RunResult>("/api/v1/scripts/run", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
   },
 
   grocery: {

@@ -1,46 +1,37 @@
-// Left 66px launcher rail. Active tool highlighted; planned tools (Notes,
-// Scripts, Assistant) are dimmed until their backends exist.
+// Left 62px launcher rail. Tools switch the main view; planned tools (Notes,
+// Assistant) stay dimmed until their backends exist.
 
 import { useAuth } from "../auth/AuthContext.tsx";
+import { useNav, type View } from "../nav/NavContext.tsx";
 
 interface RailTool {
   icon: string;
   title: string;
-  active?: boolean;
-  dim?: boolean;
+  view: View;
 }
 
 const TOOLS: RailTool[] = [
-  { icon: "ph-squares-four", title: "Dashboard", active: true },
-  { icon: "ph-exam", title: "Grades" },
-  { icon: "ph-calendar-dots", title: "Deadlines" },
-  { icon: "ph-basket", title: "Grocery — shared" },
+  { icon: "ph-squares-four", title: "Dashboard", view: "dashboard" },
+  { icon: "ph-exam", title: "Grades", view: "grades" },
+  { icon: "ph-calendar-dots", title: "Deadlines", view: "deadlines" },
+  { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
+  { icon: "ph-terminal-window", title: "Scripts", view: "scripts" },
 ];
 
-const PLANNED: RailTool[] = [
-  { icon: "ph-note", title: "Notes — planned", dim: true },
-  { icon: "ph-terminal-window", title: "Scripts — planned", dim: true },
-  { icon: "ph-sparkle", title: "Assistant — planned", dim: true },
+const PLANNED = [
+  { icon: "ph-note", title: "Notes — planned" },
+  { icon: "ph-sparkle", title: "Assistant — planned" },
 ];
-
-function RailLink({ tool }: { tool: RailTool }) {
-  const cls = ["rail-link", tool.active ? "active" : "", tool.dim ? "dim" : ""]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    <a href="#" className={cls} title={tool.title}>
-      <i className={`ph ${tool.icon}`} style={{ fontSize: 21 }} />
-    </a>
-  );
-}
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();
+  const { view, setView } = useNav();
   const name = user?.display_name ?? "?";
+
   return (
     <nav
       style={{
-        width: 66,
+        width: 62,
         flexShrink: 0,
         background: "var(--color-neutral-900)",
         borderRight: "1px solid var(--color-divider)",
@@ -68,24 +59,36 @@ export default function LauncherRail() {
       </div>
 
       {TOOLS.map((tool) => (
-        <RailLink key={tool.title} tool={tool} />
+        <button
+          key={tool.view}
+          type="button"
+          className={`rail-link${view === tool.view ? " active" : ""}`}
+          title={tool.title}
+          onClick={() => setView(tool.view)}
+          style={{ background: "none", border: "none" }}
+        >
+          <i className={`ph ${tool.icon}`} style={{ fontSize: 21 }} />
+        </button>
       ))}
 
       <div style={{ width: 26, height: 1, background: "var(--color-divider)", margin: "8px 0" }} />
 
       {PLANNED.map((tool) => (
-        <RailLink key={tool.title} tool={tool} />
+        <span key={tool.title} className="rail-link dim" title={tool.title} style={{ cursor: "default" }}>
+          <i className={`ph ${tool.icon}`} style={{ fontSize: 21 }} />
+        </span>
       ))}
 
-      <div
-        style={{
-          marginTop: "auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
+      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          className={`rail-link${view === "settings" ? " active" : ""}`}
+          title="Settings"
+          onClick={() => setView("settings")}
+          style={{ background: "none", border: "none" }}
+        >
+          <i className="ph ph-gear-six" style={{ fontSize: 20 }} />
+        </button>
         <button
           type="button"
           className="rail-link"

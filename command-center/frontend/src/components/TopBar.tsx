@@ -1,10 +1,12 @@
 // Top bar: ⌘K search stub, agent-sync status, live clock.
 
 import { useClock } from "../hooks/useClock";
+import { useNav } from "../nav/NavContext.tsx";
 import type { AgentStatus } from "../types";
 
 export default function TopBar({ agent }: { agent: AgentStatus }) {
   const clock = useClock();
+  const { setPaletteOpen } = useNav();
 
   return (
     <header
@@ -17,8 +19,10 @@ export default function TopBar({ agent }: { agent: AgentStatus }) {
         flexShrink: 0,
       }}
     >
-      {/* ⌘K search (stub — wired to a command bar later) */}
-      <div
+      {/* ⌘K search — opens the command palette */}
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
         style={{
           flex: 1,
           minWidth: 0,
@@ -30,6 +34,9 @@ export default function TopBar({ agent }: { agent: AgentStatus }) {
           border: "1px solid var(--color-divider)",
           borderRadius: "var(--radius-md)",
           padding: "8px 12px",
+          cursor: "pointer",
+          color: "inherit",
+          textAlign: "left",
         }}
       >
         <i className="ph ph-magnifying-glass" style={{ color: "var(--color-accent)", fontSize: 16 }} />
@@ -48,7 +55,7 @@ export default function TopBar({ agent }: { agent: AgentStatus }) {
         >
           ⌘K
         </span>
-      </div>
+      </button>
 
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--color-neutral-400)" }}>

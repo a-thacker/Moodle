@@ -51,3 +51,18 @@ export interface AgentStatus {
   nextRun: string;
   notifyChannel: string;
 }
+
+export interface ScriptInfo {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface RunResult {
+  command: string;
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  duration_ms: number;
+  timed_out: boolean;
+}

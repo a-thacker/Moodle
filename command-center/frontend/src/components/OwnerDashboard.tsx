@@ -1,69 +1,73 @@
-// Owner dashboard — the main app. Launcher rail + top bar + three flex
-// columns of content-sized Nocturne cards that scroll as one page.
-//
-// Data is sample data for now (see src/data/sample.ts); each card takes it as
-// props, so swapping to live API queries is a per-card change. Grocery is
-// already wired to the API with a sample fallback.
+// Owner shell: launcher rail + top bar + the active view + command palette.
+// Navigation state lives in NavProvider; the rail and palette switch `view`.
 
+import { NavProvider, useNav } from "../nav/NavContext.tsx";
 import LauncherRail from "./LauncherRail.tsx";
 import TopBar from "./TopBar.tsx";
-import HeroCard from "./HeroCard.tsx";
-import DeadlinesCard from "./DeadlinesCard.tsx";
+import CommandPalette from "./CommandPalette.tsx";
+import DashboardView from "./DashboardView.tsx";
+import FocusView from "./FocusView.tsx";
 import GradesCard from "./GradesCard.tsx";
-import SyncAgentCard from "./SyncAgentCard.tsx";
+import DeadlinesCard from "./DeadlinesCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
-import WhatChangedCard from "./WhatChangedCard.tsx";
+import ScriptsView from "./ScriptsView.tsx";
+import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { sampleAgentStatus } from "../data/sample";
 
+function ActiveView() {
+  const { view } = useNav();
+  const { courses, deadlines } = useDashboardData();
+
+  switch (view) {
+    case "grades":
+      return (
+        <FocusView title="Grades">
+          <GradesCard courses={courses} />
+        </FocusView>
+      );
+    case "deadlines":
+      return (
+        <FocusView title="Deadlines">
+          <DeadlinesCard deadlines={deadlines} />
+        </FocusView>
+      );
+    case "grocery":
+      return (
+        <FocusView title="Grocery">
+          <GroceryCard />
+        </FocusView>
+      );
+    case "scripts":
+      return <ScriptsView />;
+    case "settings":
+      return <SettingsView />;
+    default:
+      return <DashboardView />;
+  }
+}
+
 export default function OwnerDashboard() {
-  // eClass data is live from the backend; the agent-status panel is still
-  // sample data until an agent-status endpoint exists.
-  const { courses, deadlines, gradeEvents } = useDashboardData();
-
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        background: "var(--color-bg)",
-        color: "var(--color-text)",
-        fontFamily: "var(--font-body)",
-        overflow: "hidden",
-      }}
-    >
-      <LauncherRail />
-
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <TopBar agent={sampleAgentStatus} />
-
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            gap: "var(--space-6)",
-            padding: "var(--space-8)",
-            minHeight: 0,
-            overflow: "auto",
-          }}
-        >
-          <div className="bento-col" style={{ flex: 1.45 }}>
-            <HeroCard deadlines={deadlines} gradeEvents={gradeEvents} />
-            <DeadlinesCard deadlines={deadlines} />
-          </div>
-
-          <div className="bento-col" style={{ flex: 1 }}>
-            <GradesCard courses={courses} />
-            <SyncAgentCard agent={sampleAgentStatus} />
-          </div>
-
-          <div className="bento-col" style={{ flex: 1 }}>
-            <GroceryCard />
-            <WhatChangedCard events={gradeEvents} />
-          </div>
+    <NavProvider>
+      <div
+        style={{
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          background: "var(--color-bg)",
+          color: "var(--color-text)",
+          fontFamily: "var(--font-body)",
+          overflow: "hidden",
+        }}
+      >
+        <LauncherRail />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <TopBar agent={sampleAgentStatus} />
+          <ActiveView />
         </div>
+        <CommandPalette />
       </div>
-    </div>
+    </NavProvider>
   );
 }
