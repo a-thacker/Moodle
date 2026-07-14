@@ -64,6 +64,26 @@ export interface Task {
   doneAt: string | null;
 }
 
+// Laptop script runner: a script offered by the Mac, and a queued run of one.
+export interface ScriptInfo {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface ScriptJob {
+  id: number;
+  script: string;
+  args: string | null;
+  status: "pending" | "running" | "done" | "failed";
+  exit_code: number | null;
+  stdout: string | null;
+  stderr: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
 export interface TaskPatch {
   title?: string;
   body?: string | null;

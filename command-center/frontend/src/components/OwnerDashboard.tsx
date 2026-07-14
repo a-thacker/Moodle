@@ -13,6 +13,7 @@ import GroceryCard from "./GroceryCard.tsx";
 import NotesView from "./NotesView.tsx";
 import PlannerView from "./PlannerView.tsx";
 import AssistantView from "./AssistantView.tsx";
+import ScriptsView from "./ScriptsView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
 
@@ -45,6 +46,8 @@ function ActiveView() {
       return <PlannerView />;
     case "assistant":
       return <AssistantView />;
+    case "scripts":
+      return <ScriptsView />;
     case "settings":
       return <SettingsView />;
     default:

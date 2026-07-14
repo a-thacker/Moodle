@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Laptop script runner: polls the Command Center backend and runs scripts you
+  drop in ~/cc-scripts/. Kept alive (relaunched if it exits) so the dashboard
+  can trigger a script within a few seconds. Reads CC_API_URL / CC_API_KEY from
+  the repo's agent .env (WorkingDirectory below).
+
+  Install (replace __PROJECT_DIR__ with the absolute repo path):
+    cp agent/launchd/edu.southern.command-center.scripts.plist \
+       ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/edu.southern.command-center.scripts.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/edu.southern.command-center.scripts.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>edu.southern.command-center.scripts</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT_DIR__/eclass/.venv/bin/python</string>
+    <string>-m</string>
+    <string>agent</string>
+    <string>scripts-daemon</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/snapshots/scripts.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/snapshots/scripts.err.log</string>
+</dict>
+</plist>

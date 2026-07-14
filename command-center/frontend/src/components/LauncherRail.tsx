@@ -17,6 +17,7 @@ const TOOLS: RailTool[] = [
   { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
   { icon: "ph-note", title: "Notes & Tasks", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },
+  { icon: "ph-terminal-window", title: "Scripts — on my Mac", view: "scripts" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
 ];
 

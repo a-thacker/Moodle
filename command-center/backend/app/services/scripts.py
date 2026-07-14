@@ -1,76 +1,89 @@
-"""Script/command runner.
+"""Laptop script runner — a queue between the browser and Alden's Mac.
 
-Runs a shell command inside the backend container and returns its output.
-This is deliberately container-scoped: the process can do anything the
-backend can (python, pip, alembic, the app code at /app) but cannot reach the
-host OS or other containers. The route layer restricts this to the owner.
-
-A small registry of predefined scripts powers one-click buttons; the free-form
-command box uses `run_command` directly.
+The backend never executes anything here: it only stores jobs and the Mac's
+reported registry. A poller on the Mac (see agent/scripts_runner.py) claims
+queued jobs, runs the matching executable from ~/cc-scripts/, and posts the
+output back. The route layer gates the browser side to the owner and the Mac
+side to the shared agent API key.
 """
 
 from __future__ import annotations
 
-import asyncio
-import os
-import time
-from dataclasses import dataclass
+import uuid
+from datetime import datetime
 
-_DEFAULT_TIMEOUT = 60.0
-_MAX_OUTPUT = 100_000  # bytes per stream, to keep responses sane
-# App root in the container; None (inherit) when running outside it (dev/test).
-_CWD = "/app" if os.path.isdir("/app") else None
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.script import ScriptJob, ScriptRegistry
 
-@dataclass(frozen=True)
-class Script:
-    id: str
-    label: str
-    description: str
-    command: str
+_MAX_OUTPUT = 100_000  # chars per stream, keep rows sane
+_JOBS_LIMIT = 25
 
 
-# One-click scripts. All safe, all run in the container. Extend freely.
-REGISTRY: list[Script] = [
-    Script("migrations", "Migration status", "Current Alembic revision", "alembic current -v"),
-    Script("migration-history", "Migration history", "All migrations, newest first", "alembic history"),
-    Script("seed-users", "Re-seed users", "Create/update users from env vars", "python -m scripts.seed_users"),
-    Script("packages", "Installed packages", "pip list", "pip list"),
-    Script("disk", "Disk usage", "df -h /", "df -h /"),
-    Script("system", "System info", "Python + kernel", "python --version && uname -a"),
-]
-REGISTRY_BY_ID: dict[str, Script] = {s.id: s for s in REGISTRY}
+async def get_registry(session: AsyncSession) -> list[dict]:
+    row = await session.get(ScriptRegistry, 1)
+    return list(row.data) if row and row.data else []
 
 
-async def run_command(command: str, timeout: float = _DEFAULT_TIMEOUT) -> dict:
-    """Execute `command` via bash; capture stdout/stderr/exit code.
+async def set_registry(session: AsyncSession, scripts: list[dict]) -> None:
+    row = await session.get(ScriptRegistry, 1)
+    if row is None:
+        session.add(ScriptRegistry(id=1, data=scripts))
+    else:
+        row.data = scripts
+    await session.commit()
 
-    Kills the process on timeout. Never raises for a non-zero exit — the exit
-    code is part of the result.
-    """
-    started = time.perf_counter()
-    proc = await asyncio.create_subprocess_exec(
-        "/bin/bash",
-        "-c",
-        command,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        cwd=_CWD,
+
+async def create_job(
+    session: AsyncSession, user_id: uuid.UUID, script: str, args: str | None
+) -> ScriptJob:
+    job = ScriptJob(script=script, args=args or None, requested_by=user_id, status="pending")
+    session.add(job)
+    await session.commit()
+    await session.refresh(job)
+    return job
+
+
+async def list_jobs(session: AsyncSession, limit: int = _JOBS_LIMIT) -> list[ScriptJob]:
+    result = await session.execute(
+        select(ScriptJob).order_by(ScriptJob.created_at.desc()).limit(limit)
     )
-    timed_out = False
-    try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
-        out, err = await proc.communicate()
-        timed_out = True
+    return list(result.scalars().all())
 
-    duration_ms = round((time.perf_counter() - started) * 1000)
-    return {
-        "command": command,
-        "stdout": out.decode(errors="replace")[:_MAX_OUTPUT],
-        "stderr": err.decode(errors="replace")[:_MAX_OUTPUT],
-        "exit_code": proc.returncode,
-        "duration_ms": duration_ms,
-        "timed_out": timed_out,
-    }
+
+async def claim_pending(session: AsyncSession, limit: int = 10) -> list[ScriptJob]:
+    """Return pending jobs and mark them running, so the poller never runs one
+    twice. `skip_locked` keeps concurrent pollers from grabbing the same row."""
+    result = await session.execute(
+        select(ScriptJob)
+        .where(ScriptJob.status == "pending")
+        .order_by(ScriptJob.created_at.asc())
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+    jobs = list(result.scalars().all())
+    now = datetime.utcnow()
+    for job in jobs:
+        job.status = "running"
+        job.started_at = now
+    await session.commit()
+    for job in jobs:
+        await session.refresh(job)
+    return jobs
+
+
+async def complete_job(
+    session: AsyncSession, job_id: int, exit_code: int | None, stdout: str, stderr: str
+) -> ScriptJob | None:
+    job = await session.get(ScriptJob, job_id)
+    if job is None:
+        return None
+    job.exit_code = exit_code
+    job.stdout = (stdout or "")[:_MAX_OUTPUT]
+    job.stderr = (stderr or "")[:_MAX_OUTPUT]
+    job.status = "done" if exit_code == 0 else "failed"
+    job.finished_at = datetime.utcnow()
+    await session.commit()
+    await session.refresh(job)
+    return job

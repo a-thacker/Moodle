@@ -10,6 +10,8 @@ import type {
   Deadline,
   GradeEvent,
   GroceryItem,
+  ScriptInfo,
+  ScriptJob,
   Task,
   TaskPatch,
 } from "../types";
@@ -82,6 +84,17 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
       }),
+  },
+
+  // Laptop script runner: list the Mac's scripts, enqueue a run, poll jobs.
+  scripts: {
+    list: () => apiFetch<ScriptInfo[]>("/api/v1/scripts"),
+    run: (script: string, args?: string) =>
+      apiFetch<ScriptJob>("/api/v1/scripts/run", {
+        method: "POST",
+        body: JSON.stringify({ script, args: args || null }),
+      }),
+    jobs: () => apiFetch<ScriptJob[]>("/api/v1/scripts/jobs"),
   },
 
   assistant: {

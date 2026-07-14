@@ -231,6 +231,12 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser(
         "claude-usage", help="Summarize local Claude Code usage and push it"
     )
+    sub.add_parser(
+        "scripts-daemon", help="Poll the backend and run queued laptop scripts (loops)"
+    )
+    sub.add_parser(
+        "scripts-once", help="Report scripts + drain the queue once, then exit"
+    )
 
     args = cli.parse_args(argv)
     logging.basicConfig(
@@ -275,6 +281,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "claude-usage":
         return claude_usage(config)
+
+    if args.command in ("scripts-daemon", "scripts-once"):
+        if not config.backend_enabled:
+            print("Set CC_API_URL and CC_API_KEY to run the scripts runner.")
+            return 1
+        from . import scripts_runner
+
+        if args.command == "scripts-once":
+            return scripts_runner.run_once(config.cc_api_url, config.cc_api_key)
+        return scripts_runner.run_daemon(config.cc_api_url, config.cc_api_key)
 
     return 1
 
