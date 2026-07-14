@@ -10,6 +10,7 @@ from app.api.deps import require_owner
 from app.db.session import get_db
 from app.models.user import User
 from app.services import assistant as assistant_service
+from app.services.context import build_user_context
 
 router = APIRouter(prefix="/assistant", tags=["assistant"], dependencies=[Depends(require_owner)])
 
@@ -53,3 +54,13 @@ async def clear_history(
     user: User = Depends(require_owner),
 ) -> None:
     await assistant_service.clear_history(session, user.id)
+
+
+@router.get("/context")
+async def context(
+    session: AsyncSession = Depends(get_db),
+    user: User = Depends(require_owner),
+) -> dict[str, str]:
+    """The live dashboard context (date, weather, tasks, deadlines, grades,
+    grocery) — used by the `cc` CLI so Claude Code understands the state."""
+    return {"context": await build_user_context(session, user)}

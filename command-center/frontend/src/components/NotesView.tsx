@@ -79,7 +79,7 @@ export default function NotesView() {
         <form onSubmit={submit} className="card" style={{ padding: 14, display: "flex", gap: 8, alignItems: "center" }}>
           <input
             className="input"
-            placeholder="Jot something down…  (-2pm  -m -w -f  -wd  -e)"
+            placeholder="Jot something down…"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus

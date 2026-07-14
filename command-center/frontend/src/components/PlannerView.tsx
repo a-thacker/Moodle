@@ -106,7 +106,7 @@ function Column(p: ColumnProps) {
       </div>
       {p.showAdd && (
         <form onSubmit={p.onAdd} style={{ padding: "0 12px 10px" }}>
-          <input className="input" placeholder="+ add  (try -2pm)" value={p.draft} onChange={(e) => p.onDraft(e.target.value)} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
+          <input className="input" placeholder="+ add" value={p.draft} onChange={(e) => p.onDraft(e.target.value)} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
         </form>
       )}
     </div>

@@ -22,7 +22,7 @@ import { parseTaskInput } from "../utils/time";
 type Mode = "task" | "command" | "ai";
 
 const MODES: Record<Mode, { icon: string; label: string; placeholder: string; prefix: string }> = {
-  task: { icon: "ph-note", label: "Task", placeholder: "Add a task…  (-1:17 time · -m -w -f days · -wd weekdays · -e every day)", prefix: "" },
+  task: { icon: "ph-note", label: "Task", placeholder: "Add a task…", prefix: "" },
   command: { icon: "ph-terminal-window", label: "Run", placeholder: "Run a command in the container…", prefix: "/" },
   ai: { icon: "ph-sparkle", label: "Ask", placeholder: "Ask the assistant…", prefix: "?" },
 };

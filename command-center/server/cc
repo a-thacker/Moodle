@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""cc — a tiny CLI for the Command Center dashboard, for Claude Code to use.
+
+Reads/writes the same data the web dashboard shows, via the backend API. Auth
+is the owner login from command-center/.env (OWNER_EMAIL/OWNER_PASSWORD). No
+third-party deps — stdlib only.
+
+    cc context               # date, weather, tasks, deadlines, grades, grocery
+    cc tasks                 # list tasks
+    cc add "Title" [DATE] [TIME]     # DATE=YYYY-MM-DD  TIME=HH:MM  (optional)
+    cc done <id> | cc undone <id> | cc rm <id>
+    cc grades | cc deadlines
+    cc grocery | cc grocery add "Milk"
+"""
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+BASE = os.environ.get("CC_API", "http://localhost:8000")
+ENV = Path.home() / "command-center" / ".env"
+
+
+def load_env() -> dict:
+    d = {}
+    if ENV.exists():
+        for line in ENV.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                d[k.strip()] = v.strip()
+    return d
+
+
+def req(method: str, path: str, token: str | None = None, body=None):
+    data = json.dumps(body).encode() if body is not None else None
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    r = urllib.request.Request(BASE + path, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(r, timeout=30) as resp:
+            text = resp.read().decode()
+            return resp.status, (json.loads(text) if text else None)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+    except urllib.error.URLError as e:
+        sys.exit(f"cannot reach backend at {BASE}: {e}")
+
+
+def login() -> str:
+    env = load_env()
+    s, b = req("POST", "/api/v1/auth/login",
+               body={"email": env.get("OWNER_EMAIL"), "password": env.get("OWNER_PASSWORD")})
+    if s != 200:
+        sys.exit(f"login failed ({s}): {b}")
+    return b["access_token"]
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help", "help"):
+        print(__doc__)
+        return
+    cmd, rest = args[0], args[1:]
+    tok = login()
+
+    if cmd == "context":
+        _, b = req("GET", "/api/v1/assistant/context", tok)
+        print(b["context"] if isinstance(b, dict) else b)
+    elif cmd == "tasks":
+        _, b = req("GET", "/api/v1/tasks", tok)
+        for t in b:
+            mark = "x" if t["done"] else " "
+            due = f"  @{t['dueDate']}" if t["dueDate"] else ""
+            tm = f" {t['dueTime'][:5]}" if t.get("dueTime") else ""
+            print(f"[{t['id']:>4}] [{mark}] {t['title']}{due}{tm}")
+    elif cmd == "add":
+        if not rest:
+            sys.exit('usage: cc add "Title" [YYYY-MM-DD] [HH:MM]')
+        body = {"title": rest[0]}
+        if len(rest) > 1:
+            body["due_date"] = rest[1]
+        if len(rest) > 2:
+            body["due_time"] = rest[2]
+        _, b = req("POST", "/api/v1/tasks", tok, body)
+        print(f"added task {b['id']}: {b['title']}")
+    elif cmd in ("done", "undone"):
+        _, b = req("PATCH", f"/api/v1/tasks/{rest[0]}", tok, {"done": cmd == "done"})
+        print(f"{cmd} {rest[0]}")
+    elif cmd == "rm":
+        req("DELETE", f"/api/v1/tasks/{rest[0]}", tok)
+        print(f"removed {rest[0]}")
+    elif cmd == "grades":
+        _, b = req("GET", "/api/v1/courses", tok)
+        for c in b:
+            print(f"{c['fullName']}: {c['totalPercent']}%")
+    elif cmd == "deadlines":
+        _, b = req("GET", "/api/v1/deadlines", tok)
+        for d in b:
+            print(f"{d['due'][:10]}  {d['title']}  ({d['courseName']})")
+    elif cmd == "grocery":
+        if rest and rest[0] == "add":
+            req("POST", "/api/v1/grocery", tok, {"name": rest[1]})
+            print(f"added {rest[1]}")
+        else:
+            _, b = req("GET", "/api/v1/grocery", tok)
+            for g in b:
+                print(f"[{'x' if g['done'] else ' '}] {g['name']}")
+    else:
+        sys.exit(f"unknown command: {cmd}\n{__doc__}")
+
+
+if __name__ == "__main__":
+    main()
