@@ -17,6 +17,20 @@ _WEEKDAYS = {
     "thurs": 3, "fri": 4, "sat": 5, "sun": 6,
 }
 
+_MONTHS = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+_MONTH_NAMES = (
+    "january|february|march|april|may|june|july|august|september|october|"
+    "november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+)
+# "July 21", "Jul 21 2026", "July 21, 2026"
+_MONTH_DATE = re.compile(
+    r"\b(" + _MONTH_NAMES + r")\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{4}))?\b",
+    re.IGNORECASE,
+)
+
 _TIME_12 = re.compile(r"(?:^|[\s@\-])(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", re.IGNORECASE)
 _TIME_24 = re.compile(r"(?:^|[\s@\-])(\d{1,2}):(\d{2})\b")
 _ISO = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
@@ -48,6 +62,18 @@ def _resolve_date(text: str, today: date) -> tuple[str, date | None]:
             return text[: m.start()] + text[m.end():], date.fromisoformat(m.group(1))
         except ValueError:
             pass
+    m = _MONTH_DATE.search(text)
+    if m:
+        mon = _MONTHS[m.group(1).lower()[:3]]
+        day = int(m.group(2))
+        year = int(m.group(3)) if m.group(3) else today.year
+        try:
+            d = date(year, mon, day)
+            if not m.group(3) and d < today:  # no year given and already past → next year
+                d = date(year + 1, mon, day)
+            return text[: m.start()] + text[m.end():], d
+        except ValueError:
+            pass
     m = _IN_N_DAYS.search(text)
     if m:
         return text[: m.start()] + text[m.end():], today + timedelta(days=int(m.group(1)))
@@ -72,7 +98,10 @@ def parse_when(text: str, today: date | None = None) -> tuple[str, date | None, 
     today = today or datetime.now().date()
     text, t = _resolve_time(text)
     text, d = _resolve_date(text, today)
-    # Tidy leftover separators/filler.
-    text = re.sub(r"\b(on|at|for|by|this)\b", " ", text, flags=re.IGNORECASE)
+    # Tidy leftover filler / weekday words / punctuation left by a resolved date.
+    text = re.sub(r"\b(on|at|for|by|this|next)\b", " ", text, flags=re.IGNORECASE)
+    if d is not None:
+        text = re.sub(r"\b(" + "|".join(_WEEKDAYS) + r")\b", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"[,;]", " ", text)
     text = re.sub(r"\s{2,}", " ", text).strip(" -—–|@·:,").strip()
     return text, d, t

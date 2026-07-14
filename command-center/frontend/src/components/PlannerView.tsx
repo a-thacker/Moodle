@@ -37,13 +37,20 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
 }) {
   return (
     <div
-      draggable
-      onDragStart={(e) => { onDragStart(); e.dataTransfer.effectAllowed = "move"; }}
-      onDragEnd={onDragEnd}
       onDragOver={onOver}
       onDrop={onDrop}
-      style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#1c1f2e", border: "1px solid #2b3048", borderRadius: 9, padding: "8px 10px", cursor: "grab", fontSize: 13 }}
+      style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#1c1f2e", border: "1px solid #2b3048", borderRadius: 9, padding: "8px 9px", fontSize: 13, userSelect: "none" }}
     >
+      {/* Grip is the drag source — reliable, and never grabs text. */}
+      <span
+        draggable
+        onDragStart={(e) => { onDragStart(); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(task.id)); }}
+        onDragEnd={onDragEnd}
+        title="Drag to move / reorder"
+        style={{ cursor: "grab", color: "var(--cc-dim)", marginTop: 1, flexShrink: 0 }}
+      >
+        <i className="ph ph-dots-six-vertical" style={{ fontSize: 15 }} />
+      </span>
       <button type="button" onClick={onToggle} style={{ background: "none", border: "none", padding: 0, display: "flex", marginTop: 1 }}>
         {task.done ? <i className="ph-fill ph-check-circle" style={{ color: "var(--cc-accent)", fontSize: 16 }} /> : <i className="ph ph-circle" style={{ color: "var(--cc-muted)", fontSize: 16 }} />}
       </button>
@@ -59,7 +66,7 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
 }
 
 interface ColumnProps {
-  ckey: string; title: string; sub?: string; isToday?: boolean; highlight: boolean;
+  ckey: string; title: string; sub?: string; isToday?: boolean; highlight: boolean; showAdd: boolean;
   list: Task[]; draft: string; indicator: number | "end" | null;
   onDraft: (v: string) => void; onAdd: (e: FormEvent) => void;
   onColumnOver: (e: DragEvent) => void; onLeave: () => void; onColumnDrop: () => void;
@@ -97,9 +104,11 @@ function Column(p: ColumnProps) {
         ))}
         {p.indicator === "end" && <DropBar />}
       </div>
-      <form onSubmit={p.onAdd} style={{ padding: "0 12px 10px" }}>
-        <input className="input" placeholder="+ add" value={p.draft} onChange={(e) => p.onDraft(e.target.value)} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
-      </form>
+      {p.showAdd && (
+        <form onSubmit={p.onAdd} style={{ padding: "0 12px 10px" }}>
+          <input className="input" placeholder="+ add  (try -2pm)" value={p.draft} onChange={(e) => p.onDraft(e.target.value)} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
+        </form>
+      )}
     </div>
   );
 }
@@ -170,11 +179,11 @@ export default function PlannerView() {
     ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
     : anchor.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
-  function column(dateStr: string | null, title: string, sub?: string, isToday?: boolean) {
+  function column(dateStr: string | null, title: string, sub?: string, isToday?: boolean, showAdd = true) {
     const key = dateStr ?? "none";
     return (
       <Column
-        key={key} ckey={key} title={title} sub={sub} isToday={isToday}
+        key={key} ckey={key} title={title} sub={sub} isToday={isToday} showAdd={showAdd}
         highlight={overKey === key}
         list={byKey(dateStr)} draft={drafts[key] ?? ""}
         indicator={indicator?.key === key ? indicator.before : null}
@@ -212,13 +221,13 @@ export default function PlannerView() {
         </div>
       </div>
 
-      {/* every-day drop zone — only while dragging */}
+      {/* every-day drop zone — fixed overlay so it never shifts layout mid-drag */}
       {dragActive && (
         <div
           onDragOver={(e) => { e.preventDefault(); setOverKey("everyday"); }}
           onDragLeave={() => setOverKey((k) => (k === "everyday" ? null : k))}
           onDrop={dropEveryDay}
-          style={{ padding: "10px 14px", borderRadius: 12, textAlign: "center", fontSize: 13, fontFamily: "var(--font-mono)", color: overKey === "everyday" ? "#100f1c" : "var(--cc-accent-soft)", background: overKey === "everyday" ? "var(--cc-accent)" : "#8b7cf01a", border: "1px dashed var(--cc-accent)" }}
+          style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 100, padding: "10px 20px", borderRadius: 12, textAlign: "center", fontSize: 13, fontFamily: "var(--font-mono)", color: overKey === "everyday" ? "#100f1c" : "var(--cc-accent-soft)", background: overKey === "everyday" ? "var(--cc-accent)" : "#1c1f2e", border: "1px dashed var(--cc-accent)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
         >
           ＋ drop here to add to every day this week
         </div>
@@ -229,7 +238,7 @@ export default function PlannerView() {
       </div>
 
       <div style={{ maxHeight: "24%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {column(null, "Unscheduled", String(byKey(null).length))}
+        {column(null, "Unscheduled", String(byKey(null).length), false, false)}
       </div>
     </div>
   );

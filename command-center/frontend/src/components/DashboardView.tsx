@@ -26,12 +26,12 @@ import type { ClaudeUsage, Deadline, ScriptInfo } from "../types";
 import { relativeDay } from "../utils/format";
 import { fmtTime } from "../utils/time";
 
-function untilMidnight(): string {
-  const now = new Date();
-  const mid = new Date(now);
-  mid.setHours(24, 0, 0, 0);
-  const mins = Math.round((mid.getTime() - now.getTime()) / 60000);
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+function untilLabel(iso?: string | null): string {
+  if (!iso) return "idle";
+  const mins = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+  if (mins <= 0) return "now";
+  const h = Math.floor(mins / 60);
+  return h > 0 ? `${h}h ${mins % 60}m` : `${mins}m`;
 }
 
 const MONO = "var(--font-mono)";
@@ -119,6 +119,7 @@ export default function DashboardView() {
   const { tasks } = useTasks();
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
+  const [agendaMode, setAgendaMode] = useState<"day" | "week">("day");
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
@@ -148,14 +149,18 @@ export default function DashboardView() {
   const topCourse = courses[0];
   const grocOutstanding = grocery.filter((g) => !g.done);
   const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
-  const todayTasks = tasks
-    .filter((t) => !t.done && t.dueDate === todayStr)
-    .sort((a, b) => {
-      if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : 1;
-      if (a.dueTime) return -1;
-      if (b.dueTime) return 1;
-      return a.position - b.position;
-    });
+  const byTime = (a: { dueTime: string | null; position: number }, b: { dueTime: string | null; position: number }) => {
+    if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : 1;
+    if (a.dueTime) return -1;
+    if (b.dueTime) return 1;
+    return a.position - b.position;
+  };
+  const todayTasks = tasks.filter((t) => !t.done && t.dueDate === todayStr).sort(byTime);
+  const weekTasks = tasks
+    .filter((t) => !t.done && t.dueDate && t.dueDate >= todayStr)
+    .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : a.dueDate! > b.dueDate! ? 1 : byTime(a, b)))
+    .slice(0, 8);
+  const agendaList = agendaMode === "day" ? todayTasks : weekTasks;
 
   // Inner content per widget (closes over the live data above).
   const content = useMemo<Record<WidgetId, ReactNode>>(() => ({
@@ -196,20 +201,31 @@ export default function DashboardView() {
     ),
     agenda: (
       <>
-        <Label extra="today">PLANNER</Label>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", minHeight: 0, fontSize: 13 }}>
-          {todayTasks.length === 0 ? (
-            <div style={{ color: "var(--cc-muted)" }}>Nothing planned today — tap to plan your day.</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <span className="cc-label" style={{ fontWeight: 500 }}>PLANNER</span>
+          <div style={{ display: "flex", gap: 2, background: "#0f101a", borderRadius: 7, padding: 2 }}>
+            {(["day", "week"] as const).map((m) => (
+              <button key={m} onClick={(e) => { e.stopPropagation(); setAgendaMode(m); }}
+                style={{ fontSize: 10.5, padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer", fontFamily: MONO, letterSpacing: ".04em", textTransform: "uppercase", background: agendaMode === m ? "var(--cc-accent)" : "transparent", color: agendaMode === m ? "#100f1c" : "var(--cc-muted)" }}>{m}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 0, fontSize: 13 }}>
+          {agendaList.length === 0 ? (
+            <div style={{ color: "var(--cc-muted)" }}>{agendaMode === "day" ? "Nothing planned today." : "Nothing scheduled."} Tap to plan →</div>
           ) : (
-            todayTasks.map((t) => (
-              <div key={t.id} style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
-                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 12, width: 62, flexShrink: 0 }}>{t.dueTime ? fmtTime(t.dueTime) : "—"}</span>
+            agendaList.map((t) => (
+              <div key={t.id} className="row-hover" style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "3px 4px" }}>
+                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 11.5, width: agendaMode === "day" ? 58 : 46, flexShrink: 0 }}>
+                  {agendaMode === "week" ? relativeDay(t.dueDate + "T00:00:00") : t.dueTime ? fmtTime(t.dueTime) : "—"}
+                </span>
                 <span style={{ flex: 1, color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                {agendaMode === "week" && t.dueTime && <span style={{ fontFamily: MONO, color: "var(--cc-muted)", fontSize: 11 }}>{fmtTime(t.dueTime)}</span>}
               </div>
             ))
           )}
         </div>
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #232739", fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)" }}>
+        <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #232739", fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)" }}>
           {tasks.filter((t) => !t.done).length} open · tap to plan →
         </div>
       </>
@@ -267,7 +283,7 @@ export default function DashboardView() {
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today est</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} · ~${usage?.week?.costEst ?? 0}</span></div>
           <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>all time</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.totals?.io)} · ~${usage?.totals?.costEst ?? 0}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--cc-dim)", fontSize: 11 }}><span>daily resets in</span><span>{untilMidnight()}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between", color: "var(--cc-dim)", fontSize: 11 }}><span>session resets in</span><span>{untilLabel(usage?.sessionResetsAt)}</span></div>
           <div style={{ color: "var(--cc-dim)", fontSize: 11 }}>+{fmtTok(usage?.today?.tokens)} ctx read today</div>
           {!usage && <div style={{ color: "var(--cc-muted)" }}>Run `agent claude-usage`.</div>}
         </div>
@@ -285,7 +301,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, todayTasks, tasks]);
+  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, agendaList, agendaMode, tasks]);
 
   return (
     <div className="cc-grid">

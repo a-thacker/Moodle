@@ -97,6 +97,7 @@ export interface UsageBucket {
 export interface ClaudeUsage {
   generatedAt?: string;
   updatedAt?: string;
+  sessionResetsAt?: string | null;
   messages?: number;
   totals?: UsageBucket;
   today?: UsageBucket;

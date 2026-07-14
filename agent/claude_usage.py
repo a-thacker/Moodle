@@ -9,7 +9,7 @@ dashboard tile (the server can't read the Mac; the Mac pushes).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +39,7 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     day_tokens: dict[str, int] = {}
     day_io: dict[str, int] = {}  # input+output — the "real work" (no cache)
     day_cost: dict[str, float] = {}
+    all_ts: list[datetime] = []
     totals = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "cost": 0.0}
     messages = 0
 
@@ -84,7 +85,9 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
             ts = event.get("timestamp")
             if isinstance(ts, str):
                 try:
-                    day = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().date().isoformat()
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
+                    all_ts.append(dt)
+                    day = dt.date().isoformat()
                     day_tokens[day] = day_tokens.get(day, 0) + tokens
                     day_io[day] = day_io.get(day, 0) + inp + out
                     day_cost[day] = day_cost.get(day, 0.0) + cost
@@ -94,12 +97,29 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     total_tokens = totals["input"] + totals["output"] + totals["cacheRead"] + totals["cacheWrite"]
     today_key = today.isoformat()
 
+    # Active 5-hour session window (Claude's rolling limit): the current block
+    # starts at the first message after any >5h gap, and resets exactly 5h
+    # later (Claude counts from the first message, not a floored hour).
+    session_resets_at: str | None = None
+    if all_ts:
+        all_ts.sort()
+        five = timedelta(hours=5)
+        block_start = last = all_ts[0]
+        for dt in all_ts[1:]:
+            if dt - block_start > five or dt - last > five:
+                block_start = dt
+            last = dt
+        reset = block_start + five
+        if reset > datetime.now().astimezone():
+            session_resets_at = reset.isoformat()
+
     def week_sum(d: dict[str, float]) -> float:
         cutoff = (today.toordinal() - 6)
         return sum(v for k, v in d.items() if _ordinal(k) is not None and _ordinal(k) >= cutoff)
 
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "sessionResetsAt": session_resets_at,
         "messages": messages,
         "totals": {"tokens": total_tokens, "io": totals["input"] + totals["output"], "costEst": round(totals["cost"], 2), **{k: totals[k] for k in ("input", "output", "cacheRead", "cacheWrite")}},
         "today": {"tokens": day_tokens.get(today_key, 0), "io": day_io.get(today_key, 0), "costEst": round(day_cost.get(today_key, 0.0), 2)},
