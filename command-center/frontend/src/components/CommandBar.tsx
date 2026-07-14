@@ -1,8 +1,7 @@
 // The omni-bar: a persistent bottom bar that changes what it does by mode.
 //   plain text  → adds a Task
-//   "/…"        → runs a command (in the backend container)
-//   "?…"        → asks the assistant (Ollama)
-// The leading character switches mode live; the mode chip is also clickable to
+//   "?…"        → asks the assistant
+// The leading "?" switches mode live; the mode chip is also clickable to
 // cycle. Results appear in a panel above the bar.
 
 import {
@@ -19,14 +18,13 @@ import { notifyTasksChanged } from "../hooks/useTasks";
 import { useNav } from "../nav/NavContext.tsx";
 import { parseTaskInput } from "../utils/time";
 
-type Mode = "task" | "command" | "ai";
+type Mode = "task" | "ai";
 
 const MODES: Record<Mode, { icon: string; label: string; placeholder: string; prefix: string }> = {
   task: { icon: "ph-note", label: "Task", placeholder: "Add a task…", prefix: "" },
-  command: { icon: "ph-terminal-window", label: "Run", placeholder: "Run a command in the container…", prefix: "/" },
   ai: { icon: "ph-sparkle", label: "Ask", placeholder: "Ask the assistant…", prefix: "?" },
 };
-const CYCLE: Mode[] = ["task", "command", "ai"];
+const CYCLE: Mode[] = ["task", "ai"];
 
 interface Entry {
   id: number;
@@ -38,7 +36,6 @@ interface Entry {
 }
 
 function parse(input: string): { mode: Mode; text: string } {
-  if (input.startsWith("/")) return { mode: "command", text: input.slice(1) };
   if (input.startsWith("?")) return { mode: "ai", text: input.slice(1) };
   return { mode: "task", text: input };
 }
@@ -85,10 +82,6 @@ export default function CommandBar() {
         notifyTasksChanged();
         const suffix = dates.length > 1 ? ` on ${dates.length} days` : dates.length === 1 ? ` for ${dates[0]}` : "";
         update(id, { output: `Added "${title}"${time ? ` at ${time}` : ""}${suffix}.`, ok: true, pending: false });
-      } else if (mode === "command") {
-        const r = await api.scripts.run({ command: body });
-        const out = [r.stdout, r.stderr].filter(Boolean).join("\n").trim();
-        update(id, { output: out || `(exit ${r.exit_code})`, ok: r.exit_code === 0, pending: false });
       } else {
         const r = await api.assistant.chat(body);
         update(id, { output: r.reply, ok: r.available, pending: false });
@@ -163,9 +156,7 @@ export default function CommandBar() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={m.placeholder}
-            spellCheck={mode === "command" ? false : undefined}
-            autoCapitalize={mode === "command" ? "off" : undefined}
-            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--cc-bright)", fontSize: 15, fontFamily: mode === "command" ? "var(--font-mono)" : "inherit" }}
+            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--cc-bright)", fontSize: 15, fontFamily: "inherit" }}
           />
         </form>
         {busy && <span style={{ color: "var(--cc-muted)", fontSize: 12, fontFamily: "var(--font-mono)" }}>…</span>}

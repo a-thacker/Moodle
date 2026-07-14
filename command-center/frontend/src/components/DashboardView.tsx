@@ -1,10 +1,11 @@
-// The dashboard: a dense 4x4 bento grid (TARGET design), now rearrangeable.
-// Each tile has a footprint (wide / tall / small / strip); dragging a tile's
+// The dashboard: a dense bento grid (TARGET design), rearrangeable within a
+// footprint. Each tile has a footprint (wide / big / small); dragging a tile's
 // grip onto another tile of the SAME footprint swaps their slots, so the grid
 // never breaks. The arrangement is saved per user in localStorage.
 //
-// Real data drives Grades, Due Soon, Grocery, Scripts; the roadmap tiles
-// (Agenda, Assistant, Homelab, weather) are clearly labeled placeholders.
+// Real data drives Grades, Due Soon, Grocery, and the Planner. The Planner is
+// the centerpiece: a big today | tomorrow board. The old dedicated Assistant
+// and Scripts tiles were removed — chat lives in the bottom bar + rail icon.
 
 import {
   useEffect,
@@ -22,7 +23,7 @@ import { useGrocery } from "../hooks/useGrocery";
 import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, ScriptInfo } from "../types";
+import type { ClaudeUsage, Deadline, Task } from "../types";
 import { relativeDay } from "../utils/format";
 import { fmtTime } from "../utils/time";
 
@@ -44,44 +45,65 @@ function fmtTok(n?: number): string {
   return String(n);
 }
 
-type WidgetId =
-  | "hero" | "dueSoon" | "agenda" | "assistant"
-  | "scripts" | "grades" | "claude" | "lists";
-type Footprint = "wide" | "tall" | "small";
+type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "claude" | "lists";
+type Footprint = "wide" | "big" | "small";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
   wide: [{ gridColumn: "1 / 3", gridRow: "1" }, { gridColumn: "1 / 3", gridRow: "2" }],
-  tall: [{ gridColumn: "3", gridRow: "1 / 3" }, { gridColumn: "4", gridRow: "1 / 3" }],
+  big: [{ gridColumn: "3 / 5", gridRow: "1 / 3" }],
   small: [
-    { gridColumn: "1", gridRow: "3" }, { gridColumn: "2", gridRow: "3" },
-    { gridColumn: "3", gridRow: "3" }, { gridColumn: "4", gridRow: "3" },
+    { gridColumn: "1", gridRow: "3" },
+    { gridColumn: "2", gridRow: "3" },
+    { gridColumn: "3 / 5", gridRow: "3" },
   ],
 };
 
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
-  tall: ["agenda", "assistant"],
-  small: ["scripts", "grades", "claude", "lists"],
+  big: ["planner"],
+  small: ["grades", "claude", "lists"],
 };
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
   hero: { footprint: "wide", style: { background: "linear-gradient(135deg,#8b7cf0,#6857c8)", borderRadius: "var(--cc-radius)", padding: "26px 28px", color: "#100f1c", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" } },
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
-  agenda: { footprint: "tall", className: "cc-tile cc-clickable", view: "planner" },
-  assistant: { footprint: "tall", view: "assistant", style: { cursor: "pointer", background: "linear-gradient(180deg,#181a2b,#141420)", border: "1px solid #2a2550", borderRadius: "var(--cc-radius)", padding: "22px 24px", display: "flex", flexDirection: "column", minHeight: 0 } },
-  scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
+  planner: { footprint: "big", className: "cc-tile cc-clickable", view: "planner" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
   claude: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
 };
 
-const ORDER: Footprint[] = ["wide", "tall", "small"];
+const ORDER: Footprint[] = ["wide", "big", "small"];
 
 function Label({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
       <span className="cc-label" style={{ fontWeight: 500 }}>{children}</span>
       {extra != null && <span className="cc-label">{extra}</span>}
+    </div>
+  );
+}
+
+// One column of the planner board: a day header + its ordered task list.
+function DayColumn({ label, sub, tasks, accent }: { label: string; sub: string; tasks: Task[]; accent: string }) {
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}>
+      <div style={{ marginBottom: 13 }}>
+        <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".08em", color: accent }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--cc-muted)", marginTop: 3 }}>{sub}</div>
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 7, overflowY: "auto", minHeight: 0 }}>
+        {tasks.length === 0 ? (
+          <div style={{ color: "var(--cc-dim)", fontSize: 12.5 }}>Nothing planned.</div>
+        ) : (
+          tasks.map((t) => (
+            <div key={t.id} className="row-hover" style={{ display: "flex", gap: 9, alignItems: "baseline", padding: "3px 2px" }}>
+              <span style={{ fontFamily: MONO, color: t.dueTime ? "var(--cc-accent-soft)" : "var(--cc-dim)", fontSize: 11, width: 44, flexShrink: 0 }}>{t.dueTime ? fmtTime(t.dueTime) : "—"}</span>
+              <span style={{ flex: 1, color: "var(--cc-text)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -117,14 +139,11 @@ export default function DashboardView() {
   const { courses, deadlines } = useDashboardData();
   const { items: grocery } = useGrocery();
   const { tasks } = useTasks();
-  const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
-  const [agendaMode, setAgendaMode] = useState<"day" | "week">("day");
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
-  useEffect(() => { api.scripts.list().then(setScripts).catch(() => {}); }, []);
   useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
   useEffect(() => setArrangement(loadArrangement(user?.id)), [user?.id]);
   useEffect(() => {
@@ -148,7 +167,14 @@ export default function DashboardView() {
   const firstName = (user?.display_name ?? "there").split(" ")[0];
   const topCourse = courses[0];
   const grocOutstanding = grocery.filter((g) => !g.done);
-  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+
+  const now = new Date();
+  const todayStr = now.toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  const tmr = new Date(now);
+  tmr.setDate(tmr.getDate() + 1);
+  const tomorrowStr = tmr.toLocaleDateString("en-CA");
+  const dayLabel = (d: Date) => d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+
   const byTime = (a: { dueTime: string | null; position: number }, b: { dueTime: string | null; position: number }) => {
     if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : 1;
     if (a.dueTime) return -1;
@@ -156,11 +182,8 @@ export default function DashboardView() {
     return a.position - b.position;
   };
   const todayTasks = tasks.filter((t) => !t.done && t.dueDate === todayStr).sort(byTime);
-  const weekTasks = tasks
-    .filter((t) => !t.done && t.dueDate && t.dueDate >= todayStr)
-    .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : a.dueDate! > b.dueDate! ? 1 : byTime(a, b)))
-    .slice(0, 8);
-  const agendaList = agendaMode === "day" ? todayTasks : weekTasks;
+  const tomorrowTasks = tasks.filter((t) => !t.done && t.dueDate === tomorrowStr).sort(byTime);
+  const openCount = tasks.filter((t) => !t.done).length;
 
   // Inner content per widget (closes over the live data above).
   const content = useMemo<Record<WidgetId, ReactNode>>(() => ({
@@ -199,58 +222,16 @@ export default function DashboardView() {
         )}
       </>
     ),
-    agenda: (
+    planner: (
       <>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <span className="cc-label" style={{ fontWeight: 500 }}>PLANNER</span>
-          <div style={{ display: "flex", gap: 2, background: "#0f101a", borderRadius: 7, padding: 2 }}>
-            {(["day", "week"] as const).map((m) => (
-              <button key={m} onClick={(e) => { e.stopPropagation(); setAgendaMode(m); }}
-                style={{ fontSize: 10.5, padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer", fontFamily: MONO, letterSpacing: ".04em", textTransform: "uppercase", background: agendaMode === m ? "var(--cc-accent)" : "transparent", color: agendaMode === m ? "#100f1c" : "var(--cc-muted)" }}>{m}</button>
-            ))}
-          </div>
+          <span className="cc-label">{openCount} open · plan →</span>
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 9, overflowY: "auto", minHeight: 0, fontSize: 13 }}>
-          {agendaList.length === 0 ? (
-            <div style={{ color: "var(--cc-muted)" }}>{agendaMode === "day" ? "Nothing planned today." : "Nothing scheduled."} Tap to plan →</div>
-          ) : (
-            agendaList.map((t) => (
-              <div key={t.id} className="row-hover" style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "3px 4px" }}>
-                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 11.5, width: agendaMode === "day" ? 58 : 46, flexShrink: 0 }}>
-                  {agendaMode === "week" ? relativeDay(t.dueDate + "T00:00:00") : t.dueTime ? fmtTime(t.dueTime) : "—"}
-                </span>
-                <span style={{ flex: 1, color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
-                {agendaMode === "week" && t.dueTime && <span style={{ fontFamily: MONO, color: "var(--cc-muted)", fontSize: 11 }}>{fmtTime(t.dueTime)}</span>}
-              </div>
-            ))
-          )}
-        </div>
-        <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #232739", fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)" }}>
-          {tasks.filter((t) => !t.done).length} open · tap to plan →
-        </div>
-      </>
-    ),
-    assistant: (
-      <>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
-          <span className="pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--cc-accent)" }} />
-          <span style={{ fontFamily: MONO, fontSize: 12, letterSpacing: ".08em", color: "var(--cc-accent-soft)" }}>ASSISTANT · ollama</span>
-        </div>
-        <div style={{ fontSize: 14, lineHeight: 1.55, color: "#dcdfea" }}>Ask about your schedule or tell me to add tasks. I know your grades, deadlines, weather, and lists.</div>
-        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 10, background: "#0f101a", border: "1px solid #2a2e42", borderRadius: 11, padding: "11px 14px" }}>
-          <span style={{ color: "var(--cc-accent-soft)", fontSize: 14, flex: 1 }}>Open the assistant →</span>
-          <span style={{ color: "var(--cc-accent)", fontSize: 16 }}>↑</span>
-        </div>
-      </>
-    ),
-    scripts: (
-      <>
-        <div className="cc-label" style={{ marginBottom: 14 }}>SCRIPTS</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontFamily: MONO, fontSize: 12 }}>
-          {scripts.slice(0, 3).map((s) => (
-            <div key={s.id} style={{ border: "1px solid #262a3b", borderRadius: 8, padding: "9px 11px", color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>▸ {s.id}</div>
-          ))}
-          <div style={{ border: "1px dashed #3a3f58", borderRadius: 8, padding: "9px 11px", color: "var(--cc-muted)" }}>▸ open terminal</div>
+        <div style={{ flex: 1, display: "flex", gap: 20, minHeight: 0 }}>
+          <DayColumn label="TODAY" sub={dayLabel(now)} tasks={todayTasks} accent="var(--cc-accent-soft)" />
+          <div style={{ width: 1, background: "#232739", flexShrink: 0 }} />
+          <DayColumn label="TOMORROW" sub={dayLabel(tmr)} tasks={tomorrowTasks} accent="var(--cc-muted)" />
         </div>
       </>
     ),
@@ -301,7 +282,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, agendaList, agendaMode, tasks]);
+  }), [clock, firstName, deadlines, courses, grocery, grocOutstanding, topCourse, usage, todayTasks, tomorrowTasks, openCount, now, tmr]);
 
   return (
     <div className="cc-grid">

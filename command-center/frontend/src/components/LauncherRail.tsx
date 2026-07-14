@@ -18,7 +18,6 @@ const TOOLS: RailTool[] = [
   { icon: "ph-note", title: "Notes & Tasks", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
-  { icon: "ph-terminal-window", title: "Scripts", view: "scripts" },
 ];
 
 const PLANNED: { icon: string; title: string }[] = [];
@@ -65,7 +64,7 @@ export default function LauncherRail() {
           className={`rail-link${view === tool.view ? " active" : ""}`}
           title={tool.title}
           onClick={() => setView(tool.view)}
-          style={{ background: "none", border: "none" }}
+         
         >
           <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
         </button>
@@ -85,7 +84,7 @@ export default function LauncherRail() {
           className={`rail-link${view === "settings" ? " active" : ""}`}
           title="Settings"
           onClick={() => setView("settings")}
-          style={{ background: "none", border: "none" }}
+         
         >
           <i className="ph ph-gear-six" style={{ fontSize: 20 }} />
         </button>
@@ -94,7 +93,7 @@ export default function LauncherRail() {
           className="rail-link"
           title="Sign out"
           onClick={logout}
-          style={{ background: "none", border: "none" }}
+         
         >
           <i className="ph ph-sign-out" style={{ fontSize: 20 }} />
         </button>

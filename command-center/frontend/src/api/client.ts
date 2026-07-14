@@ -10,8 +10,6 @@ import type {
   Deadline,
   GradeEvent,
   GroceryItem,
-  RunResult,
-  ScriptInfo,
   Task,
   TaskPatch,
 } from "../types";
@@ -83,15 +81,6 @@ export const api = {
       apiFetch<void>("/api/v1/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
-      }),
-  },
-
-  scripts: {
-    list: () => apiFetch<ScriptInfo[]>("/api/v1/scripts"),
-    run: (body: { script_id?: string; command?: string }) =>
-      apiFetch<RunResult>("/api/v1/scripts/run", {
-        method: "POST",
-        body: JSON.stringify(body),
       }),
   },
 
