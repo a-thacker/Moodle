@@ -6,7 +6,7 @@ import { useState, type FormEvent } from "react";
 
 import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types";
-import { extractTime, fmtTime } from "../utils/time";
+import { fmtTime, parseTaskInput } from "../utils/time";
 
 function dueLabel(due: string | null): string | null {
   if (!due) return null;
@@ -56,9 +56,12 @@ export default function NotesView() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const parsed = extractTime(title);
-    if (!parsed.title.trim()) return;
-    add(parsed.title, due || null, parsed.time);
+    const { title: t, time, dates } = parseTaskInput(title);
+    if (!t.trim()) return;
+    const targets = dates.length
+      ? dates
+      : [due || (time ? new Date().toLocaleDateString("en-CA") : null)];
+    targets.forEach((d) => add(t, d, time));
     setTitle("");
     setDue("");
   }
@@ -76,7 +79,7 @@ export default function NotesView() {
         <form onSubmit={submit} className="card" style={{ padding: 14, display: "flex", gap: 8, alignItems: "center" }}>
           <input
             className="input"
-            placeholder="Jot something down… (Enter to add)"
+            placeholder="Jot something down…  (-2pm  -m -w -f  -wd  -e)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus

@@ -17,11 +17,12 @@ import { api } from "../api/client";
 import { useClock } from "../hooks/useClock";
 import { notifyTasksChanged } from "../hooks/useTasks";
 import { useNav } from "../nav/NavContext.tsx";
+import { parseTaskInput } from "../utils/time";
 
 type Mode = "task" | "command" | "ai";
 
 const MODES: Record<Mode, { icon: string; label: string; placeholder: string; prefix: string }> = {
-  task: { icon: "ph-note", label: "Task", placeholder: "Add a task…  (type / to run a command, ? to ask the assistant)", prefix: "" },
+  task: { icon: "ph-note", label: "Task", placeholder: "Add a task…  (-1:17 time · -m -w -f days · -wd weekdays · -e every day)", prefix: "" },
   command: { icon: "ph-terminal-window", label: "Run", placeholder: "Run a command in the container…", prefix: "/" },
   ai: { icon: "ph-sparkle", label: "Ask", placeholder: "Ask the assistant…", prefix: "?" },
 };
@@ -77,9 +78,13 @@ export default function CommandBar() {
     setBusy(true);
     try {
       if (mode === "task") {
-        await api.tasks.add(body);
+        const { title, time, dates } = parseTaskInput(body);
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        const targets: (string | null)[] = dates.length ? dates : [time ? todayStr : null];
+        for (const d of targets) await api.tasks.add(title, d, time);
         notifyTasksChanged();
-        update(id, { output: "Added to Tasks.", ok: true, pending: false });
+        const suffix = dates.length > 1 ? ` on ${dates.length} days` : dates.length === 1 ? ` for ${dates[0]}` : "";
+        update(id, { output: `Added "${title}"${time ? ` at ${time}` : ""}${suffix}.`, ok: true, pending: false });
       } else if (mode === "command") {
         const r = await api.scripts.run({ command: body });
         const out = [r.stdout, r.stderr].filter(Boolean).join("\n").trim();
