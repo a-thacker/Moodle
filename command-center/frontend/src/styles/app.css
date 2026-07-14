@@ -1,12 +1,42 @@
-/* App-level styles ported from the Nocturne design mockups (the shared
-   interaction classes that the .dc.html files defined inline). Everything
-   colour/space/radius still derives from Nocturne tokens in nocturne.css. */
+/* App-level styles. The TARGET redesign shifts the whole shell to a denser,
+   darker palette and adds display/mono fonts. We override the Nocturne tokens
+   here (loaded first in main.tsx) so every existing component picks up the new
+   look, then add the redesign-specific tokens and classes. */
+
+:root {
+  /* TARGET palette (overrides Nocturne base tokens) */
+  --color-bg: #0a0b11;
+  --color-surface: #161824;
+  --color-accent: #8b7cf0;
+  --color-divider: #1b1e2c;
+  --color-neutral-900: #0e0f16;
+
+  /* redesign-specific tokens */
+  --cc-tile: #161824;
+  --cc-tile-border: #262a3b;
+  --cc-muted: #6b7089;
+  --cc-dim: #4a5170;
+  --cc-text: #c7cbd6;
+  --cc-bright: #f0f1f6;
+  --cc-accent: #8b7cf0;
+  --cc-accent-soft: #a99cf5;
+  --cc-good: #5fce9b;
+  --cc-warn: #e0a84e;
+  --cc-bad: #e0654e;
+  --cc-radius: 20px;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-body: "Instrument Sans", system-ui, sans-serif;
+}
 
 html,
 body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: var(--color-bg);
+  font-family: var(--font-body);
 }
 
 #root {
@@ -14,65 +44,53 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-neutral-800);
+  background: #2a2e42;
   border-radius: 8px;
 }
 
-/* Launcher-rail links */
+/* Launcher-rail links (TARGET styling) */
 .rail-link {
   position: relative;
-  color: var(--color-neutral-400);
-  transition:
-    color 0.15s,
-    background 0.15s;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  border-radius: 13px;
+  color: #7a8099;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 .rail-link:hover {
-  color: var(--color-text);
-  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  color: #c7cbd6;
+  background: #181a26;
 }
 .rail-link.active {
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-}
-.rail-link.active::before {
-  content: "";
-  position: absolute;
-  left: -14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  border-radius: 2px;
-  background: var(--color-accent);
+  color: #0e0f16;
+  background: var(--cc-accent);
 }
 .rail-link.dim {
   opacity: 0.42;
 }
 
-/* Hover affordance for list rows */
+/* List-row hover affordance */
 .row-hover {
   transition: background 0.12s;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
 }
 .row-hover:hover {
-  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+  background: #ffffff08;
 }
 
-/* Status pulse */
 @keyframes glow {
   0%,
   100% {
-    opacity: 0.45;
+    opacity: 0.5;
   }
   50% {
     opacity: 1;
@@ -81,27 +99,49 @@ body {
 .pulse {
   animation: glow 2.4s ease-in-out infinite;
 }
-
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
-  background: #6bbf8a; /* healthy green — outside the Nocturne accent family
-                          on purpose, a semantic status colour */
+  background: var(--cc-good);
 }
 
-/* One bento column of stacked cards. DESIGN_HANDOFF: columns of
-   content-sized cards, NOT a fixed 3-row 1fr grid (which starved the middle
-   row and caused overlap). */
-.bento-col {
+/* Dashboard tile + bento grid */
+.cc-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: minmax(150px, 1.1fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  gap: 16px;
+  min-height: 0;
+}
+.cc-tile {
+  background: var(--cc-tile);
+  border-radius: var(--cc-radius);
+  padding: 20px 22px;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  min-width: 0;
+}
+.cc-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--cc-muted);
+}
+.cc-clickable {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    border-color 0.15s,
+    transform 0.1s;
+}
+.cc-clickable:hover {
+  border-color: #2f3450;
 }
 
-/* Reset the button element for icon/ghost buttons that carry Nocturne classes */
 button {
   font-family: inherit;
   cursor: pointer;

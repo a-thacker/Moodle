@@ -13,7 +13,6 @@ import GroceryCard from "./GroceryCard.tsx";
 import ScriptsView from "./ScriptsView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
-import { sampleAgentStatus } from "../data/sample";
 
 function ActiveView() {
   const { view } = useNav();
@@ -62,8 +61,8 @@ export default function OwnerDashboard() {
         }}
       >
         <LauncherRail />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <TopBar agent={sampleAgentStatus} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 18, minWidth: 0 }}>
+          <TopBar />
           <ActiveView />
         </div>
         <CommandPalette />

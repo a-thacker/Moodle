@@ -1,79 +1,72 @@
-// Top bar: ⌘K search stub, agent-sync status, live clock.
+// Top bar (TARGET styling): ⌘K search that opens the palette, a status pill,
+// and the live clock.
 
 import { useClock } from "../hooks/useClock";
 import { useNav } from "../nav/NavContext.tsx";
-import type { AgentStatus } from "../types";
 
-export default function TopBar({ agent }: { agent: AgentStatus }) {
+export default function TopBar() {
   const clock = useClock();
   const { setPaletteOpen } = useNav();
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-6)",
-        padding: "var(--space-4) var(--space-8)",
-        borderBottom: "1px solid var(--color-divider)",
-        flexShrink: 0,
-      }}
-    >
-      {/* ⌘K search — opens the command palette */}
+    <div style={{ display: "flex", alignItems: "center", gap: 20, flexShrink: 0 }}>
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
         style={{
           flex: 1,
-          minWidth: 0,
+          maxWidth: 620,
           display: "flex",
           alignItems: "center",
-          gap: 10,
-          maxWidth: 460,
-          background: "var(--color-surface)",
-          border: "1px solid var(--color-divider)",
-          borderRadius: "var(--radius-md)",
-          padding: "8px 12px",
+          gap: 12,
+          background: "#161824",
+          border: "1px solid #262a3b",
+          borderRadius: 12,
+          padding: "13px 18px",
           cursor: "pointer",
           color: "inherit",
           textAlign: "left",
         }}
       >
-        <i className="ph ph-magnifying-glass" style={{ color: "var(--color-accent)", fontSize: 16 }} />
-        <span style={{ color: "var(--color-neutral-500)", fontSize: 13 }}>
-          Search or jump to a tool…
+        <i className="ph ph-magnifying-glass" style={{ color: "var(--cc-accent)", fontSize: 16 }} />
+        <span style={{ color: "var(--cc-muted)", fontSize: 15 }}>
+          Search, jump to a tool, or run a command…
         </span>
         <span
           style={{
             marginLeft: "auto",
-            fontSize: 11,
-            color: "var(--color-neutral-500)",
-            border: "1px solid var(--color-divider)",
-            borderRadius: "var(--radius-sm)",
-            padding: "1px 7px",
+            fontSize: 12,
+            fontFamily: "var(--font-mono)",
+            color: "var(--cc-muted)",
+            border: "1px solid #2b3044",
+            borderRadius: 5,
+            padding: "2px 8px",
           }}
         >
           ⌘K
         </span>
       </button>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-8)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--color-neutral-400)" }}>
-          <span
-            className="pulse status-dot"
-            style={agent.sessionHealthy ? undefined : { background: "var(--color-accent-400)" }}
-          />
-          <span>
-            agent synced <span style={{ color: "var(--color-text)" }}>{agent.lastRun.replace(" · ok", "")}</span>
-          </span>
-        </div>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            fontSize: 13,
+            fontFamily: "var(--font-mono)",
+            color: "#7a8099",
+          }}
+        >
+          <span className="pulse status-dot" /> home.net · all up
+        </span>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 17 }}>
-            {clock.hm} <span style={{ color: "var(--color-neutral-500)", fontSize: 12 }}>{clock.ampm}</span>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: "#f0f1f6" }}>
+            {clock.hm} <span style={{ fontSize: 13, color: "var(--cc-muted)" }}>{clock.ampm}</span>
           </div>
-          <div style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>{clock.dateLong}</div>
+          <div style={{ fontSize: 12, color: "var(--cc-muted)" }}>{clock.dateLong}</div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

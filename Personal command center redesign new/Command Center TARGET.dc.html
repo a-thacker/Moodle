@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0a0b11; }
+  a { color: inherit; text-decoration: none; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #2a2e42; border-radius: 8px; }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes glow { 0%,100%{opacity:.5} 50%{opacity:1} }
+  .rail-link { color:#7a8099; transition:color .15s, background .15s; }
+  .rail-link:hover { color:#c7cbd6; background:#181a26; }
+  .rail-link.active { color:#0e0f16; background:#8b7cf0; }
+</style>
+</helmet>
+
+<div data-clock-scope data-screen-label="Command Center" style="width:100vw; height:100vh; display:flex; background:#0a0b11; font-family:'Instrument Sans',sans-serif; color:#c7cbd6; overflow:hidden;">
+
+  <!-- ============ LAUNCHER RAIL (from v2) ============ -->
+  <nav style="width:76px; flex-shrink:0; background:#0e0f16; border-right:1px solid #1b1e2c; display:flex; flex-direction:column; align-items:center; padding:20px 0; gap:4px;">
+    <div style="width:44px; height:44px; border-radius:13px; border:1px solid #8b7cf0; display:flex; align-items:center; justify-content:center; color:#8b7cf0; margin-bottom:14px;"><i class="ph-fill ph-command" style="font-size:20px;"></i></div>
+
+    <a href="#" class="rail-link active" title="Dashboard" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-squares-four" style="font-size:22px;"></i></a>
+    <a href="#" class="rail-link" title="Grades" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-exam" style="font-size:22px;"></i></a>
+    <a href="#" class="rail-link" title="Deadlines" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-calendar-dots" style="font-size:22px;"></i></a>
+    <a href="#" class="rail-link" title="Grocery — shared" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-basket" style="font-size:22px;"></i></a>
+
+    <div style="width:28px; height:1px; background:#1b1e2c; margin:8px 0;"></div>
+
+    <a href="#" class="rail-link" title="Notes — planned" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px; opacity:.42;"><i class="ph ph-note" style="font-size:22px;"></i></a>
+    <a href="#" class="rail-link" title="Scripts — planned" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px; opacity:.42;"><i class="ph ph-terminal-window" style="font-size:22px;"></i></a>
+    <a href="#" class="rail-link" title="Assistant — planned" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px; opacity:.42;"><i class="ph ph-sparkle" style="font-size:22px;"></i></a>
+
+    <div style="margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <a href="#" class="rail-link" title="Settings" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-gear-six" style="font-size:21px;"></i></a>
+      <div title="Alden · owner" style="width:40px; height:40px; border-radius:50%; background:#2d2a55; color:#c9c2f5; display:flex; align-items:center; justify-content:center; font-weight:600; font-family:'Space Grotesk',sans-serif;">A</div>
+    </div>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; padding:22px 26px; gap:18px; min-width:0;">
+
+    <!-- top bar -->
+    <div style="display:flex; align-items:center; gap:20px; flex-shrink:0;">
+      <div style="flex:1; max-width:620px; display:flex; align-items:center; gap:12px; background:#161824; border:1px solid #262a3b; border-radius:12px; padding:13px 18px; cursor:text;" style-hover="border-color:#3a3f58;">
+        <span style="color:#8b7cf0;">⌕</span>
+        <span style="color:#6b7089; font-size:15px;">Search anything, run a tool, or ask the assistant…</span>
+        <span style="margin-left:auto; font-size:12px; font-family:'JetBrains Mono',monospace; color:#6b7089; border:1px solid #2b3044; border-radius:5px; padding:2px 8px;">⌘K</span>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:20px;">
+        <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-family:'JetBrains Mono',monospace; color:#7a8099;"><span style="width:8px; height:8px; border-radius:50%; background:#5fce9b; animation:glow 2.4s ease-in-out infinite;"></span>home.net · all up</span>
+        <div style="text-align:right;">
+          <div style="font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:600; color:#f0f1f6;"><span data-clock="hm">--:--</span> <span style="font-size:13px; color:#6b7089;">{{ ampm }}</span></div>
+          <div style="font-size:12px; color:#6b7089;">{{ dateLong }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bento grid -->
+    <div style="flex:1; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:minmax(150px,1.1fr) minmax(150px,1fr) minmax(150px,1fr) auto; gap:16px; min-height:0;">
+
+      <!-- HERO -->
+      <div style="grid-column:1 / 3; grid-row:1; background:linear-gradient(135deg,#8b7cf0,#6857c8); border-radius:20px; padding:26px 28px; color:#100f1c; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden;">
+        <div style="position:absolute; right:-40px; top:-40px; width:190px; height:190px; border-radius:50%; background:#ffffff1f;"></div>
+        <div style="position:absolute; right:60px; bottom:-50px; width:120px; height:120px; border-radius:50%; background:#ffffff14;"></div>
+        <div><div style="font-size:14px; font-weight:600; opacity:.65;">{{ dateLong }}</div><div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:38px; line-height:1.03; margin-top:8px;">{{ greeting }}, Alden.</div></div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; position:relative;">
+          <div><div style="font-size:13px; font-weight:600; opacity:.65;">Collegedale, TN</div><div style="font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600;">72° · Partly cloudy</div></div>
+          <div style="text-align:right; font-size:13px; font-weight:600; opacity:.78; line-height:1.5;">H 78° &nbsp;L 61°<br>10% rain · calm</div>
+        </div>
+      </div>
+
+      <!-- AGENDA (tall) -->
+      <div style="grid-column:3; grid-row:1 / 3; background:#161824; border-radius:20px; padding:22px 24px; display:flex; flex-direction:column; min-height:0;">
+        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; margin-bottom:18px;"><span style="font-weight:500; letter-spacing:.08em;">TODAY</span><span>7 events</span></div>
+        <div style="display:flex; flex-direction:column; gap:15px; font-size:13px; overflow-y:auto; min-height:0;">
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">08:00</span><span>Gym</span></div>
+          <div style="display:flex; gap:12px; padding:8px 10px; margin:-8px -6px; border-radius:10px; background:#8b7cf01a; border-left:3px solid #8b7cf0;"><span style="font-family:'JetBrains Mono',monospace; color:#a99cf5; width:46px; font-weight:600;">09:30</span><div><div style="color:#f0f1f6; font-weight:600;">CS 3320 Lecture</div><div style="color:#6b7089; font-size:12px;">Nichols Hall 214</div></div></div>
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">11:00</span><span>Office hours · Dr. Okafor</span></div>
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">12:30</span><span>Study group lunch</span></div>
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">14:00</span><span>MATH 2810 recitation</span></div>
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">16:00</span><span>Library IT desk shift</span></div>
+          <div style="display:flex; gap:12px;"><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; width:46px;">19:00</span><span>Roommate dinner · Marcus</span></div>
+        </div>
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid #232739; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089;">next → <span style="color:#a99cf5;">CS 3320 · 42m</span></div>
+      </div>
+
+      <!-- ASSISTANT (tall) -->
+      <div style="grid-column:4; grid-row:1 / 3; background:linear-gradient(180deg,#181a2b,#141420); border:1px solid #2a2550; border-radius:20px; padding:22px 24px; display:flex; flex-direction:column; min-height:0;">
+        <div style="display:flex; align-items:center; gap:9px; margin-bottom:16px;"><span style="width:9px; height:9px; border-radius:50%; background:#8b7cf0; animation:glow 2s ease-in-out infinite;"></span><span style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.08em; color:#a99cf5;">ASSISTANT · ollama</span></div>
+        <div style="font-size:14px; line-height:1.55; color:#dcdfea;">Morning, Andrew. <span style="color:#a99cf5;">Ray Tracer</span> is due tomorrow and your only real gap today is the 12:30 lunch block.</div>
+        <div style="font-size:14px; line-height:1.55; color:#dcdfea; margin-top:12px;">Want me to hold 2 focus hours after your 4pm shift?</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;">
+          <span style="font-size:12px; background:#8b7cf0; color:#100f1c; font-weight:600; padding:6px 12px; border-radius:8px;">Block focus time</span>
+          <span style="font-size:12px; background:#20233440; border:1px solid #2f3450; color:#c7cbd6; padding:6px 12px; border-radius:8px;">Summarize lecture</span>
+        </div>
+        <div style="margin-top:auto; display:flex; align-items:center; gap:10px; background:#0f101a; border:1px solid #2a2e42; border-radius:11px; padding:11px 14px;"><span style="color:#6b7089; font-size:14px; flex:1;">Ask anything…</span><span style="color:#8b7cf0; font-size:16px;">↑</span></div>
+      </div>
+
+      <!-- DUE SOON -->
+      <div style="grid-column:1 / 3; grid-row:2; background:#161824; border-radius:20px; padding:22px 24px;">
+        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; margin-bottom:16px;"><span style="font-weight:500; letter-spacing:.08em;">DUE SOON</span><span>canvas · synced 6m ago</span></div>
+        <div style="display:flex; flex-direction:column; gap:13px;">
+          <div style="display:flex; align-items:center; gap:13px; font-size:14px;"><span style="width:9px; height:9px; border-radius:50%; background:#e0654e;"></span><span style="flex:1; color:#f0f1f6;">Project 3 · Ray Tracer</span><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; font-size:12px;">CS 3320</span><span style="background:#e0654e26; color:#f08e79; font-size:12px; padding:3px 10px; border-radius:6px;">Tomorrow</span></div>
+          <div style="display:flex; align-items:center; gap:13px; font-size:14px;"><span style="width:9px; height:9px; border-radius:50%; background:#e0a84e;"></span><span style="flex:1;">Quiz 5</span><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; font-size:12px;">CS 3320</span><span style="color:#6b7089; font-size:13px; width:66px; text-align:right;">Tue</span></div>
+          <div style="display:flex; align-items:center; gap:13px; font-size:14px;"><span style="width:9px; height:9px; border-radius:50%; background:#4a5170;"></span><span style="flex:1;">Problem Set 7</span><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; font-size:12px;">MATH 2810</span><span style="color:#6b7089; font-size:13px; width:66px; text-align:right;">Wed</span></div>
+          <div style="display:flex; align-items:center; gap:13px; font-size:14px;"><span style="width:9px; height:9px; border-radius:50%; background:#4a5170;"></span><span style="flex:1;">Reflection Essay</span><span style="font-family:'JetBrains Mono',monospace; color:#6b7089; font-size:12px;">ENGL 1010</span><span style="color:#6b7089; font-size:13px; width:66px; text-align:right;">Fri</span></div>
+        </div>
+      </div>
+
+      <!-- SCRIPTS -->
+      <div style="grid-column:1; grid-row:3; background:#161824; border-radius:20px; padding:20px 22px;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; letter-spacing:.08em; margin-bottom:14px;">SCRIPTS</div>
+        <div style="display:flex; flex-direction:column; gap:8px; font-family:'JetBrains Mono',monospace; font-size:12px;">
+          <div style="border:1px solid #262a3b; border-radius:8px; padding:9px 11px; color:#c7cbd6; cursor:pointer;" style-hover="border-color:#8b7cf0; color:#a99cf5;">▸ morning-brief</div>
+          <div style="border:1px solid #262a3b; border-radius:8px; padding:9px 11px; color:#c7cbd6; cursor:pointer;" style-hover="border-color:#8b7cf0; color:#a99cf5;">▸ backup-photos</div>
+          <div style="border:1px solid #262a3b; border-radius:8px; padding:9px 11px; color:#c7cbd6; cursor:pointer;" style-hover="border-color:#8b7cf0; color:#a99cf5;">▸ sync-notes</div>
+          <div style="border:1px dashed #3a3f58; border-radius:8px; padding:9px 11px; color:#6b7089; cursor:pointer;">+ new script</div>
+        </div>
+      </div>
+
+      <!-- GRADES -->
+      <div style="grid-column:2; grid-row:3; background:#161824; border-radius:20px; padding:20px 22px; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; letter-spacing:.08em; margin-bottom:12px;"><span>GPA · SUMMER</span></div>
+        <div style="display:flex; align-items:baseline; gap:10px;"><span style="font-family:'Space Grotesk',sans-serif; font-size:38px; font-weight:700; color:#f0f1f6; line-height:1;">3.71</span><span style="color:#5fce9b; font-size:13px;">▲ 0.08</span></div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:16px; font-size:12px;">
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:58px; color:#8a90a8; font-family:'JetBrains Mono',monospace;">CS3320</span><div style="flex:1; height:5px; background:#232739; border-radius:3px; overflow:hidden;"><div style="width:94%; height:100%; background:#8b7cf0;"></div></div><span style="color:#c7cbd6; width:22px; text-align:right;">94</span></div>
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:58px; color:#8a90a8; font-family:'JetBrains Mono',monospace;">ENGL</span><div style="flex:1; height:5px; background:#232739; border-radius:3px; overflow:hidden;"><div style="width:91%; height:100%; background:#8b7cf0;"></div></div><span style="color:#c7cbd6; width:22px; text-align:right;">91</span></div>
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:58px; color:#8a90a8; font-family:'JetBrains Mono',monospace;">MATH</span><div style="flex:1; height:5px; background:#232739; border-radius:3px; overflow:hidden;"><div style="width:88%; height:100%; background:#8b7cf0;"></div></div><span style="color:#c7cbd6; width:22px; text-align:right;">88</span></div>
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:58px; color:#8a90a8; font-family:'JetBrains Mono',monospace;">HIST</span><div style="flex:1; height:5px; background:#232739; border-radius:3px; overflow:hidden;"><div style="width:85%; height:100%; background:#e0a84e;"></div></div><span style="color:#c7cbd6; width:22px; text-align:right;">85</span></div>
+        </div>
+      </div>
+
+      <!-- HOMELAB -->
+      <div style="grid-column:3; grid-row:3; background:#161824; border-radius:20px; padding:20px 22px;">
+        <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; letter-spacing:.08em; margin-bottom:14px;"><span>HOMELAB</span><span style="color:#5fce9b;">6/6 up</span></div>
+        <div style="display:flex; flex-direction:column; gap:11px; font-size:13px; font-family:'JetBrains Mono',monospace;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#c7cbd6;"><span style="color:#5fce9b;">●</span> ollama</span><span style="color:#6b7089;">idle</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#c7cbd6;"><span style="color:#5fce9b;">●</span> proxmox</span><span style="color:#6b7089;">3 vm</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#c7cbd6;"><span style="color:#5fce9b;">●</span> pi-hole</span><span style="color:#6b7089;">24% blk</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#c7cbd6;"><span style="color:#e0a84e;">●</span> nas</span><span style="color:#e0a84e;">61% full</span></div>
+        </div>
+      </div>
+
+      <!-- LISTS + NOTES -->
+      <div style="grid-column:4; grid-row:3; background:#161824; border-radius:20px; padding:20px 22px; display:flex; flex-direction:column; min-height:0;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; letter-spacing:.08em; margin-bottom:12px;">APARTMENT LIST <span style="color:#4a5170;">· shared</span></div>
+        <div style="display:flex; flex-direction:column; gap:7px; font-size:13px;">
+          <div style="color:#4a5170; text-decoration:line-through;">Oat milk</div>
+          <div>Eggs · 2 dozen</div>
+          <div>Coffee beans</div>
+          <div>Chicken thighs</div>
+          <div style="color:#6b7089;">+ 2 more</div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY LOG (1a homage) -->
+      <div style="grid-column:1 / 5; grid-row:4; background:#0e0f16; border:1px solid #1b1e2c; border-radius:14px; padding:13px 20px; display:flex; align-items:center; gap:24px; font-family:'JetBrains Mono',monospace; font-size:12px; color:#6b7089; overflow:hidden;">
+        <span style="color:#8b7cf0; letter-spacing:.08em; flex-shrink:0;">▸ ACTIVITY</span>
+        <span style="flex-shrink:0;">02:00 backup complete <span style="color:#5fce9b;">✓</span></span>
+        <span style="flex-shrink:0;">07:14 morning-brief → phone <span style="color:#5fce9b;">✓</span></span>
+        <span style="flex-shrink:0;">08:52 canvas sync · 2 new assignments</span>
+        <span style="margin-left:auto; flex-shrink:0; color:#4a5170;">roommate board · 3 updates · <span data-clock="hms">--:--:--</span></span>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    const root = this.el && this.el.querySelector ? this.el : document;
+    const scope = document.querySelector('[data-clock-scope]') || document;
+    const p2 = (n) => String(n).padStart(2, '0');
+    const tick = () => {
+      const d = new Date();
+      const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+      const h12 = ((h + 11) % 12) + 1;
+      scope.querySelectorAll('[data-clock="hm"]').forEach((el) => { el.textContent = `${h12}:${p2(m)}`; });
+      scope.querySelectorAll('[data-clock="hms"]').forEach((el) => { el.textContent = `${p2(h)}:${p2(m)}:${p2(s)}`; });
+    };
+    tick();
+    this._t = setInterval(tick, 1000);
+  }
+  componentWillUnmount() { clearInterval(this._t); }
+  renderVals() {
+    const d = new Date();
+    const h = d.getHours();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return {
+      ampm: h < 12 ? 'AM' : 'PM',
+      dateLong: `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`,
+      greeting: h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening',
+    };
+  }
+}
+</script>
+</body>
+</html>

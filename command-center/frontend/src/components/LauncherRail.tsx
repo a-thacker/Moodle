@@ -31,31 +31,31 @@ export default function LauncherRail() {
   return (
     <nav
       style={{
-        width: 62,
+        width: 76,
         flexShrink: 0,
-        background: "var(--color-neutral-900)",
-        borderRight: "1px solid var(--color-divider)",
+        background: "#0e0f16",
+        borderRight: "1px solid #1b1e2c",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "16px 0",
+        padding: "20px 0",
         gap: 4,
       }}
     >
       <div
         style={{
-          width: 38,
-          height: 38,
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--color-accent)",
+          width: 44,
+          height: 44,
+          borderRadius: 13,
+          border: "1px solid var(--cc-accent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "var(--color-accent)",
+          color: "var(--cc-accent)",
           marginBottom: 14,
         }}
       >
-        <i className="ph-fill ph-command" style={{ fontSize: 19 }} />
+        <i className="ph-fill ph-command" style={{ fontSize: 20 }} />
       </div>
 
       {TOOLS.map((tool) => (
@@ -67,15 +67,15 @@ export default function LauncherRail() {
           onClick={() => setView(tool.view)}
           style={{ background: "none", border: "none" }}
         >
-          <i className={`ph ${tool.icon}`} style={{ fontSize: 21 }} />
+          <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
         </button>
       ))}
 
-      <div style={{ width: 26, height: 1, background: "var(--color-divider)", margin: "8px 0" }} />
+      <div style={{ width: 28, height: 1, background: "#1b1e2c", margin: "8px 0" }} />
 
       {PLANNED.map((tool) => (
         <span key={tool.title} className="rail-link dim" title={tool.title} style={{ cursor: "default" }}>
-          <i className={`ph ${tool.icon}`} style={{ fontSize: 21 }} />
+          <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
         </span>
       ))}
 
@@ -101,17 +101,17 @@ export default function LauncherRail() {
         <div
           title={`${name} · owner`}
           style={{
-            width: 34,
-            height: 34,
+            width: 40,
+            height: 40,
             borderRadius: "50%",
-            background: "var(--color-accent-800)",
-            color: "var(--color-accent-100)",
+            background: "#2d2a55",
+            color: "#c9c2f5",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontFamily: "var(--font-heading)",
-            fontSize: 14,
-            fontWeight: 500,
+            fontFamily: "var(--font-display)",
+            fontSize: 15,
+            fontWeight: 600,
           }}
         >
           {name.charAt(0)}
