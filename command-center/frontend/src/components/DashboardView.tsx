@@ -28,8 +28,8 @@ const MONO = "var(--font-mono)";
 
 type WidgetId =
   | "hero" | "dueSoon" | "agenda" | "assistant"
-  | "scripts" | "grades" | "homelab" | "lists" | "activity";
-type Footprint = "wide" | "tall" | "small" | "strip";
+  | "scripts" | "grades" | "homelab" | "lists";
+type Footprint = "wide" | "tall" | "small";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
   wide: [{ gridColumn: "1 / 3", gridRow: "1" }, { gridColumn: "1 / 3", gridRow: "2" }],
@@ -38,14 +38,12 @@ const SLOTS: Record<Footprint, CSSProperties[]> = {
     { gridColumn: "1", gridRow: "3" }, { gridColumn: "2", gridRow: "3" },
     { gridColumn: "3", gridRow: "3" }, { gridColumn: "4", gridRow: "3" },
   ],
-  strip: [{ gridColumn: "1 / 5", gridRow: "4" }],
 };
 
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
   tall: ["agenda", "assistant"],
   small: ["scripts", "grades", "homelab", "lists"],
-  strip: ["activity"],
 };
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
@@ -57,10 +55,9 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
   homelab: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
-  activity: { footprint: "strip", style: { background: "#0e0f16", border: "1px solid #1b1e2c", borderRadius: 14, padding: "13px 20px", display: "flex", alignItems: "center", gap: 24, fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)", overflow: "hidden" } },
 };
 
-const ORDER: Footprint[] = ["wide", "tall", "small", "strip"];
+const ORDER: Footprint[] = ["wide", "tall", "small"];
 
 function Label({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
   return (
@@ -99,7 +96,7 @@ export default function DashboardView() {
   const { user } = useAuth();
   const clock = useClock();
   const { setView } = useNav();
-  const { courses, deadlines, gradeEvents } = useDashboardData();
+  const { courses, deadlines } = useDashboardData();
   const { items: grocery } = useGrocery();
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
@@ -246,20 +243,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-    activity: (
-      <>
-        <span style={{ color: "var(--cc-accent)", letterSpacing: ".08em", flexShrink: 0 }}>▸ ACTIVITY</span>
-        {gradeEvents.length === 0 ? (
-          <span style={{ flexShrink: 0 }}>agent posts grade changes and syncs here</span>
-        ) : (
-          gradeEvents.slice(0, 3).map((e) => (
-            <span key={e.id} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{e.title} <span style={{ color: "var(--cc-good)" }}>✓</span></span>
-          ))
-        )}
-        <span style={{ marginLeft: "auto", flexShrink: 0, color: "var(--cc-dim)" }}>{clock.hm} {clock.ampm}</span>
-      </>
-    ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, gradeEvents, topCourse]);
+  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse]);
 
   return (
     <div className="cc-grid">

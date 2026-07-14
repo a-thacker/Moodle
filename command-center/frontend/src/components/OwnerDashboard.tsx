@@ -3,7 +3,7 @@
 
 import { NavProvider, useNav } from "../nav/NavContext.tsx";
 import LauncherRail from "./LauncherRail.tsx";
-import TopBar from "./TopBar.tsx";
+import CommandBar from "./CommandBar.tsx";
 import CommandPalette from "./CommandPalette.tsx";
 import DashboardView from "./DashboardView.tsx";
 import FocusView from "./FocusView.tsx";
@@ -67,9 +67,9 @@ export default function OwnerDashboard() {
         }}
       >
         <LauncherRail />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 18, minWidth: 0 }}>
-          <TopBar />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 16, minWidth: 0 }}>
           <ActiveView />
+          <CommandBar />
         </div>
         <CommandPalette />
       </div>

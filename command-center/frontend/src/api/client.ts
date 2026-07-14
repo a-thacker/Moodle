@@ -94,6 +94,14 @@ export const api = {
       }),
   },
 
+  assistant: {
+    chat: (message: string) =>
+      apiFetch<{ reply: string; available: boolean }>("/api/v1/assistant/chat", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      }),
+  },
+
   grocery: {
     list: () => apiFetch<GroceryItem[]>("/api/v1/grocery"),
     add: (name: string, quantity?: string) =>

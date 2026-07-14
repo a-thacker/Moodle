@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     roommate_password: str | None = None
     roommate_name: str = "Roommate"
 
+    # --- Assistant (Ollama) ---------------------------------------------
+    ollama_url: str = "http://ollama:11434"
+    # Empty until a model is pulled on the server; set e.g. "llama3.2:3b".
+    ollama_model: str = ""
+
     # --- PostgreSQL ------------------------------------------------------
     postgres_host: str = "postgres"
     postgres_port: int = 5432

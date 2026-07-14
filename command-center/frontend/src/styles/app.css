@@ -112,7 +112,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: minmax(150px, 1.1fr) minmax(150px, 1fr) minmax(150px, 1fr) auto;
+  grid-template-rows: minmax(150px, 1.1fr) minmax(150px, 1fr) minmax(150px, 1fr);
   gap: 16px;
   min-height: 0;
 }
