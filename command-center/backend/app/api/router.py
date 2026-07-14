@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.routes import assistant, auth, eclass, grocery, scripts, tasks
+from app.api.routes import assistant, auth, eclass, grocery, scripts, tasks, usage
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -19,3 +19,4 @@ api_router.include_router(eclass.router)
 api_router.include_router(scripts.router)
 api_router.include_router(tasks.router)
 api_router.include_router(assistant.router)
+api_router.include_router(usage.router)

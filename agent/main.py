@@ -175,6 +175,34 @@ def keepalive(store: SnapshotStore) -> int:
     return 0
 
 
+def claude_usage(config: AgentConfig) -> int:
+    """Summarize local Claude Code usage and push it to the backend."""
+    from . import claude_usage as cu
+
+    summary = cu.summarize()
+    print(
+        f"Claude usage — today: {summary['today']['tokens']:,} tok "
+        f"(${summary['today']['costEst']}); total: {summary['totals']['tokens']:,} tok "
+        f"(${summary['totals']['costEst']}) across {summary['messages']:,} messages."
+    )
+    if not config.backend_enabled:
+        logger.info("Backend not configured; not pushing usage.")
+        return 0
+    try:
+        resp = requests.put(
+            f"{config.cc_api_url.rstrip('/')}/api/v1/ingest/claude-usage",
+            json=summary,
+            headers={"X-API-Key": config.cc_api_key},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        print("Pushed to Command Center.")
+    except requests.RequestException as exc:
+        logger.warning("Usage push failed: %s", exc)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     cli = argparse.ArgumentParser(
         prog="agent", description="Personal Command Center sync agent"
@@ -199,6 +227,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="Show stored snapshots and recent runs")
     sub.add_parser(
         "keepalive", help="Probe eClass to keep the session warm (no full sync)"
+    )
+    sub.add_parser(
+        "claude-usage", help="Summarize local Claude Code usage and push it"
     )
 
     args = cli.parse_args(argv)
@@ -241,6 +272,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "keepalive":
         return keepalive(store)
+
+    if args.command == "claude-usage":
+        return claude_usage(config)
 
     return 1
 

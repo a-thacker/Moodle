@@ -83,3 +83,18 @@ export interface TaskPatch {
   done?: boolean;
   due_date?: string | null;
 }
+
+export interface UsageBucket {
+  tokens: number;
+  costEst: number;
+}
+
+export interface ClaudeUsage {
+  generatedAt?: string;
+  updatedAt?: string;
+  messages?: number;
+  totals?: UsageBucket;
+  today?: UsageBucket;
+  week?: UsageBucket;
+  byModel?: Record<string, UsageBucket>;
+}

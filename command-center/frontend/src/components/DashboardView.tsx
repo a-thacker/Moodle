@@ -21,14 +21,22 @@ import { useDashboardData } from "../hooks/useDashboardData";
 import { useGrocery } from "../hooks/useGrocery";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
-import type { Deadline, ScriptInfo } from "../types";
+import type { ClaudeUsage, Deadline, ScriptInfo } from "../types";
 import { relativeDay } from "../utils/format";
 
 const MONO = "var(--font-mono)";
 
+function fmtTok(n?: number): string {
+  if (!n) return "0";
+  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
+}
+
 type WidgetId =
   | "hero" | "dueSoon" | "agenda" | "assistant"
-  | "scripts" | "grades" | "homelab" | "lists";
+  | "scripts" | "grades" | "claude" | "lists";
 type Footprint = "wide" | "tall" | "small";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
@@ -43,7 +51,7 @@ const SLOTS: Record<Footprint, CSSProperties[]> = {
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
   tall: ["agenda", "assistant"],
-  small: ["scripts", "grades", "homelab", "lists"],
+  small: ["scripts", "grades", "claude", "lists"],
 };
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
@@ -53,7 +61,7 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   assistant: { footprint: "tall", style: { background: "linear-gradient(180deg,#181a2b,#141420)", border: "1px solid #2a2550", borderRadius: "var(--cc-radius)", padding: "22px 24px", display: "flex", flexDirection: "column", minHeight: 0 } },
   scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
-  homelab: { footprint: "small", className: "cc-tile" },
+  claude: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
 };
 
@@ -99,11 +107,13 @@ export default function DashboardView() {
   const { courses, deadlines } = useDashboardData();
   const { items: grocery } = useGrocery();
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
+  const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
   useEffect(() => { api.scripts.list().then(setScripts).catch(() => {}); }, []);
+  useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
   useEffect(() => setArrangement(loadArrangement(user?.id)), [user?.id]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
@@ -218,16 +228,21 @@ export default function DashboardView() {
         </div>
       </>
     ),
-    homelab: (
+    claude: (
       <>
-        <Label extra={<span style={{ color: "var(--cc-good)" }}>live soon</span>}>HOMELAB</Label>
-        <div style={{ display: "flex", flexDirection: "column", gap: 11, fontSize: 13, fontFamily: MONO }}>
-          {[["backend", "ok"], ["postgres", "ok"], ["frontend", "ok"], ["ollama", "idle"]].map(([svc, state]) => (
-            <div key={svc} style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--cc-text)" }}><span style={{ color: "var(--cc-good)" }}>●</span> {svc}</span>
-              <span style={{ color: "var(--cc-muted)" }}>{state}</span>
-            </div>
-          ))}
+        <Label extra={usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}>CLAUDE USAGE</Label>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--cc-bright)", lineHeight: 1 }}>{fmtTok(usage?.today?.tokens)}</span>
+          <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>tok today</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 14, fontSize: 12, fontFamily: MONO }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.tokens)} · ~${usage?.week?.costEst ?? 0}</span></div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>all time</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.totals?.tokens)} · ~${usage?.totals?.costEst ?? 0}</span></div>
+          {usage?.byModel && Object.keys(usage.byModel)[0] && (
+            <div style={{ color: "var(--cc-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>top: {Object.keys(usage.byModel)[0].replace("claude-", "")}</div>
+          )}
+          {!usage && <div style={{ color: "var(--cc-muted)" }}>Run `agent claude-usage`.</div>}
         </div>
       </>
     ),
@@ -243,7 +258,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse]);
+  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage]);
 
   return (
     <div className="cc-grid">

@@ -5,6 +5,7 @@
 // auth layer can log the user out.
 
 import type {
+  ClaudeUsage,
   Course,
   Deadline,
   GradeEvent,
@@ -136,4 +137,5 @@ export const api = {
   courses: () => apiFetch<Course[]>("/api/v1/courses"),
   deadlines: () => apiFetch<Deadline[]>("/api/v1/deadlines"),
   gradeEvents: () => apiFetch<GradeEvent[]>("/api/v1/grade-events"),
+  claudeUsage: () => apiFetch<ClaudeUsage>("/api/v1/claude-usage"),
 };
