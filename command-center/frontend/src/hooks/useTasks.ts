@@ -1,25 +1,33 @@
 // Tasks state backed by the API. Optimistic toggle/remove, reload after
-// mutations so the ordering (open first, by due date) stays correct.
+// mutations. A global "cc-tasks-changed" event keeps every view in sync — so
+// a task added from the omni-bar shows up in Notes/Planner without a refresh.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { Task } from "../types";
+import type { Task, TaskPatch } from "../types";
+
+const TASKS_CHANGED = "cc-tasks-changed";
+
+export function notifyTasksChanged(): void {
+  window.dispatchEvent(new Event(TASKS_CHANGED));
+}
 
 export interface UseTasks {
   tasks: Task[];
   loaded: boolean;
+  refresh: () => void;
   add: (title: string, dueDate?: string | null) => void;
   toggle: (task: Task) => void;
   remove: (id: number) => void;
-  setDue: (id: number, dueDate: string | null) => void;
+  patch: (id: number, patch: TaskPatch) => Promise<void>;
 }
 
 export function useTasks(): UseTasks {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  function refresh(): void {
+  const refresh = useCallback(() => {
     api.tasks
       .list()
       .then((rows) => {
@@ -27,29 +35,34 @@ export function useTasks(): UseTasks {
         setLoaded(true);
       })
       .catch(() => {});
-  }
+  }, []);
 
-  useEffect(refresh, []);
+  useEffect(() => {
+    refresh();
+    window.addEventListener(TASKS_CHANGED, refresh);
+    return () => window.removeEventListener(TASKS_CHANGED, refresh);
+  }, [refresh]);
 
-  function add(title: string, dueDate?: string | null): void {
+  const add = useCallback((title: string, dueDate?: string | null) => {
     const trimmed = title.trim();
     if (!trimmed) return;
-    api.tasks.add(trimmed, dueDate ?? null).then(refresh).catch(() => {});
-  }
+    api.tasks.add(trimmed, dueDate ?? null).then(notifyTasksChanged).catch(() => {});
+  }, []);
 
-  function toggle(task: Task): void {
+  const toggle = useCallback((task: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, done: !t.done } : t)));
-    api.tasks.update(task.id, { done: !task.done }).then(refresh).catch(() => {});
-  }
+    api.tasks.update(task.id, { done: !task.done }).then(notifyTasksChanged).catch(() => {});
+  }, []);
 
-  function remove(id: number): void {
+  const remove = useCallback((id: number) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    api.tasks.remove(id).then(refresh).catch(() => {});
-  }
+    api.tasks.remove(id).then(notifyTasksChanged).catch(() => {});
+  }, []);
 
-  function setDue(id: number, dueDate: string | null): void {
-    api.tasks.update(id, { due_date: dueDate }).then(refresh).catch(() => {});
-  }
+  const patch = useCallback(async (id: number, p: TaskPatch) => {
+    await api.tasks.update(id, p);
+    notifyTasksChanged();
+  }, []);
 
-  return { tasks, loaded, add, toggle, remove, setDue };
+  return { tasks, loaded, refresh, add, toggle, remove, patch };
 }

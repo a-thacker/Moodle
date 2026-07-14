@@ -67,8 +67,11 @@ export default function OwnerDashboard() {
         }}
       >
         <LauncherRail />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 16, minWidth: 0 }}>
-          <ActiveView />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 16, minWidth: 0, minHeight: 0 }}>
+          {/* Contained so no view can overflow onto (and cover) the command bar. */}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <ActiveView />
+          </div>
           <CommandBar />
         </div>
         <CommandPalette />

@@ -73,6 +73,7 @@ export interface Task {
   body: string | null;
   done: boolean;
   dueDate: string | null; // YYYY-MM-DD
+  position: number;
   createdAt: string;
   doneAt: string | null;
 }
@@ -82,6 +83,7 @@ export interface TaskPatch {
   body?: string | null;
   done?: boolean;
   due_date?: string | null;
+  position?: number;
 }
 
 export interface UsageBucket {

@@ -19,6 +19,7 @@ class TaskUpdate(BaseModel):
     body: str | None = None
     done: bool | None = None
     due_date: date | None = None
+    position: float | None = None
 
 
 class TaskRead(BaseModel):
@@ -29,5 +30,6 @@ class TaskRead(BaseModel):
     body: str | None
     done: bool
     due_date: date | None
+    position: float
     created_at: datetime
     done_at: datetime | None

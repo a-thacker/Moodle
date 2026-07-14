@@ -15,6 +15,7 @@ import {
 
 import { api } from "../api/client";
 import { useClock } from "../hooks/useClock";
+import { notifyTasksChanged } from "../hooks/useTasks";
 import { useNav } from "../nav/NavContext.tsx";
 
 type Mode = "task" | "command" | "ai";
@@ -77,6 +78,7 @@ export default function CommandBar() {
     try {
       if (mode === "task") {
         await api.tasks.add(body);
+        notifyTasksChanged();
         update(id, { output: "Added to Tasks.", ok: true, pending: false });
       } else if (mode === "command") {
         const r = await api.scripts.run({ command: body });
@@ -104,7 +106,7 @@ export default function CommandBar() {
   const m = MODES[mode];
 
   return (
-    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 10 }}>
       {entries.length > 0 && (
         <div
           ref={panelRef}

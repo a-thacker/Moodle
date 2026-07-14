@@ -15,6 +15,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -40,6 +41,8 @@ class Task(Base):
     body: Mapped[str | None] = mapped_column(Text, default=None)
     done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, default=None, index=True)
+    # Manual sort order (within a day / list). Lower = higher up.
+    position: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), index=True, nullable=False
     )

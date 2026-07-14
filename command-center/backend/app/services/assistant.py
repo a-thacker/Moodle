@@ -9,6 +9,8 @@ gracefully when no model is configured.
 from __future__ import annotations
 
 import logging
+import re
+from datetime import date
 
 import httpx
 from sqlalchemy import delete, select
@@ -17,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.models.chat import ChatMessage
 from app.models.user import User
+from app.schemas.task import TaskCreate
+from app.services import task as task_service
 from app.services.context import build_user_context
 
 logger = logging.getLogger(__name__)
@@ -25,9 +29,48 @@ _SYSTEM = (
     "You are the assistant built into Alden's personal Command Center — a "
     "self-hosted dashboard for school and daily life. Be concise, direct, and "
     "practical. Use the user's data below to answer specifically; if something "
-    "isn't in the data, say so rather than inventing it."
+    "isn't in the data, say so rather than inventing it.\n\n"
+    "You can add tasks to the user's list. ONLY when the user asks you to "
+    "add/create/remind or schedule something, put each task on its own line "
+    "at the very end of your reply in EXACTLY this format:\n"
+    "ADD_TASK: <title> [@ YYYY-MM-DD]\n"
+    "The date is optional. Do not use this format for anything else, and do "
+    "not mention the format to the user."
 )
 _HISTORY_LIMIT = 12
+_ADD_TASK_RE = re.compile(r"^\s*ADD_TASK:\s*(.+?)\s*$", re.IGNORECASE)
+_DATE_RE = re.compile(r"@\s*(\d{4}-\d{2}-\d{2})\s*$")
+
+
+async def _apply_actions(session: AsyncSession, user: User, reply: str) -> str:
+    """Extract ADD_TASK directives, create the tasks, and replace the lines
+    with a short confirmation so the user never sees the raw directives."""
+    kept: list[str] = []
+    created: list[str] = []
+    for line in reply.splitlines():
+        m = _ADD_TASK_RE.match(line)
+        if not m:
+            kept.append(line)
+            continue
+        rest = m.group(1).strip()
+        due = None
+        dm = _DATE_RE.search(rest)
+        if dm:
+            try:
+                due = date.fromisoformat(dm.group(1))
+                rest = rest[: dm.start()]
+            except ValueError:
+                due = None
+        # Trim trailing separators the model may have used before the date.
+        rest = rest.rstrip(" -—–|@·:").strip()
+        if rest:
+            await task_service.create_task(session, user.id, TaskCreate(title=rest, due_date=due))
+            created.append(rest + (f" (due {due:%b %d})" if due else ""))
+
+    out = "\n".join(kept).strip()
+    if created:
+        out += ("\n\n" if out else "") + "✓ Added to your tasks: " + "; ".join(created)
+    return out
 
 
 async def _load_history(session: AsyncSession, user_id) -> list[ChatMessage]:
@@ -75,6 +118,7 @@ async def chat(session: AsyncSession, user: User, message: str) -> dict:
         return {"reply": f"Assistant is unreachable right now ({exc}).", "available": False}
 
     reply = reply or "(no response)"
+    reply = await _apply_actions(session, user, reply)
     session.add(ChatMessage(user_id=user.id, role="user", content=message))
     session.add(ChatMessage(user_id=user.id, role="assistant", content=reply))
     await session.commit()

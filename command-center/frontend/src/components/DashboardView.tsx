@@ -19,6 +19,7 @@ import { useAuth } from "../auth/AuthContext.tsx";
 import { useClock } from "../hooks/useClock";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useGrocery } from "../hooks/useGrocery";
+import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
 import type { ClaudeUsage, Deadline, ScriptInfo } from "../types";
@@ -57,7 +58,7 @@ const DEFAULT: Record<Footprint, WidgetId[]> = {
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
   hero: { footprint: "wide", style: { background: "linear-gradient(135deg,#8b7cf0,#6857c8)", borderRadius: "var(--cc-radius)", padding: "26px 28px", color: "#100f1c", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" } },
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
-  agenda: { footprint: "tall", className: "cc-tile" },
+  agenda: { footprint: "tall", className: "cc-tile cc-clickable", view: "planner" },
   assistant: { footprint: "tall", style: { background: "linear-gradient(180deg,#181a2b,#141420)", border: "1px solid #2a2550", borderRadius: "var(--cc-radius)", padding: "22px 24px", display: "flex", flexDirection: "column", minHeight: 0 } },
   scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
@@ -106,6 +107,7 @@ export default function DashboardView() {
   const { setView } = useNav();
   const { courses, deadlines } = useDashboardData();
   const { items: grocery } = useGrocery();
+  const { tasks } = useTasks();
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
@@ -136,6 +138,10 @@ export default function DashboardView() {
   const firstName = (user?.display_name ?? "there").split(" ")[0];
   const topCourse = courses[0];
   const grocOutstanding = grocery.filter((g) => !g.done);
+  const weekTasks = tasks
+    .filter((t) => !t.done && t.dueDate)
+    .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))
+    .slice(0, 7);
 
   // Inner content per widget (closes over the live data above).
   const content = useMemo<Record<WidgetId, ReactNode>>(() => ({
@@ -176,13 +182,21 @@ export default function DashboardView() {
     ),
     agenda: (
       <>
-        <Label extra="soon">TODAY</Label>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--cc-muted)", textAlign: "center" }}>
-          <i className="ph ph-calendar-blank" style={{ fontSize: 26 }} />
-          <div style={{ fontSize: 13 }}>Agenda connects to<br />Google Calendar next.</div>
+        <Label extra="this week">PLANNER</Label>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11, overflowY: "auto", minHeight: 0, fontSize: 13 }}>
+          {weekTasks.length === 0 ? (
+            <div style={{ color: "var(--cc-muted)" }}>No dated tasks yet — plan some in the week planner.</div>
+          ) : (
+            weekTasks.map((t) => (
+              <div key={t.id} style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
+                <span style={{ fontFamily: MONO, color: "var(--cc-accent-soft)", fontSize: 12, width: 58, flexShrink: 0 }}>{relativeDay(t.dueDate + "T00:00:00")}</span>
+                <span style={{ flex: 1, color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+              </div>
+            ))
+          )}
         </div>
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #232739", fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)" }}>
-          next → {deadlines[0] ? <span style={{ color: "var(--cc-accent-soft)" }}>{deadlines[0].title} · {relativeDay(deadlines[0].due)}</span> : "nothing due"}
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #232739", fontFamily: MONO, fontSize: 12, color: "var(--cc-muted)" }}>
+          {tasks.filter((t) => !t.done).length} open · tap to plan →
         </div>
       </>
     ),
@@ -258,7 +272,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage]);
+  }), [clock, firstName, deadlines, courses, scripts, grocery, grocOutstanding, topCourse, usage, weekTasks, tasks]);
 
   return (
     <div className="cc-grid">
