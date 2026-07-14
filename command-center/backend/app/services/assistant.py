@@ -1,9 +1,9 @@
-"""Assistant chat via Ollama.
+"""Assistant chat via Ollama, made system-aware.
 
-Talks to the local Ollama engine. Degrades gracefully: until a model is
-pulled on the server and OLLAMA_MODEL is set, this returns a friendly
-"unavailable" reply instead of erroring, so the omni-bar's AI mode is ready
-the moment a model exists.
+Each turn injects the user's live Command Center context (date, weather,
+tasks, deadlines, grades, grocery) as the system prompt, and replays recent
+conversation history so the assistant has persistent memory. Degrades
+gracefully when no model is configured.
 """
 
 from __future__ import annotations
@@ -11,42 +11,71 @@ from __future__ import annotations
 import logging
 
 import httpx
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.models.chat import ChatMessage
+from app.models.user import User
+from app.services.context import build_user_context
 
 logger = logging.getLogger(__name__)
 
 _SYSTEM = (
-    "You are the assistant inside Alden's personal Command Center. Be concise "
-    "and practical. You help with school, tasks, and planning."
+    "You are the assistant built into Alden's personal Command Center — a "
+    "self-hosted dashboard for school and daily life. Be concise, direct, and "
+    "practical. Use the user's data below to answer specifically; if something "
+    "isn't in the data, say so rather than inventing it."
 )
+_HISTORY_LIMIT = 12
 
 
-async def chat(message: str) -> dict:
+async def _load_history(session: AsyncSession, user_id) -> list[ChatMessage]:
+    result = await session.execute(
+        select(ChatMessage)
+        .where(ChatMessage.user_id == user_id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(_HISTORY_LIMIT)
+    )
+    return list(reversed(result.scalars().all()))
+
+
+async def clear_history(session: AsyncSession, user_id) -> None:
+    await session.execute(delete(ChatMessage).where(ChatMessage.user_id == user_id))
+    await session.commit()
+
+
+async def chat(session: AsyncSession, user: User, message: str) -> dict:
     settings = get_settings()
     if not settings.ollama_model:
         return {
             "reply": (
                 "The assistant isn't available yet — no local model is loaded. "
-                "Pull one on the server (e.g. `ollama pull llama3.2:3b`) and set "
-                "OLLAMA_MODEL in the backend env."
+                "Pull one (e.g. `ollama pull gemma3:4b`) and set OLLAMA_MODEL."
             ),
             "available": False,
         }
+
+    context = await build_user_context(session, user)
+    history = await _load_history(session, user.id)
+    messages = [{"role": "system", "content": f"{_SYSTEM}\n\n--- LIVE CONTEXT ---\n{context}"}]
+    messages += [{"role": m.role, "content": m.content} for m in history]
+    messages.append({"role": "user", "content": message})
+
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=180) as client:
             resp = await client.post(
-                f"{settings.ollama_url}/api/generate",
-                json={
-                    "model": settings.ollama_model,
-                    "system": _SYSTEM,
-                    "prompt": message,
-                    "stream": False,
-                },
+                f"{settings.ollama_url}/api/chat",
+                json={"model": settings.ollama_model, "messages": messages, "stream": False},
             )
             resp.raise_for_status()
-            data = resp.json()
-        return {"reply": (data.get("response") or "").strip() or "(no response)", "available": True}
+            reply = (resp.json().get("message", {}).get("content") or "").strip()
     except (httpx.HTTPError, ValueError) as exc:
         logger.warning("Assistant call failed: %s", exc)
         return {"reply": f"Assistant is unreachable right now ({exc}).", "available": False}
+
+    reply = reply or "(no response)"
+    session.add(ChatMessage(user_id=user.id, role="user", content=message))
+    session.add(ChatMessage(user_id=user.id, role="assistant", content=reply))
+    await session.commit()
+    return {"reply": reply, "available": True}
