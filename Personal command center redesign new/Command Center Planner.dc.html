@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0b11; --tile:#161824; --border:#20233a;
+    --muted:#6b7089; --dim:#4a5170; --text:#c7cbd6; --bright:#f0f1f6;
+    --accent:#8b7cf0; --accent-soft:#a99cf5;
+    --good:#5fce9b; --warn:#e0a84e; --bad:#e0654e;
+    --disp:'Space Grotesk',sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace; --body:'Instrument Sans',system-ui,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--body);overflow:hidden;}
+  ::-webkit-scrollbar{width:7px;height:7px;}
+  ::-webkit-scrollbar-thumb{background:#2a2e42;border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  a{color:var(--accent-soft);text-decoration:none;} a:hover{color:#c9c2f5;}
+  @keyframes glow{0%,100%{opacity:.45;}50%{opacity:1;}}
+  @keyframes nowpulse{0%,100%{box-shadow:0 0 0 3px #8b7cf033;}50%{box-shadow:0 0 0 5px #8b7cf01f;}}
+  .pulse{animation:glow 2.4s ease-in-out infinite;}
+  .rl{transition:color .15s,background .15s;} .rl:hover{color:#c7cbd6 !important;background:#181a26;}
+  .rl.on{color:#0e0f16 !important;background:var(--accent);}
+  .ct{transition:border-color .15s,transform .1s;} .ct:hover{border-color:#2f3450 !important;}
+  .tk{transition:border-color .12s,background .12s;} .tk:hover{border-color:#33395c !important;background:#171928 !important;}
+  .scr{transition:border-color .12s,background .12s;} .scr:hover{border-color:#3a3170 !important;background:#12131d !important;}
+  .grip{opacity:.35;transition:opacity .15s;} .ct:hover .grip{opacity:.8;}
+</style>
+</helmet>
+
+<div style="height:100vh; display:flex; background:var(--bg);">
+
+  <!-- LAUNCHER RAIL -->
+  <nav style="width:74px; flex:none; display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 0; border-right:1px solid #14161f;">
+    <a href="#" class="rl" title="Command (⌘K)" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#a99cf5; border:1px solid #2a2550; margin-bottom:6px;"><i class="ph ph-command" style="font-size:20px;"></i></a>
+    <a href="#" class="rl on" title="Dashboard" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px;"><i class="ph ph-squares-four" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Grades" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-student" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Deadlines" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-calendar-dots" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Grocery" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-basket" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Notes" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-note" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Planner" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-calendar-check" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Scripts" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-terminal-window" style="font-size:21px;"></i></a>
+    <a href="#" class="rl" title="Assistant" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-sparkle" style="font-size:21px;"></i></a>
+    <div style="margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:8px;">
+      <a href="#" class="rl" title="Settings" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-gear-six" style="font-size:21px;"></i></a>
+      <a href="#" class="rl" title="Sign out" style="width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:13px; color:#7a8099;"><i class="ph ph-sign-out" style="font-size:20px;"></i></a>
+      <div title="Alden · owner" style="width:38px; height:38px; border-radius:50%; background:#2d2a55; color:#c9c2f5; display:flex; align-items:center; justify-content:center; font-weight:600; font-family:var(--disp); font-size:15px;">A</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main style="flex:1; display:flex; flex-direction:column; min-width:0; padding:20px 22px; gap:16px;">
+
+    <div style="flex:1; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:minmax(158px,1.1fr) minmax(110px,1fr) minmax(120px,1fr); gap:16px; min-height:0;">
+
+      <!-- HERO -->
+      <div style="grid-column:1 / 3; grid-row:1; position:relative; background:linear-gradient(135deg,#8b7cf0,#6857c8); border-radius:20px; padding:26px 28px; color:#100f1c; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+        <div style="position:absolute; right:-40px; top:-40px; width:190px; height:190px; border-radius:50%; background:#ffffff1f;"></div>
+        <div style="position:absolute; right:70px; bottom:-56px; width:120px; height:120px; border-radius:50%; background:#ffffff14;"></div>
+        <div style="position:relative;">
+          <div style="font-size:14px; font-weight:600; opacity:.62;">{{ dateLong }}</div>
+          <div style="font-family:var(--disp); font-weight:700; font-size:clamp(26px,3.4vw,38px); line-height:1.05; margin-top:6px;">{{ greeting }}, {{ firstName }}.</div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; position:relative;">
+          <div>
+            <div style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; opacity:.66;"><span class="pulse" style="width:7px; height:7px; border-radius:50%; background:#1f7a4d;"></span>Agent synced · Collegedale, TN</div>
+            <div style="font-family:var(--disp); font-size:22px; font-weight:600; opacity:.9; margin-top:2px;">Weather · soon</div>
+          </div>
+          <div style="font-family:var(--mono); font-size:12px; font-weight:600; opacity:.72;">{{ hm }} {{ ampm }}</div>
+        </div>
+      </div>
+
+      <!-- PLANNER (the star) -->
+      <div class="ct" style="grid-column:3 / 5; grid-row:1 / 3; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:20px 22px; display:flex; flex-direction:column; min-height:0; cursor:pointer;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px;">
+          <div style="display:flex; align-items:center; gap:9px;">
+            <i class="ph ph-calendar-check" style="color:var(--accent-soft); font-size:17px;"></i>
+            <span style="font-family:var(--mono); font-size:12px; letter-spacing:.09em; color:var(--muted);">PLANNER</span>
+          </div>
+          <span style="font-family:var(--mono); font-size:12px; letter-spacing:.05em; color:var(--muted);">{{ openCount }} open · plan →</span>
+        </div>
+        <!-- category legend -->
+        <div style="display:flex; gap:15px; margin-bottom:16px; font-family:var(--mono); font-size:10px; letter-spacing:.04em; color:var(--dim);">
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:2px; background:#e0654e;"></span>SCHOOL</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:2px; background:#a99cf5;"></span>MEETING</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:2px; background:#5fce9b;"></span>HOME</span>
+          <span style="display:flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:2px; background:#e0a84e;"></span>WORK</span>
+        </div>
+        <div style="flex:1; display:flex; gap:14px; min-height:0;" onclick="event.stopPropagation()">
+          <sc-for list="{{ columns }}" as="col" hint-placeholder-count="2">
+            <div style="flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; background:{{ col.colBg }}; border:1px solid {{ col.colBorder }}; border-radius:14px; padding:13px 13px 11px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <div>
+                  <div style="font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:{{ col.accent }};">{{ col.label }}</div>
+                  <div style="font-size:12px; color:var(--muted); margin-top:3px;">{{ col.sub }}</div>
+                </div>
+                <span style="font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:999px; background:{{ col.pillBg }}; color:{{ col.pillColor }}; white-space:nowrap; flex-shrink:0;">{{ col.count }} left</span>
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:6px; overflow-y:auto; min-height:0; padding-right:2px;">
+                <sc-if value="{{ col.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="color:var(--dim); font-size:12.5px; padding:6px 2px;">Nothing planned — enjoy the gap.</div>
+                </sc-if>
+                <sc-for list="{{ col.rows }}" as="t" hint-placeholder-count="4">
+                  <sc-if value="{{ t.isNow }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex; align-items:center; gap:8px; margin:3px 0 2px;">
+                      <span style="width:7px; height:7px; border-radius:50%; background:var(--accent); animation:nowpulse 2.2s ease-in-out infinite;"></span>
+                      <div style="flex:1; height:1px; background:linear-gradient(90deg,#8b7cf0,#8b7cf022 70%,transparent);"></div>
+                      <span style="font-family:var(--mono); font-size:9.5px; letter-spacing:.09em; color:var(--accent-soft);">NOW · {{ t.nowLabel }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ t.isTask }}" hint-placeholder-val="{{ true }}">
+                    <div class="tk" style="display:flex; align-items:center; gap:8px; padding:8px 9px; background:#12131d; border:1px solid var(--border); border-left:3px solid {{ t.catColor }}; border-radius:9px;">
+                      <button onClick="{{ t.onToggle }}" style="background:none; border:none; padding:0; display:flex; cursor:pointer; flex-shrink:0;">
+                        <sc-if value="{{ t.done }}" hint-placeholder-val="{{ false }}"><i class="ph-fill ph-check-circle" style="font-size:16px; color:{{ t.catColor }};"></i></sc-if>
+                        <sc-if value="{{ t.notDone }}" hint-placeholder-val="{{ true }}"><i class="ph ph-circle" style="font-size:16px; color:#3a3f57;"></i></sc-if>
+                      </button>
+                      <span style="flex:1; min-width:0; font-size:13px; line-height:1.35; color:{{ t.titleColor }}; text-decoration:{{ t.titleDeco }}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><span style="font-family:var(--mono); font-size:11px; color:{{ t.timeColor }}; margin-right:7px;">{{ t.timeLabel }}</span>{{ t.title }}</span>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+              <div style="margin-top:10px; padding-top:9px; border-top:1px solid {{ col.colBorder }}; font-family:var(--mono); font-size:11px; color:var(--dim); display:flex; align-items:center; gap:6px; cursor:text;"><i class="ph ph-plus" style="font-size:12px;"></i> add to {{ col.addLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- DUE SOON -->
+      <div class="ct" style="grid-column:1 / 3; grid-row:2; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:20px 22px; display:flex; flex-direction:column; cursor:pointer;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="display:flex; justify-content:space-between; margin-bottom:16px;">
+          <span style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted);">DUE SOON</span>
+          <span style="font-family:var(--mono); font-size:12px; color:var(--muted);">eClass timeline</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px; font-size:14px;">
+          <div style="display:flex; align-items:center; gap:13px;"><span style="width:9px; height:9px; border-radius:50%; background:var(--bad);"></span><span style="flex:1; color:var(--bright);">Journal Entry #2</span><span style="font-family:var(--mono); color:var(--muted); font-size:12px;">S-L</span><span style="color:var(--bad); font-size:13px; width:74px; text-align:right;">Tomorrow</span></div>
+          <div style="display:flex; align-items:center; gap:13px;"><span style="width:9px; height:9px; border-radius:50%; background:var(--warn);"></span><span style="flex:1; color:var(--bright);">Site hours log</span><span style="font-family:var(--mono); color:var(--muted); font-size:12px;">S-L</span><span style="color:var(--muted); font-size:13px; width:74px; text-align:right;">Fri</span></div>
+          <div style="display:flex; align-items:center; gap:13px; opacity:.75;"><span style="width:9px; height:9px; border-radius:50%; background:var(--dim);"></span><span style="flex:1;">Reflection paper</span><span style="font-family:var(--mono); color:var(--muted); font-size:12px;">S-L</span><span style="color:var(--muted); font-size:13px; width:74px; text-align:right;">Jul 24</span></div>
+        </div>
+      </div>
+
+      <!-- GRADES -->
+      <div class="ct" style="grid-column:1; grid-row:3; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; cursor:pointer;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted); margin-bottom:12px;">GRADES <span style="color:var(--dim);">· S26</span></div>
+        <div style="display:flex; align-items:baseline; gap:8px;"><span style="font-family:var(--disp); font-size:34px; font-weight:700; color:var(--good); line-height:1;">100%</span><span style="font-size:11px; color:var(--good); background:#5fce9b1a; padding:2px 7px; border-radius:6px; font-family:var(--mono);">on track</span></div>
+        <div style="display:flex; flex-direction:column; gap:9px; margin-top:16px; font-size:12px;">
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:60px; color:#8a90a8; font-family:var(--mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">S26 S-L</span><div style="flex:1; height:5px; background:#232739; border-radius:3px; overflow:hidden;"><div style="width:100%; height:100%; background:linear-gradient(90deg,#5fce9b,#8b7cf0);"></div></div><span style="color:var(--text); width:26px; text-align:right;">100</span></div>
+        </div>
+      </div>
+
+      <!-- SCRIPTS -->
+      <div class="ct" style="grid-column:2; grid-row:3; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; cursor:pointer;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted); margin-bottom:12px;">SCRIPTS <span style="color:var(--dim);">· one-tap</span></div>
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <button class="scr" style="display:flex; align-items:center; gap:9px; text-align:left; background:#0f101a; border:1px solid #262a3b; border-radius:9px; padding:8px 11px; cursor:pointer;"><span style="color:var(--good); font-family:var(--mono); font-size:12px;">▸</span><span style="flex:1; color:var(--text); font-size:13px;">Disk Usage</span></button>
+          <button class="scr" style="display:flex; align-items:center; gap:9px; text-align:left; background:#0f101a; border:1px solid #262a3b; border-radius:9px; padding:8px 11px; cursor:pointer;"><span style="color:var(--warn); font-family:var(--mono); font-size:12px;">▸</span><span style="flex:1; color:var(--text); font-size:13px;">eClass Login</span></button>
+          <button class="scr" style="display:flex; align-items:center; gap:9px; text-align:left; background:#0f101a; border:1px solid #262a3b; border-radius:9px; padding:8px 11px; cursor:pointer;"><span style="color:var(--accent-soft); font-family:var(--mono); font-size:12px;">▸</span><span style="flex:1; color:var(--text); font-size:13px;">Gamdl</span></button>
+        </div>
+      </div>
+
+      <!-- APARTMENT LIST -->
+      <div class="ct" style="grid-column:3; grid-row:3; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; cursor:pointer;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted); margin-bottom:13px;">APARTMENT LIST <span style="color:var(--dim);">· shared</span></div>
+        <div style="display:flex; flex-direction:column; gap:9px; font-size:13px;">
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:6px; height:6px; border-radius:50%; background:var(--good);"></span><span style="flex:1; color:var(--text);">Ground beef</span><span style="font-family:var(--mono); font-size:10px; color:var(--dim);">A</span></div>
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:6px; height:6px; border-radius:50%; background:var(--accent-soft);"></span><span style="flex:1; color:var(--text);">Tortillas</span><span style="font-family:var(--mono); font-size:10px; color:var(--dim);">S</span></div>
+          <div style="display:flex; align-items:center; gap:9px;"><span style="width:6px; height:6px; border-radius:50%; background:var(--accent-soft);"></span><span style="flex:1; color:var(--text);">Dish soap</span><span style="font-family:var(--mono); font-size:10px; color:var(--dim);">S</span></div>
+          <div style="display:flex; align-items:center; gap:9px; opacity:.5;"><i class="ph-fill ph-check-circle" style="font-size:12px; color:var(--good);"></i><span style="flex:1; color:var(--dim); text-decoration:line-through;">Oat milk</span></div>
+        </div>
+      </div>
+
+      <!-- CLAUDE USAGE -->
+      <div class="ct" style="grid-column:4; grid-row:3; position:relative; background:var(--tile); border:1px solid transparent; border-radius:20px; padding:18px 20px; display:flex; flex-direction:column;">
+        <i class="ph ph-dots-six-vertical grip" style="position:absolute; top:12px; right:12px; font-size:15px; color:var(--dim);"></i>
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px;"><span style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--muted);">CLAUDE USAGE</span><span style="font-family:var(--mono); font-size:12px; color:var(--muted);">Jul 14</span></div>
+        <div style="display:flex; align-items:baseline; gap:8px;"><span style="font-family:var(--disp); font-size:30px; font-weight:700; color:var(--accent-soft); line-height:1;">675.3K</span><span style="font-size:12px; color:var(--muted);">today</span></div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:14px; font-size:11.5px; font-family:var(--mono);">
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted);">today est</span><span style="color:var(--text);">~$597.18</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted);">this week</span><span style="color:var(--text);">1.9M · ~$1142</span></div>
+          <div style="display:flex; justify-content:space-between; align-items:center;"><span style="color:var(--muted);">session</span><span style="color:var(--good); display:flex; align-items:center; gap:5px;"><span class="pulse" style="width:6px; height:6px; border-radius:50%; background:var(--good);"></span>healthy</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COMMAND BAR -->
+    <div style="flex:none; display:flex; align-items:center; gap:14px; background:var(--tile); border:1px solid var(--border); border-radius:14px; padding:11px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#0f101a; border:1px solid #262a3b; border-radius:9px; padding:6px 11px; color:var(--accent-soft); font-size:13px;"><i class="ph ph-note" style="font-size:15px;"></i>Task</div>
+      <input placeholder="Add a task…  (try “Dinner @ Tony's -7pm”)" style="flex:1; background:none; border:none; outline:none; color:var(--text); font-family:var(--body); font-size:14px;">
+      <span style="font-family:var(--mono); font-size:11px; color:var(--muted); border:1px solid #262a3b; border-radius:6px; padding:3px 8px;">⌘K</span>
+      <span style="display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:12px; color:var(--muted);"><span class="pulse" style="width:7px; height:7px; border-radius:50%; background:var(--good);"></span>{{ hm }} {{ ampm }}</span>
+    </div>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { now: new Date(), tasks: null };
+  componentDidMount() {
+    this.setState({ tasks: this.seed() });
+    this._t = setInterval(() => this.setState({ now: new Date() }), 20000);
+  }
+  componentWillUnmount() { if (this._t) clearInterval(this._t); }
+  seed() {
+    return [
+      { id: 1,  day: 'today',    min: 510,  title: 'S-L project standup',       cat: 'school',  done: true },
+      { id: 2,  day: 'today',    min: 600,  title: 'Advisor check-in',          cat: 'meeting', done: true },
+      { id: 3,  day: 'today',    min: 750,  title: 'Grocery run · ground beef', cat: 'home',    done: false },
+      { id: 4,  day: 'today',    min: 840,  title: 'IT help desk shift',        cat: 'work',    done: false },
+      { id: 5,  day: 'today',    min: 1050, title: 'Cook dinner · tacos',       cat: 'home',    done: false },
+      { id: 6,  day: 'today',    min: 1200, title: 'Reflection journal entry',  cat: 'school',  done: false },
+      { id: 7,  day: 'today',    min: null, title: 'Take out trash',            cat: 'home',    done: false },
+      { id: 8,  day: 'tomorrow', min: 540,  title: 'Read Ch. 4 — Ethics',       cat: 'school',  done: false },
+      { id: 9,  day: 'tomorrow', min: 840,  title: 'Team meeting',              cat: 'meeting', done: false },
+      { id: 10, day: 'tomorrow', min: 1124, title: "Dinner @ Tony's Pasta Shop",cat: 'home',    done: false },
+      { id: 11, day: 'tomorrow', min: null, title: 'Call Jesus',                cat: 'meeting', done: false },
+      { id: 12, day: 'tomorrow', min: null, title: 'Laundry',                   cat: 'home',    done: false },
+    ];
+  }
+  toggle(id) { this.setState(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) })); }
+  fmt(min) {
+    if (min == null) return null;
+    let h = Math.floor(min / 60), m = min % 60;
+    const ap = h < 12 ? 'AM' : 'PM';
+    const h12 = ((h + 11) % 12) + 1;
+    return m ? `${h12}:${String(m).padStart(2, '0')} ${ap}` : `${h12} ${ap}`;
+  }
+  renderVals() {
+    const now = this.state.now;
+    const p2 = n => String(n).padStart(2, '0');
+    const h = now.getHours(), mi = now.getMinutes();
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const h12 = ((h + 11) % 12) + 1;
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const greeting = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    const nowMin = h * 60 + mi;
+    const nowLabel = `${h12}:${p2(mi)} ${ampm}`;
+    const tmr = new Date(now); tmr.setDate(tmr.getDate() + 1);
+    const cat = { school:{c:'#e0654e'}, meeting:{c:'#a99cf5'}, home:{c:'#5fce9b'}, work:{c:'#e0a84e'} };
+    const tasks = this.state.tasks || [];
+    const sortT = (a, b) => {
+      if (a.min != null && b.min != null) return a.min - b.min;
+      if (a.min != null) return -1;
+      if (b.min != null) return 1;
+      return 0;
+    };
+    const shortTime = min => {
+      if (min == null) return '—';
+      let hh = Math.floor(min / 60), mm = min % 60;
+      const ap = hh < 12 ? 'a' : 'p';
+      const h12b = ((hh + 11) % 12) + 1;
+      return mm ? `${h12b}:${String(mm).padStart(2, '0')}${ap}` : `${h12b}${ap}`;
+    };
+    const mkRow = t => ({
+      key: 't' + t.id, isTask: true, isNow: false, done: t.done, notDone: !t.done,
+      title: t.title, timeLabel: shortTime(t.min), timed: t.min != null, catColor: cat[t.cat].c,
+      timeColor: t.min != null ? (t.done ? '#4a5170' : '#a99cf5') : '#3a3f57',
+      titleColor: t.done ? '#4a5170' : '#dfe2ec', titleDeco: t.done ? 'line-through' : 'none',
+      onToggle: () => this.toggle(t.id),
+    });
+    const todayT = tasks.filter(t => t.day === 'today').sort(sortT);
+    const todayRows = [];
+    let placedNow = false;
+    todayT.forEach(t => {
+      if (!placedNow && t.min != null && t.min > nowMin) {
+        todayRows.push({ key: 'now', isNow: true, isTask: false, nowLabel });
+        placedNow = true;
+      }
+      todayRows.push(mkRow(t));
+    });
+    if (!placedNow) todayRows.push({ key: 'now', isNow: true, isTask: false, nowLabel });
+    const tomorrowRows = tasks.filter(t => t.day === 'tomorrow').sort(sortT).map(mkRow);
+    const remToday = tasks.filter(t => t.day === 'today' && !t.done).length;
+    const remTmr = tasks.filter(t => t.day === 'tomorrow' && !t.done).length;
+    const sd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const columns = [
+      { key: 'today', label: 'TODAY', addLabel: 'today', sub: `${sd[now.getDay()]} · ${months[now.getMonth()]} ${now.getDate()}`,
+        accent: '#a99cf5', pillBg: '#8b7cf022', pillColor: '#a99cf5', colBg: '#8b7cf00a', colBorder: '#2f2a55',
+        count: remToday, empty: todayRows.filter(r => r.isTask).length === 0, rows: todayRows },
+      { key: 'tomorrow', label: 'TOMORROW', addLabel: 'tomorrow', sub: `${sd[tmr.getDay()]} · ${months[tmr.getMonth()]} ${tmr.getDate()}`,
+        accent: '#8a90a8', pillBg: '#20233a', pillColor: '#9aa0b8', colBg: 'transparent', colBorder: '#20233a',
+        count: remTmr, empty: tomorrowRows.length === 0, rows: tomorrowRows },
+    ];
+    const openCount = tasks.filter(t => !t.done).length;
+    return {
+      greeting, firstName: 'Alden',
+      dateLong: `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`,
+      hm: `${h12}:${p2(mi)}`, ampm, columns, openCount,
+    };
+  }
+}
+</script>
+</body>
+</html>

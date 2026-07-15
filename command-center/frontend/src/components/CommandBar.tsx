@@ -51,10 +51,26 @@ export default function CommandBar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const timers = useRef<Set<ReturnType<typeof setInterval>>>(new Set());
+  // Date to apply to the next quick-added task (set by the planner's
+  // "+ add to today/tomorrow" footer); cleared after one task.
+  const pendingDate = useRef<string | null>(null);
 
   useEffect(() => {
     panelRef.current?.scrollTo(0, panelRef.current.scrollHeight);
   }, [entries]);
+
+  // The planner footer ("+ add to today/tomorrow") focuses this bar in task
+  // mode and pre-targets that day.
+  useEffect(() => {
+    const onQuickAdd = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { date?: string } | undefined;
+      pendingDate.current = detail?.date ?? null;
+      setMode("task");
+      inputRef.current?.focus();
+    };
+    window.addEventListener("cc:quickadd", onQuickAdd);
+    return () => window.removeEventListener("cc:quickadd", onQuickAdd);
+  }, []);
 
   // Keep the script registry handy for name resolution while in script mode.
   useEffect(() => {
@@ -132,7 +148,9 @@ export default function CommandBar() {
       if (mode === "task") {
         const { title, time, dates } = parseTaskInput(body);
         const todayStr = new Date().toLocaleDateString("en-CA");
-        const targets: (string | null)[] = dates.length ? dates : [time ? todayStr : null];
+        const fallback = time ? todayStr : pendingDate.current;
+        const targets: (string | null)[] = dates.length ? dates : [fallback];
+        pendingDate.current = null;
         for (const d of targets) await api.tasks.add(title, d, time);
         notifyTasksChanged();
         const suffix = dates.length > 1 ? ` on ${dates.length} days` : dates.length === 1 ? ` for ${dates[0]}` : "";

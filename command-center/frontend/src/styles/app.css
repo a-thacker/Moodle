@@ -104,6 +104,37 @@ body {
 .pulse {
   animation: glow 2.4s ease-in-out infinite;
 }
+
+/* The planner's live "now" divider dot. */
+@keyframes nowpulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px #8b7cf033;
+  }
+  50% {
+    box-shadow: 0 0 0 5px #8b7cf01f;
+  }
+}
+
+/* Planner task cards + one-tap script rows: subtle hover lift. */
+.cc-taskcard {
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.cc-taskcard:hover {
+  border-color: #33395c;
+  background: #171928;
+}
+.cc-scriptrow {
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.cc-scriptrow:hover {
+  border-color: #3a3170;
+  background: #12131d;
+}
 .status-dot {
   width: 8px;
   height: 8px;
@@ -117,7 +148,9 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: minmax(150px, 1.1fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  /* Row 1 a touch taller so the hero heading (clamped) never clips its
+     weather line when it wraps. */
+  grid-template-rows: minmax(158px, 1.1fr) minmax(110px, 1fr) minmax(120px, 1fr);
   gap: 16px;
   min-height: 0;
 }
