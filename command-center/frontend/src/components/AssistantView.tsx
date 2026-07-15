@@ -22,13 +22,24 @@ interface Msg {
   pending?: boolean;
 }
 
-const SUGGESTIONS = [
+const OWNER_SUGGESTIONS = [
   "What's on my plate today?",
   "Add gym mon/wed/fri at 6am",
   "What's due this week?",
 ];
 
-export default function AssistantView() {
+interface AssistantViewProps {
+  // Defaults describe the owner's Claude assistant; the sibling passes its own.
+  subtitle?: string;
+  errorHint?: string;
+  suggestions?: string[];
+}
+
+export default function AssistantView({
+  subtitle = "Claude · knows & can edit your planner (via cc)",
+  errorHint = "Request failed. Is the Claude bridge running?",
+  suggestions = OWNER_SUGGESTIONS,
+}: AssistantViewProps = {}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -66,7 +77,7 @@ export default function AssistantView() {
     } catch {
       setMessages((prev) => {
         const next = [...prev];
-        next[next.length - 1] = { role: "assistant", content: "Request failed. Is the Claude bridge running?" };
+        next[next.length - 1] = { role: "assistant", content: errorHint };
         return next;
       });
     } finally {
@@ -99,9 +110,7 @@ export default function AssistantView() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <span className="pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--cc-accent)" }} />
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: 0 }}>Assistant</h2>
-        <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>
-          Claude · knows &amp; can edit your dashboard (via <code style={{ color: "var(--cc-accent-soft)" }}>cc</code>)
-        </span>
+        <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>{subtitle}</span>
         {messages.length > 0 && (
           <button className="btn btn-ghost" style={{ marginLeft: "auto", fontSize: 12 }} onClick={clearAll}>
             Clear
@@ -129,7 +138,7 @@ export default function AssistantView() {
             <div style={{ fontSize: 15, color: "var(--cc-text)", marginBottom: 6 }}>Ask about your schedule, or tell me to change it.</div>
             <div style={{ fontSize: 13, color: "var(--cc-muted)", marginBottom: 18 }}>I know your grades, deadlines, tasks, and lists — and I can act on them.</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => void send(s)}

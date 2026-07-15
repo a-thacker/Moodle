@@ -151,13 +151,25 @@ async def _call_ollama(system: str, messages: list[dict], url: str, model: str) 
     return (data.get("message", {}).get("content") or "").strip()
 
 
+async def _call_openai(system: str, messages: list[dict], key: str, model: str, base_url: str) -> str:
+    async with httpx.AsyncClient(timeout=90) as client:
+        resp = await client.post(
+            f"{base_url.rstrip('/')}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"model": model, "messages": [{"role": "system", "content": system}, *messages]},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    return (data["choices"][0]["message"]["content"] or "").strip()
+
+
 async def chat(session: AsyncSession, user: User, message: str) -> dict:
     settings = get_settings()
 
-    # Preferred provider: the host Claude bridge (subscription, free, and it
-    # can act on the dashboard via `cc`). It owns conversation memory, so we
+    # The OWNER's assistant is the host Claude bridge (subscription, free, and
+    # it can act on the dashboard via `cc`). It owns conversation memory, so we
     # just relay the message and persist both turns for the UI history.
-    if settings.claude_bridge_url:
+    if user.role == "owner" and settings.claude_bridge_url:
         try:
             result = await _call_claude_bridge(settings.claude_bridge_url, message, user.id)
         except httpx.HTTPError as exc:
@@ -169,9 +181,11 @@ async def chat(session: AsyncSession, user: User, message: str) -> dict:
         await session.commit()
         return {"reply": reply, "available": bool(result.get("available", True))}
 
-    if not settings.anthropic_api_key and not settings.ollama_model:
+    # Everyone else (the sibling) uses a context-injected chat model. The
+    # sibling runs on OpenAI (his own key); Anthropic/Ollama are fallbacks.
+    if not (settings.openai_api_key or settings.anthropic_api_key or settings.ollama_model):
         return {
-            "reply": "The assistant isn't configured yet — set CLAUDE_BRIDGE_URL (subscription), ANTHROPIC_API_KEY (Claude API), or OLLAMA_MODEL (local).",
+            "reply": "The assistant isn't configured yet — set OPENAI_API_KEY (for the sibling account), ANTHROPIC_API_KEY, or OLLAMA_MODEL.",
             "available": False,
         }
 
@@ -181,11 +195,13 @@ async def chat(session: AsyncSession, user: User, message: str) -> dict:
     messages.append({"role": "user", "content": message})
 
     try:
-        if settings.anthropic_api_key:
+        if settings.openai_api_key:
+            reply = await _call_openai(system, messages, settings.openai_api_key, settings.openai_model, settings.openai_base_url)
+        elif settings.anthropic_api_key:
             reply = await _call_anthropic(system, messages, settings.anthropic_api_key, settings.anthropic_model)
         else:
             reply = await _call_ollama(system, messages, settings.ollama_url, settings.ollama_model)
-    except (httpx.HTTPError, ValueError) as exc:
+    except (httpx.HTTPError, ValueError, KeyError, IndexError) as exc:
         logger.warning("Assistant call failed: %s", exc)
         return {"reply": f"Assistant is unreachable right now ({exc}).", "available": False}
 

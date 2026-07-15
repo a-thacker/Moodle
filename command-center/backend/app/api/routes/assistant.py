@@ -6,13 +6,13 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_owner
+from app.api.deps import require_ai_user
 from app.db.session import get_db
 from app.models.user import User
 from app.services import assistant as assistant_service
 from app.services.context import build_user_context
 
-router = APIRouter(prefix="/assistant", tags=["assistant"], dependencies=[Depends(require_owner)])
+router = APIRouter(prefix="/assistant", tags=["assistant"], dependencies=[Depends(require_ai_user)])
 
 
 class ChatRequest(BaseModel):
@@ -32,7 +32,7 @@ class ChatMessageOut(BaseModel):
 @router.get("/history", response_model=list[ChatMessageOut])
 async def history(
     session: AsyncSession = Depends(get_db),
-    user: User = Depends(require_owner),
+    user: User = Depends(require_ai_user),
 ) -> list[ChatMessageOut]:
     msgs = await assistant_service.list_history(session, user.id)
     return [ChatMessageOut(role=m.role, content=m.content) for m in msgs]
@@ -42,7 +42,7 @@ async def history(
 async def chat(
     payload: ChatRequest,
     session: AsyncSession = Depends(get_db),
-    user: User = Depends(require_owner),
+    user: User = Depends(require_ai_user),
 ) -> ChatReply:
     result = await assistant_service.chat(session, user, payload.message)
     return ChatReply(**result)
@@ -51,7 +51,7 @@ async def chat(
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
 async def clear_history(
     session: AsyncSession = Depends(get_db),
-    user: User = Depends(require_owner),
+    user: User = Depends(require_ai_user),
 ) -> None:
     await assistant_service.clear_history(session, user.id)
 
@@ -59,7 +59,7 @@ async def clear_history(
 @router.get("/context")
 async def context(
     session: AsyncSession = Depends(get_db),
-    user: User = Depends(require_owner),
+    user: User = Depends(require_ai_user),
 ) -> dict[str, str]:
     """The live dashboard context (date, weather, tasks, deadlines, grades,
     grocery) — used by the `cc` CLI so Claude Code understands the state."""

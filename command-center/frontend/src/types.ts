@@ -2,7 +2,7 @@
 // will return (see command-center/backend/app/models). Until those endpoints
 // exist, components read the same shapes from src/data/sample.ts.
 
-export type Role = "owner" | "roommate";
+export type Role = "owner" | "roommate" | "sibling";
 
 export interface Course {
   id: number;

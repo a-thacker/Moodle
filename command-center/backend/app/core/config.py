@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     roommate_email: str | None = None
     roommate_password: str | None = None
     roommate_name: str = "Roommate"
+    # Optional "sibling" account — a scaled-down experience (planner, grades,
+    # AI). Leave unset to keep the whole feature dormant.
+    sibling_email: str | None = None
+    sibling_password: str | None = None
+    sibling_name: str = "Sibling"
 
     # --- Assistant ------------------------------------------------------
     # Claude bridge (preferred): a tiny host service that runs headless
@@ -70,6 +75,10 @@ class Settings(BaseSettings):
     # server's .env.
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
+    # OpenAI — used by the sibling account (his own key/spend). Empty disables.
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
 
     # --- Weather (Open-Meteo — free, no API key) ------------------------
     weather_latitude: float = 35.0526   # Collegedale, TN

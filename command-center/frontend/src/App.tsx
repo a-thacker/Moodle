@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
 import Login from "./components/Login.tsx";
 import OwnerDashboard from "./components/OwnerDashboard.tsx";
+import SiblingDashboard from "./components/SiblingDashboard.tsx";
 import RoommateGrocery from "./components/RoommateGrocery.tsx";
 
 // Role now comes from the authenticated user (owner sees everything, roommate
@@ -27,7 +28,9 @@ function Routed() {
     );
   }
   if (!user) return <Login />;
-  return user.role === "owner" ? <OwnerDashboard /> : <RoommateGrocery />;
+  if (user.role === "owner") return <OwnerDashboard />;
+  if (user.role === "sibling") return <SiblingDashboard />;
+  return <RoommateGrocery />;
 }
 
 export default function App() {

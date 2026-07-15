@@ -46,6 +46,18 @@ async def _seed() -> int:
             print(f"roommate seeded: {roommate.email} ({roommate.display_name})")
         else:
             print("roommate skipped (ROOMMATE_EMAIL/ROOMMATE_PASSWORD unset)")
+
+        if settings.sibling_email and settings.sibling_password:
+            sibling = await user_service.upsert_user(
+                session,
+                email=settings.sibling_email,
+                password=settings.sibling_password,
+                display_name=settings.sibling_name,
+                role="sibling",
+            )
+            print(f"sibling seeded: {sibling.email} ({sibling.display_name})")
+        else:
+            print("sibling skipped (SIBLING_EMAIL/SIBLING_PASSWORD unset)")
     return 0
 
 

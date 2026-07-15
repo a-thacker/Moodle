@@ -91,9 +91,12 @@ async def build_user_context(session: AsyncSession, user: User) -> str:
                 pct = f"{c.total_percent}%" if c.total_percent is not None else "n/a"
                 lines.append(f"  - {c.full_name}: {pct}")
 
-    grocery = [g for g in await grocery_service.list_items(session) if not g.done]
-    if grocery:
-        names = ", ".join(g.name for g in grocery[:25])
-        lines.append(f"Grocery to buy: {names}.")
+    # Grocery is the shared apartment list — owner + roommate only, never the
+    # sibling.
+    if user.role in ("owner", "roommate"):
+        grocery = [g for g in await grocery_service.list_items(session) if not g.done]
+        if grocery:
+            names = ", ".join(g.name for g in grocery[:25])
+            lines.append(f"Grocery to buy: {names}.")
 
     return "\n".join(lines)

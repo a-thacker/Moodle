@@ -58,6 +58,17 @@ async def require_owner(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+async def require_ai_user(user: User = Depends(get_current_user)) -> User:
+    """Assistant access: the owner (Claude) and the sibling (OpenAI). The
+    grocery-only roommate is excluded."""
+    if user.role not in ("owner", "sibling"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Assistant not available for this account",
+        )
+    return user
+
+
 async def require_agent_key(
     x_api_key: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),

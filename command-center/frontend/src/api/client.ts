@@ -69,7 +69,7 @@ export interface CurrentUser {
   id: string;
   email: string;
   display_name: string;
-  role: "owner" | "roommate";
+  role: "owner" | "roommate" | "sibling";
 }
 
 export const api = {
