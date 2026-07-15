@@ -8,7 +8,7 @@ import { ROOMMATE_NAME } from "../data/sample";
 import GroceryRow from "./GroceryRow.tsx";
 
 export default function GroceryCard() {
-  const { items, loaded, add, toggle } = useGrocery();
+  const { items, loaded, add, toggle, remove } = useGrocery();
   const [draft, setDraft] = useState("");
   const doneCount = items.filter((i) => i.done).length;
 
@@ -46,7 +46,7 @@ export default function GroceryCard() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {items.map((item) => (
-          <GroceryRow key={item.id} item={item} onToggle={toggle} />
+          <GroceryRow key={item.id} item={item} onToggle={toggle} onRemove={remove} />
         ))}
       </div>
 

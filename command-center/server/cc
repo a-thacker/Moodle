@@ -6,11 +6,15 @@ is the owner login from command-center/.env (OWNER_EMAIL/OWNER_PASSWORD). No
 third-party deps — stdlib only.
 
     cc context               # date, weather, tasks, deadlines, grades, grocery
-    cc tasks                 # list tasks
-    cc add "Title" [DATE] [TIME]     # DATE=YYYY-MM-DD  TIME=HH:MM  (optional)
+    cc tasks                 # list tasks (with [id] and #category)
+    cc add "Title" [DATE] [TIME] [CATEGORY]   # DATE=YYYY-MM-DD TIME=HH:MM
+                             #   CATEGORY = school|meeting|home|work (optional)
     cc done <id> | cc undone <id> | cc rm <id>
     cc grades | cc deadlines
-    cc grocery | cc grocery add "Milk"
+    cc grocery                       # list (with [id])
+    cc grocery add "Milk"            # add an item
+    cc grocery rm <id>               # remove an item
+    cc grocery done <id> | undone <id>
 """
 
 import json
@@ -77,15 +81,18 @@ def main() -> None:
             mark = "x" if t["done"] else " "
             due = f"  @{t['dueDate']}" if t["dueDate"] else ""
             tm = f" {t['dueTime'][:5]}" if t.get("dueTime") else ""
-            print(f"[{t['id']:>4}] [{mark}] {t['title']}{due}{tm}")
+            cat = f"  #{t['category']}" if t.get("category") else ""
+            print(f"[{t['id']:>4}] [{mark}] {t['title']}{due}{tm}{cat}")
     elif cmd == "add":
         if not rest:
-            sys.exit('usage: cc add "Title" [YYYY-MM-DD] [HH:MM]')
+            sys.exit('usage: cc add "Title" [YYYY-MM-DD] [HH:MM] [category]')
         body = {"title": rest[0]}
         if len(rest) > 1:
             body["due_date"] = rest[1]
         if len(rest) > 2:
             body["due_time"] = rest[2]
+        if len(rest) > 3:
+            body["category"] = rest[3]
         _, b = req("POST", "/api/v1/tasks", tok, body)
         print(f"added task {b['id']}: {b['title']}")
     elif cmd in ("done", "undone"):
@@ -104,12 +111,18 @@ def main() -> None:
             print(f"{d['due'][:10]}  {d['title']}  ({d['courseName']})")
     elif cmd == "grocery":
         if rest and rest[0] == "add":
-            req("POST", "/api/v1/grocery", tok, {"name": rest[1]})
-            print(f"added {rest[1]}")
+            _, b = req("POST", "/api/v1/grocery", tok, {"name": rest[1]})
+            print(f"added grocery {b['id']}: {b['name']}")
+        elif rest and rest[0] == "rm":
+            req("DELETE", f"/api/v1/grocery/{rest[1]}", tok)
+            print(f"removed grocery {rest[1]}")
+        elif rest and rest[0] in ("done", "undone"):
+            req("PATCH", f"/api/v1/grocery/{rest[1]}", tok, {"done": rest[0] == "done"})
+            print(f"{rest[0]} grocery {rest[1]}")
         else:
             _, b = req("GET", "/api/v1/grocery", tok)
             for g in b:
-                print(f"[{'x' if g['done'] else ' '}] {g['name']}")
+                print(f"[{g['id']:>4}] [{'x' if g['done'] else ' '}] {g['name']}")
     else:
         sys.exit(f"unknown command: {cmd}\n{__doc__}")
 

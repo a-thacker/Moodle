@@ -7,10 +7,11 @@ import type { GroceryItem } from "../types";
 interface GroceryRowProps {
   item: GroceryItem;
   onToggle: (id: number) => void;
+  onRemove?: (id: number) => void;
   size?: "compact" | "roomy";
 }
 
-export default function GroceryRow({ item, onToggle, size = "compact" }: GroceryRowProps) {
+export default function GroceryRow({ item, onToggle, onRemove, size = "compact" }: GroceryRowProps) {
   const roomy = size === "roomy";
   const iconSize = roomy ? 20 : 18;
   const avatar = roomy ? 22 : 20;
@@ -64,6 +65,16 @@ export default function GroceryRow({ item, onToggle, size = "compact" }: Grocery
       >
         {item.addedByInitial}
       </span>
+      {onRemove && (
+        <button
+          type="button"
+          title="Remove"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(item.id); }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--cc-dim)", padding: 2, display: "flex", flexShrink: 0 }}
+        >
+          <i className="ph ph-x" style={{ fontSize: roomy ? 14 : 12 }} />
+        </button>
+      )}
     </label>
   );
 }

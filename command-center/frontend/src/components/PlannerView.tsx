@@ -7,7 +7,8 @@ import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react
 
 import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types";
-import { extractTime, fmtTime } from "../utils/time";
+import { parseTaskInput, fmtTime } from "../utils/time";
+import { taskColor } from "../utils/category";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -39,7 +40,7 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
     <div
       onDragOver={onOver}
       onDrop={onDrop}
-      style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#1c1f2e", border: "1px solid #2b3048", borderRadius: 9, padding: "8px 9px", fontSize: 13, userSelect: "none" }}
+      style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#1c1f2e", border: "1px solid #2b3048", borderLeft: `3px solid ${taskColor(task)}`, borderRadius: 9, padding: "8px 9px", fontSize: 13, userSelect: "none" }}
     >
       {/* Grip is the drag source — reliable, and never grabs text. */}
       <span
@@ -130,14 +131,13 @@ export default function PlannerView() {
 
   const byKey = (k: string | null): Task[] => {
     const list = tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate));
-    if (!k) return list.sort((a, b) => a.position - b.position);
-    // Dated columns: timed events first (by time), then untimed by position.
-    return list.sort((a, b) => {
-      if (a.dueTime && b.dueTime) return a.dueTime < b.dueTime ? -1 : a.dueTime > b.dueTime ? 1 : a.position - b.position;
-      if (a.dueTime) return -1;
-      if (b.dueTime) return 1;
-      return a.position - b.position;
-    });
+    // Manual order (position) is authoritative so drag-to-reorder sticks for
+    // every card — timed or not. Ties fall back to time, then creation order.
+    return list.sort((a, b) =>
+      a.position !== b.position
+        ? a.position - b.position
+        : (a.dueTime ?? "~") < (b.dueTime ?? "~") ? -1 : (a.dueTime ?? "~") > (b.dueTime ?? "~") ? 1 : 0,
+    );
   };
 
   function endDrag() { dragRef.current = null; setOverKey(null); setIndicator(null); setDragActive(false); }
@@ -169,9 +169,10 @@ export default function PlannerView() {
   function addTo(dateStr: string | null, e: FormEvent) {
     e.preventDefault();
     const key = dateStr ?? "none";
-    const { title, time } = extractTime(drafts[key] ?? "");
+    // Column already fixes the day, so we only take the time + #category here.
+    const { title, time, category } = parseTaskInput(drafts[key] ?? "");
     if (!title.trim()) return;
-    add(title, dateStr, time);
+    add(title, dateStr, time, category);
     setDrafts((s) => ({ ...s, [key]: "" }));
   }
 

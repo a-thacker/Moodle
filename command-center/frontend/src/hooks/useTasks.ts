@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { Task, TaskPatch } from "../types";
+import type { Task, TaskCategory, TaskPatch } from "../types";
 
 const TASKS_CHANGED = "cc-tasks-changed";
 
@@ -17,7 +17,7 @@ export interface UseTasks {
   tasks: Task[];
   loaded: boolean;
   refresh: () => void;
-  add: (title: string, dueDate?: string | null, dueTime?: string | null) => void;
+  add: (title: string, dueDate?: string | null, dueTime?: string | null, category?: TaskCategory | null) => void;
   toggle: (task: Task) => void;
   remove: (id: number) => void;
   patch: (id: number, patch: TaskPatch) => Promise<void>;
@@ -43,10 +43,10 @@ export function useTasks(): UseTasks {
     return () => window.removeEventListener(TASKS_CHANGED, refresh);
   }, [refresh]);
 
-  const add = useCallback((title: string, dueDate?: string | null, dueTime?: string | null) => {
+  const add = useCallback((title: string, dueDate?: string | null, dueTime?: string | null, category?: TaskCategory | null) => {
     const trimmed = title.trim();
     if (!trimmed) return;
-    api.tasks.add(trimmed, dueDate ?? null, dueTime ?? null).then(notifyTasksChanged).catch(() => {});
+    api.tasks.add(trimmed, dueDate ?? null, dueTime ?? null, category ?? null).then(notifyTasksChanged).catch(() => {});
   }, []);
 
   const toggle = useCallback((task: Task) => {

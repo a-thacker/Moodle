@@ -52,6 +52,8 @@ export interface AgentStatus {
   notifyChannel: string;
 }
 
+export type TaskCategory = "school" | "meeting" | "home" | "work";
+
 export interface Task {
   id: number;
   title: string;
@@ -59,9 +61,22 @@ export interface Task {
   done: boolean;
   dueDate: string | null; // YYYY-MM-DD
   dueTime: string | null; // HH:MM:SS
+  category: TaskCategory | null;
   position: number;
   createdAt: string;
   doneAt: string | null;
+}
+
+export interface Weather {
+  available: boolean;
+  label: string;
+  temp?: number;
+  feelsLike?: number;
+  high?: number;
+  low?: number;
+  text?: string;
+  icon?: string; // phosphor icon name, e.g. "ph-sun"
+  isDay?: boolean;
 }
 
 // Laptop script runner: a script offered by the Mac, and a queued run of one.
@@ -90,6 +105,7 @@ export interface TaskPatch {
   done?: boolean;
   due_date?: string | null;
   due_time?: string | null;
+  category?: TaskCategory | null;
   position?: number;
 }
 

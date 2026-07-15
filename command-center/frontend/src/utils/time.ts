@@ -50,6 +50,16 @@ const DAY_FLAG: Record<string, number> = {
 const FLAG_RE =
   /(?:^|\s)-(every|weekdays|weekend|sunday|saturday|thursday|wednesday|tuesday|monday|friday|thurs|thur|tues|sun|sat|mon|tue|wed|thu|fri|wd|we|su|sa|th|e|m|t|w|f)(?=\s|$)/gi;
 
+// Category tags: "#school #meeting #home #work" (also #s #m #h #w, #sch #mtg …).
+export type Category = "school" | "meeting" | "home" | "work";
+const CAT_FLAG: Record<string, Category> = {
+  school: "school", sch: "school", s: "school",
+  meeting: "meeting", meet: "meeting", mtg: "meeting", m: "meeting",
+  home: "home", hm: "home", h: "home",
+  work: "work", wk: "work", w: "work",
+};
+const CAT_RE = /(?:^|\s)#(school|meeting|meet|home|work|sch|mtg|wk|hm|s|m|h|w)\b/gi;
+
 function ymdLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -65,13 +75,15 @@ function weekDates(): Date[] {
   });
 }
 
-export function parseTaskInput(text: string): { title: string; time: string | null; dates: string[] } {
+export function parseTaskInput(text: string): { title: string; time: string | null; dates: string[]; category: Category | null } {
   const t = extractTime(text);
   const days = new Set<number>();
   let every = false;
   let weekdays = false;
   let weekend = false;
+  let category: Category | null = null;
   const title = t.title
+    .replace(CAT_RE, (_m, g: string) => { category = CAT_FLAG[g.toLowerCase()] ?? category; return " "; })
     .replace(FLAG_RE, (_m, g: string) => {
       const f = g.toLowerCase();
       if (f === "every" || f === "e") every = true;
@@ -91,5 +103,5 @@ export function parseTaskInput(text: string): { title: string; time: string | nu
         ? [0, 6]
         : [...days];
   const dates = weekDates().filter((d) => picked.includes(d.getDay())).map(ymdLocal);
-  return { title, time: t.time, dates };
+  return { title, time: t.time, dates, category };
 }

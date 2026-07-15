@@ -23,8 +23,10 @@ import { useGrocery } from "../hooks/useGrocery";
 import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, ScriptInfo, Task } from "../types";
+import type { ClaudeUsage, Deadline, ScriptInfo, Task, Weather } from "../types";
 import { relativeDay } from "../utils/format";
+import { CAT_COLOR, CAT_LEGEND, taskColor } from "../utils/category";
+import ClaudeMark from "./ClaudeMark.tsx";
 
 const MONO = "var(--font-mono)";
 
@@ -34,25 +36,6 @@ function fmtTok(n?: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return String(n);
-}
-
-// --- Task categories (derived from the title; the stripe is the only thing
-// that depends on it, so it degrades fine). ------------------------------
-type Category = "school" | "meeting" | "home" | "work";
-const CAT_COLOR: Record<Category, string> = {
-  school: "#e0654e",
-  meeting: "#a99cf5",
-  home: "#5fce9b",
-  work: "#e0a84e",
-};
-const CAT_LEGEND: [Category, string][] = [["school", "SCHOOL"], ["meeting", "MEETING"], ["home", "HOME"], ["work", "WORK"]];
-
-function categorize(title: string): Category {
-  const t = title.toLowerCase();
-  if (/\b(meeting|advisor|call|standup|check-?in|1:1|sync|interview|appt|appointment)\b/.test(t)) return "meeting";
-  if (/\b(dinner|lunch|grocery|groceries|laundry|trash|cook|clean|dishes|apartment|home|rent)\b/.test(t)) return "home";
-  if (/\b(shift|desk|work|clock|invoice|client)\b/.test(t)) return "work";
-  return "school";
 }
 
 function toMin(dueTime: string): number {
@@ -128,7 +111,7 @@ function DayColumn(props: ColumnProps) {
             );
           }
           const t = item.task;
-          const cat = CAT_COLOR[categorize(t.title)];
+          const cat = taskColor(t);
           const timeColor = t.dueTime ? (t.done ? "#4a5170" : "#a99cf5") : "#3a3f57";
           const titleColor = t.done ? "#4a5170" : "#dfe2ec";
           return (
@@ -233,12 +216,19 @@ export default function DashboardView() {
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [scripts, setScripts] = useState<ScriptInfo[]>([]);
   const [ranScript, setRanScript] = useState<string | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(null);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
   useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
   useEffect(() => { api.scripts.list().then(setScripts).catch(() => {}); }, []);
+  useEffect(() => {
+    const load = () => api.weather().then(setWeather).catch(() => {});
+    load();
+    const iv = setInterval(load, 15 * 60 * 1000); // refresh every 15 min
+    return () => clearInterval(iv);
+  }, []);
   useEffect(() => setArrangement(loadArrangement(user?.id)), [user?.id]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
@@ -313,9 +303,17 @@ export default function DashboardView() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", position: "relative" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, opacity: 0.66 }}>
-              <span className="pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "#1f7a4d" }} />Agent synced · Collegedale, TN
+              <span className="pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "#1f7a4d" }} />Agent synced · {weather?.label ?? "Collegedale, TN"}
             </div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, opacity: 0.9, marginTop: 2 }}>Weather · soon</div>
+            {weather?.available ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                <i className={`ph ${weather.icon}`} style={{ fontSize: 26 }} />
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{weather.temp}°</span>
+                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.72 }}>{weather.text} · H {weather.high}° L {weather.low}°</span>
+              </div>
+            ) : (
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, opacity: 0.9, marginTop: 2 }}>Weather · soon</div>
+            )}
           </div>
           <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, opacity: 0.72 }}>{clock.hm} {clock.ampm}</div>
         </div>
@@ -415,7 +413,13 @@ export default function DashboardView() {
     ),
     claude: (
       <>
-        <Label extra={usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}>CLAUDE USAGE</Label>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <ClaudeMark size={15} />
+            <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
+          </span>
+          <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}</span>
+        </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--cc-accent-soft)", lineHeight: 1 }}>{fmtTok(usage?.today?.io)}</span>
           <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>today</span>
@@ -451,7 +455,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, scripts, ranScript, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
+  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, scripts, ranScript, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
 
   return (
     <div className="cc-grid">

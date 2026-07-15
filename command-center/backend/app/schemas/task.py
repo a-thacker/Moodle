@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
+
+CATEGORIES = {"school", "meeting", "home", "work"}
+
+
+def _norm_category(value: str | None) -> str | None:
+    if not value:
+        return None
+    v = value.strip().lower()
+    return v if v in CATEGORIES else None
 
 
 class TaskCreate(BaseModel):
@@ -13,6 +22,12 @@ class TaskCreate(BaseModel):
     body: str | None = None
     due_date: date | None = None
     due_time: time | None = None
+    category: str | None = None
+
+    @field_validator("category")
+    @classmethod
+    def _cat(cls, v: str | None) -> str | None:
+        return _norm_category(v)
 
 
 class TaskUpdate(BaseModel):
@@ -21,7 +36,13 @@ class TaskUpdate(BaseModel):
     done: bool | None = None
     due_date: date | None = None
     due_time: time | None = None
+    category: str | None = None
     position: float | None = None
+
+    @field_validator("category")
+    @classmethod
+    def _cat(cls, v: str | None) -> str | None:
+        return _norm_category(v)
 
 
 class TaskRead(BaseModel):
@@ -33,6 +54,7 @@ class TaskRead(BaseModel):
     done: bool
     due_date: date | None
     due_time: time | None
+    category: str | None
     position: float
     created_at: datetime
     done_at: datetime | None

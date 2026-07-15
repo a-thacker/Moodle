@@ -13,12 +13,16 @@ in that — don't guess.
 ## Commands
 ```
 cc context                         # full snapshot — run this first
-cc tasks                           # list tasks (with [id])
-cc add "Title" [YYYY-MM-DD] [HH:MM]   # create a task; date/time optional
+cc tasks                           # list tasks (with [id] and #category)
+cc add "Title" [YYYY-MM-DD] [HH:MM] [category]   # date/time/category optional
+                                   #   category = school|meeting|home|work
 cc done <id> | cc undone <id>      # check off / un-check
-cc rm <id>                         # delete
+cc rm <id>                         # delete a task
 cc grades | cc deadlines           # eClass data (read-only)
-cc grocery | cc grocery add "Milk" # shared grocery list
+cc grocery                         # shared grocery list (with [id])
+cc grocery add "Milk"              # add an item
+cc grocery rm <id>                 # remove an item (use the id from `cc grocery`)
+cc grocery done <id> | undone <id> # check off / un-check an item
 ```
 
 ## How to act

@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
 
+    # --- Weather (Open-Meteo — free, no API key) ------------------------
+    weather_latitude: float = 35.0526   # Collegedale, TN
+    weather_longitude: float = -85.0491
+    weather_label: str = "Collegedale, TN"
+
     # --- Notifications (ntfy) -------------------------------------------
     ntfy_topic: str = ""  # from NTFY_TOPIC; empty disables reminders
     ntfy_server: str = "https://ntfy.sh"

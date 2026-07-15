@@ -13,7 +13,9 @@ import type {
   ScriptInfo,
   ScriptJob,
   Task,
+  TaskCategory,
   TaskPatch,
+  Weather,
 } from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -121,14 +123,18 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify({ done }),
       }),
+    remove: (id: number) =>
+      apiFetch<void>(`/api/v1/grocery/${id}`, { method: "DELETE" }),
   },
+
+  weather: () => apiFetch<Weather>("/api/v1/weather"),
 
   tasks: {
     list: () => apiFetch<Task[]>("/api/v1/tasks"),
-    add: (title: string, dueDate?: string | null, dueTime?: string | null) =>
+    add: (title: string, dueDate?: string | null, dueTime?: string | null, category?: TaskCategory | null) =>
       apiFetch<Task>("/api/v1/tasks", {
         method: "POST",
-        body: JSON.stringify({ title, due_date: dueDate ?? null, due_time: dueTime ?? null }),
+        body: JSON.stringify({ title, due_date: dueDate ?? null, due_time: dueTime ?? null, category: category ?? null }),
       }),
     update: (id: number, patch: TaskPatch) =>
       apiFetch<Task>(`/api/v1/tasks/${id}`, {

@@ -43,6 +43,9 @@ class Task(Base):
     done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     due_date: Mapped[date | None] = mapped_column(Date, default=None, index=True)
     due_time: Mapped[time | None] = mapped_column(Time, default=None)
+    # Optional category tag (school / meeting / home / work) driving the
+    # planner's colored stripe. None = derive it from the title.
+    category: Mapped[str | None] = mapped_column(String(20), default=None)
     # Manual sort order (within a day / list). Lower = higher up.
     position: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     # ntfy reminders sent for a timed event (reset when the time changes).

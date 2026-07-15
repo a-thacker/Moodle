@@ -13,6 +13,7 @@ export interface UseGrocery {
   loaded: boolean;
   add: (name: string, quantity?: string) => void;
   toggle: (id: number) => void;
+  remove: (id: number) => void;
 }
 
 export function useGrocery(): UseGrocery {
@@ -45,5 +46,10 @@ export function useGrocery(): UseGrocery {
     api.grocery.setDone(id, !target.done).then(refresh).catch(() => {});
   }
 
-  return { items, loaded, add, toggle };
+  function remove(id: number): void {
+    setItems((prev) => prev.filter((it) => it.id !== id)); // optimistic
+    api.grocery.remove(id).then(refresh).catch(() => {});
+  }
+
+  return { items, loaded, add, toggle, remove };
 }
