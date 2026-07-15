@@ -151,6 +151,30 @@ async def _call_ollama(system: str, messages: list[dict], url: str, model: str) 
     return (data.get("message", {}).get("content") or "").strip()
 
 
+def _flatten(system: str, messages: list[dict]) -> str:
+    """Fold the system prompt + conversation into a single prompt for a CLI
+    that takes one string (codex exec)."""
+    parts = [system, ""]
+    for m in messages:
+        who = "User" if m["role"] == "user" else "Assistant"
+        parts.append(f"{who}: {m['content']}")
+    parts.append("Assistant:")
+    return "\n".join(parts)
+
+
+async def _call_codex_bridge(url: str, prompt: str, user_id) -> str:
+    """POST to the host Codex bridge, which runs the `codex` CLI on the ChatGPT
+    subscription and returns the assistant's text."""
+    async with httpx.AsyncClient(timeout=200) as client:
+        resp = await client.post(
+            f"{url.rstrip('/')}/chat",
+            json={"prompt": prompt, "user_id": str(user_id)},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    return (data.get("reply") or "").strip()
+
+
 async def _call_openai(system: str, messages: list[dict], key: str, model: str, base_url: str) -> str:
     async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.post(
@@ -181,11 +205,13 @@ async def chat(session: AsyncSession, user: User, message: str) -> dict:
         await session.commit()
         return {"reply": reply, "available": bool(result.get("available", True))}
 
-    # Everyone else (the sibling) uses a context-injected chat model. The
-    # sibling runs on OpenAI (his own key); Anthropic/Ollama are fallbacks.
-    if not (settings.openai_api_key or settings.anthropic_api_key or settings.ollama_model):
+    # Everyone else (the sibling) uses a context-injected chat model. Preferred
+    # is the Codex bridge (his ChatGPT subscription); OpenAI API / Anthropic /
+    # Ollama are fallbacks. The backend builds context + parses ADD_TASK either
+    # way, so the model only has to produce text.
+    if not (settings.codex_bridge_url or settings.openai_api_key or settings.anthropic_api_key or settings.ollama_model):
         return {
-            "reply": "The assistant isn't configured yet — set OPENAI_API_KEY (for the sibling account), ANTHROPIC_API_KEY, or OLLAMA_MODEL.",
+            "reply": "The assistant isn't configured yet — set CODEX_BRIDGE_URL (ChatGPT subscription), OPENAI_API_KEY, ANTHROPIC_API_KEY, or OLLAMA_MODEL.",
             "available": False,
         }
 
@@ -195,7 +221,9 @@ async def chat(session: AsyncSession, user: User, message: str) -> dict:
     messages.append({"role": "user", "content": message})
 
     try:
-        if settings.openai_api_key:
+        if settings.codex_bridge_url:
+            reply = await _call_codex_bridge(settings.codex_bridge_url, _flatten(system, messages), user.id)
+        elif settings.openai_api_key:
             reply = await _call_openai(system, messages, settings.openai_api_key, settings.openai_model, settings.openai_base_url)
         elif settings.anthropic_api_key:
             reply = await _call_anthropic(system, messages, settings.anthropic_api_key, settings.anthropic_model)

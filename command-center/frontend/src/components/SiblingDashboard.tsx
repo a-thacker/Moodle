@@ -75,8 +75,8 @@ export default function SiblingDashboard() {
         {view === "grades" && <GradesPlaceholder />}
         {view === "assistant" && (
           <AssistantView
-            subtitle="OpenAI · knows your planner and can add tasks"
-            errorHint="Assistant unavailable — check the OpenAI key is set."
+            subtitle="Codex · knows your planner and can add tasks"
+            errorHint="Assistant unavailable — is the Codex bridge running?"
             suggestions={["What's on my plate today?", "Add study group tue/thu at 4pm", "Plan my week"]}
           />
         )}

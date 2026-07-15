@@ -19,6 +19,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import SessionFactory
 from app.models.task import Task
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,19 @@ async def _send(topic: str, server: str, title: str, message: str) -> None:
         resp.raise_for_status()
 
 
+def _topics(settings) -> dict[str, str]:
+    """Per-role ntfy topic (a user only gets reminders if their role has one)."""
+    return {
+        role: topic
+        for role, topic in (("owner", settings.ntfy_topic), ("sibling", settings.sibling_ntfy_topic))
+        if topic
+    }
+
+
 async def check_reminders() -> None:
     settings = get_settings()
-    if not settings.ntfy_topic:
+    topics = _topics(settings)
+    if not topics:
         return
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz)
@@ -46,6 +57,9 @@ async def check_reminders() -> None:
     after = timedelta(minutes=settings.remind_after_minutes)
 
     async with SessionFactory() as session:
+        roles = await session.execute(select(User.id, User.role))
+        topic_by_user = {uid: topics.get(role) for uid, role in roles.all()}
+
         result = await session.execute(
             select(Task).where(
                 Task.due_date == today,
@@ -56,11 +70,14 @@ async def check_reminders() -> None:
         tasks = list(result.scalars().all())
         changed = False
         for t in tasks:
+            topic = topic_by_user.get(t.user_id)
+            if not topic:  # this task's owner has no reminder channel
+                continue
             event = datetime.combine(today, t.due_time, tzinfo=tz)  # type: ignore[arg-type]
             when = t.due_time.strftime("%-I:%M %p")  # type: ignore[union-attr]
             if not t.notified_before and event - before <= now < event:
                 try:
-                    await _send(settings.ntfy_topic, settings.ntfy_server,
+                    await _send(topic, settings.ntfy_server,
                                 f"Soon: {t.title}", f"at {when}")
                     t.notified_before = True
                     changed = True
@@ -68,7 +85,7 @@ async def check_reminders() -> None:
                     logger.warning("ntfy before-reminder failed: %s", exc)
             if not t.notified_after and now >= event + after:
                 try:
-                    await _send(settings.ntfy_topic, settings.ntfy_server,
+                    await _send(topic, settings.ntfy_server,
                                 f"Still open: {t.title}", f"was at {when} — not checked off")
                     t.notified_after = True
                     changed = True
@@ -79,8 +96,8 @@ async def check_reminders() -> None:
 
 
 async def reminder_loop() -> None:
-    logger.info("Reminder loop started (ntfy %s).",
-                "enabled" if get_settings().ntfy_topic else "disabled")
+    logger.info("Reminder loop started (ntfy topics: %s).",
+                ", ".join(_topics(get_settings())) or "none")
     while True:
         try:
             await check_reminders()

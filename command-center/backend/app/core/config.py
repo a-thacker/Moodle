@@ -75,7 +75,12 @@ class Settings(BaseSettings):
     # server's .env.
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-haiku-4-5-20251001"
-    # OpenAI — used by the sibling account (his own key/spend). Empty disables.
+    # Codex bridge (preferred for the sibling): a host service running the
+    # OpenAI `codex` CLI on his ChatGPT *subscription* (free — not the paid
+    # API). Same shape as the Claude bridge. e.g. "http://host.docker.internal:8788".
+    codex_bridge_url: str = ""
+    # OpenAI API — fallback for the sibling if you have API credits instead of
+    # (or as well as) the Codex bridge. Empty disables.
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"
@@ -86,7 +91,8 @@ class Settings(BaseSettings):
     weather_label: str = "Collegedale, TN"
 
     # --- Notifications (ntfy) -------------------------------------------
-    ntfy_topic: str = ""  # from NTFY_TOPIC; empty disables reminders
+    ntfy_topic: str = ""  # owner's topic (NTFY_TOPIC); empty disables his reminders
+    sibling_ntfy_topic: str = ""  # sibling's own topic; empty disables his reminders
     ntfy_server: str = "https://ntfy.sh"
     remind_before_minutes: int = 15  # notify this long before a timed event
     remind_after_minutes: int = 30   # nudge this long after, if not done
