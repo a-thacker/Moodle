@@ -13,6 +13,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
+class LinkInfo(BaseModel):
+    """An external service the user can open from the rail (kind="link")."""
+
+    key: str
+    label: str
+    icon: str
+    url: str
+
+
 class UserBase(BaseModel):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=120)
@@ -30,3 +39,9 @@ class UserRead(UserBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    # Effective capability keys (from app.core.capabilities). Filled by the
+    # route since it's computed from role + per-user overrides, not an ORM col.
+    capabilities: list[str] = Field(default_factory=list)
+    # External-service links (Jellyfin, Wiki, …) the user is entitled to and
+    # that are configured on this deployment.
+    links: list[LinkInfo] = Field(default_factory=list)

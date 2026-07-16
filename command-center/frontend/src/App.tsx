@@ -1,11 +1,10 @@
 import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
 import Login from "./components/Login.tsx";
-import OwnerDashboard from "./components/OwnerDashboard.tsx";
-import SiblingDashboard from "./components/SiblingDashboard.tsx";
-import RoommateGrocery from "./components/RoommateGrocery.tsx";
+import AppShell from "./components/AppShell.tsx";
 
-// Role now comes from the authenticated user (owner sees everything, roommate
-// sees grocery only) — replacing the old ?view= query param.
+// Every authenticated user gets the same shell; what they see inside it is
+// driven by their capabilities (owner is the admin with everything). Roles are
+// just owner vs. user now — no more per-role dashboards.
 function Routed() {
   const { user, loading } = useAuth();
 
@@ -28,9 +27,7 @@ function Routed() {
     );
   }
   if (!user) return <Login />;
-  if (user.role === "owner") return <OwnerDashboard />;
-  if (user.role === "sibling") return <SiblingDashboard />;
-  return <RoommateGrocery />;
+  return <AppShell />;
 }
 
 export default function App() {

@@ -3,8 +3,8 @@
 Runs on a schedule (launchd), polls eClass through
 :class:`eclass.EclassClient`, diffs grade reports against local snapshots,
 and fans the results out: notifications (ntfy/macOS/console) for a human,
-and Supabase writes (courses, grade history, change events, upcoming
-timeline) for the Hub dashboard to read.
+and Command Center backend writes (courses, grade history, change events,
+upcoming timeline) for the dashboard to read.
 
     python -m agent check
 
@@ -19,7 +19,6 @@ from .config import AgentConfig
 from .diff import GradeChange, diff_reports
 from .notify import ConsoleNotifier, MacNotifier, Notifier, NtfyNotifier, get_notifier
 from .storage import SnapshotStore
-from .supabase_push import SupabaseWriter
 
 __all__ = [
     "AgentConfig",
@@ -32,5 +31,4 @@ __all__ = [
     "NtfyNotifier",
     "get_notifier",
     "SnapshotStore",
-    "SupabaseWriter",
 ]

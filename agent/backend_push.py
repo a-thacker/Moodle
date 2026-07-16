@@ -1,8 +1,7 @@
 """Push eClass data to the self-hosted Command Center FastAPI backend.
 
-Drop-in replacement for :class:`SupabaseWriter`: same method names, so the
-agent's run loop doesn't care which target it's using. Authenticated with the
-shared agent API key (``X-API-Key``); hits the ``/api/v1/ingest/*`` endpoints.
+The agent's sole push target. Authenticated with the shared agent API key
+(``X-API-Key``); hits the ``/api/v1/ingest/*`` endpoints.
 
 Every method raises ``requests.RequestException`` on failure; the caller
 treats a failed push as a warning, never a reason to abort the local run.

@@ -35,17 +35,20 @@ async def _seed() -> int:
         )
         print(f"owner seeded: {owner.email} ({owner.display_name})")
 
+        # Everyone else is a generic `user`; the owner grants extra tools per
+        # person in the People screen. (The roommate/sibling env vars are kept
+        # only as a convenient way to seed the two existing accounts.)
         if settings.roommate_email and settings.roommate_password:
             roommate = await user_service.upsert_user(
                 session,
                 email=settings.roommate_email,
                 password=settings.roommate_password,
                 display_name=settings.roommate_name,
-                role="roommate",
+                role="user",
             )
-            print(f"roommate seeded: {roommate.email} ({roommate.display_name})")
+            print(f"user seeded: {roommate.email} ({roommate.display_name})")
         else:
-            print("roommate skipped (ROOMMATE_EMAIL/ROOMMATE_PASSWORD unset)")
+            print("roommate account skipped (ROOMMATE_EMAIL/ROOMMATE_PASSWORD unset)")
 
         if settings.sibling_email and settings.sibling_password:
             sibling = await user_service.upsert_user(
@@ -53,11 +56,11 @@ async def _seed() -> int:
                 email=settings.sibling_email,
                 password=settings.sibling_password,
                 display_name=settings.sibling_name,
-                role="sibling",
+                role="user",
             )
-            print(f"sibling seeded: {sibling.email} ({sibling.display_name})")
+            print(f"user seeded: {sibling.email} ({sibling.display_name})")
         else:
-            print("sibling skipped (SIBLING_EMAIL/SIBLING_PASSWORD unset)")
+            print("sibling account skipped (SIBLING_EMAIL/SIBLING_PASSWORD unset)")
     return 0
 
 

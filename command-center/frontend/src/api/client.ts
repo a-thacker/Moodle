@@ -65,11 +65,46 @@ async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
+/** An external service the user can open from the rail (kind="link"). */
+export interface ServiceLink {
+  key: string;
+  label: string;
+  icon: string;
+  url: string;
+}
+
 export interface CurrentUser {
   id: string;
   email: string;
   display_name: string;
-  role: "owner" | "roommate" | "sibling";
+  role: "owner" | "user";
+  /** Effective capability keys (see backend app/core/capabilities.py). */
+  capabilities: string[];
+  /** External-service links this user may open (Jellyfin, Wiki, …). */
+  links: ServiceLink[];
+}
+
+/** One tool in the capability catalog (for the owner's provisioning UI). */
+export interface CapabilityInfo {
+  key: string;
+  label: string;
+  icon: string;
+  default_for_new_user: boolean;
+  always: boolean;
+  kind: string;
+}
+
+/** A user plus their effective capabilities and raw per-user overrides. */
+export interface UserEntitlements {
+  id: string;
+  email: string;
+  display_name: string;
+  role: string;
+  is_active: boolean;
+  capabilities: string[];
+  overrides: Record<string, boolean>;
+  /** The user's private ntfy topic (owner-only; share it so they can subscribe). */
+  ntfy_topic: string | null;
 }
 
 export const api = {
@@ -85,6 +120,19 @@ export const api = {
       apiFetch<void>("/api/v1/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
+      }),
+  },
+
+  // Owner-only provisioning: the capability catalog + per-user entitlements.
+  admin: {
+    capabilities: () => apiFetch<CapabilityInfo[]>("/api/v1/admin/capabilities"),
+    listUsers: () => apiFetch<UserEntitlements[]>("/api/v1/admin/users"),
+    getEntitlements: (id: string) =>
+      apiFetch<UserEntitlements>(`/api/v1/admin/users/${id}/entitlements`),
+    setEntitlements: (id: string, overrides: Record<string, boolean>) =>
+      apiFetch<UserEntitlements>(`/api/v1/admin/users/${id}/entitlements`, {
+        method: "PUT",
+        body: JSON.stringify({ overrides }),
       }),
   },
 

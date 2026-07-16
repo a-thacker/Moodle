@@ -19,6 +19,7 @@ from app.core.config import Settings, get_settings
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
+from app.services import entitlement as entitlement_service
 from app.services import user as user_service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=True)
@@ -58,15 +59,30 @@ async def require_owner(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-async def require_ai_user(user: User = Depends(get_current_user)) -> User:
-    """Assistant access: the owner (Claude) and the sibling (OpenAI). The
-    grocery-only roommate is excluded."""
-    if user.role not in ("owner", "sibling"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Assistant not available for this account",
-        )
-    return user
+def require_capability(capability: str):
+    """Dependency factory: allow the request only if the user's effective
+    capability set (role default + per-user overrides) includes `capability`.
+    This is the server-side half of the entitlements model — the UI hides tools
+    a user lacks, and this stops them hitting the endpoints directly."""
+
+    async def _guard(
+        session: AsyncSession = Depends(get_db),
+        user: User = Depends(get_current_user),
+    ) -> User:
+        caps = await entitlement_service.effective_for(session, user)
+        if capability not in caps:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"'{capability}' is not enabled for this account",
+            )
+        return user
+
+    return _guard
+
+
+# The assistant tool is capability-gated (owner → Claude bridge, other users →
+# Codex/OpenAI); whoever has the capability gets it.
+require_ai_user = require_capability("assistant")
 
 
 async def require_agent_key(

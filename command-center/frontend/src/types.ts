@@ -2,7 +2,8 @@
 // will return (see command-center/backend/app/models). Until those endpoints
 // exist, components read the same shapes from src/data/sample.ts.
 
-export type Role = "owner" | "roommate" | "sibling";
+// Roles are just admin vs. everyone-else now; access is per-user capabilities.
+export type Role = "owner" | "user";
 
 export interface Course {
   id: number;

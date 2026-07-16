@@ -36,20 +36,8 @@ async def _send(topic: str, server: str, title: str, message: str) -> None:
         resp.raise_for_status()
 
 
-def _topics(settings) -> dict[str, str]:
-    """Per-role ntfy topic (a user only gets reminders if their role has one)."""
-    return {
-        role: topic
-        for role, topic in (("owner", settings.ntfy_topic), ("sibling", settings.sibling_ntfy_topic))
-        if topic
-    }
-
-
 async def check_reminders() -> None:
     settings = get_settings()
-    topics = _topics(settings)
-    if not topics:
-        return
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz)
     today = now.date()
@@ -57,8 +45,12 @@ async def check_reminders() -> None:
     after = timedelta(minutes=settings.remind_after_minutes)
 
     async with SessionFactory() as session:
-        roles = await session.execute(select(User.id, User.role))
-        topic_by_user = {uid: topics.get(role) for uid, role in roles.all()}
+        # Each user has their own private ntfy topic; a user with none gets no
+        # reminders.
+        rows = await session.execute(select(User.id, User.ntfy_topic))
+        topic_by_user = {uid: topic for uid, topic in rows.all() if topic}
+        if not topic_by_user:
+            return
 
         result = await session.execute(
             select(Task).where(
@@ -96,8 +88,8 @@ async def check_reminders() -> None:
 
 
 async def reminder_loop() -> None:
-    logger.info("Reminder loop started (ntfy topics: %s).",
-                ", ".join(_topics(get_settings())) or "none")
+    logger.info("Reminder loop started (per-user ntfy topics via %s).",
+                get_settings().ntfy_server)
     while True:
         try:
             await check_reminders()

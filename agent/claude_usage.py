@@ -58,6 +58,9 @@ def fetch_limits() -> dict[str, Any] | None:
         proc = subprocess.run(
             [claude, "-p", "/usage", "--output-format", "json"],
             capture_output=True, text=True, timeout=90, env=env,
+            # Without this, a newer claude CLI prints a "no stdin data received"
+            # warning to stdout ahead of the JSON, breaking json.loads below.
+            stdin=subprocess.DEVNULL,
         )
         if proc.returncode != 0:
             return None

@@ -6,3 +6,6 @@ snapshots/
 .venv/
 __pycache__/
 *.pyc
+
+# Vendored third-party tool kept locally for the future Jellyfin ripping tool.
+makemkv-autorip-script-master/

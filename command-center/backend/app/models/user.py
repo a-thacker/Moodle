@@ -24,6 +24,10 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(32), default="owner", nullable=False)
     hashed_password: Mapped[str | None] = mapped_column(String(255), default=None)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Each user's private ntfy topic (the topic name *is* the password — a long
+    # random string). Generated on account creation; owner shares it so the
+    # user can subscribe their phone. Null = no reminder channel.
+    ntfy_topic: Mapped[str | None] = mapped_column(String(80), default=None)
 
     def __repr__(self) -> str:  # pragma: no cover - debug aid
         return f"<User {self.email} ({self.role})>"

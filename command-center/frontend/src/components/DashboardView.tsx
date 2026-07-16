@@ -159,6 +159,32 @@ const DEFAULT: Record<Footprint, WidgetId[]> = {
   small: ["grades", "lists", "claude"],
 };
 
+// Which capability each tile needs to be shown (null = always; "owner" = the
+// admin only, e.g. the personal Claude-subscription usage). Keeps the dashboard
+// home in sync with the rail so a user never sees a tool they lack.
+const WIDGET_CAP: Record<WidgetId, string | null> = {
+  hero: null,
+  dueSoon: "deadlines",
+  planner: "planner",
+  grades: "grades",
+  lists: "grocery",
+  claude: "owner",
+};
+
+function visibleWidgets(caps: string[], isOwner: boolean): Record<Footprint, WidgetId[]> {
+  const ok = (id: WidgetId) => {
+    const need = WIDGET_CAP[id];
+    if (need === null) return true;
+    if (need === "owner") return isOwner;
+    return caps.includes(need);
+  };
+  return {
+    wide: DEFAULT.wide.filter(ok),
+    big: DEFAULT.big.filter(ok),
+    small: DEFAULT.small.filter(ok),
+  };
+}
+
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
   hero: { footprint: "wide", style: { background: "linear-gradient(135deg,#8b7cf0,#6857c8)", borderRadius: "var(--cc-radius)", padding: "26px 28px", color: "#100f1c", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" } },
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
@@ -186,20 +212,24 @@ function dotColor(d: Deadline): string {
   return "var(--cc-dim)";
 }
 
-function loadArrangement(userId: string | undefined): Record<Footprint, WidgetId[]> {
+function loadArrangement(
+  userId: string | undefined,
+  visible: Record<Footprint, WidgetId[]>,
+): Record<Footprint, WidgetId[]> {
   try {
     const raw = localStorage.getItem(`cc_dashboard_${userId ?? "x"}`);
-    if (!raw) return DEFAULT;
+    if (!raw) return visible;
     const saved = JSON.parse(raw) as Record<Footprint, WidgetId[]>;
-    // Validate: every footprint must contain exactly its default members.
+    // Keep a saved arrangement only if it's a permutation of what this user is
+    // allowed to see; otherwise fall back to the visible defaults.
     for (const fp of ORDER) {
       const a = [...(saved[fp] ?? [])].sort();
-      const b = [...DEFAULT[fp]].sort();
-      if (a.length !== b.length || a.some((x, i) => x !== b[i])) return DEFAULT;
+      const b = [...visible[fp]].sort();
+      if (a.length !== b.length || a.some((x, i) => x !== b[i])) return visible;
     }
     return saved;
   } catch {
-    return DEFAULT;
+    return visible;
   }
 }
 
@@ -212,18 +242,25 @@ export default function DashboardView() {
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
-  const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
+  const isOwner = user?.role === "owner";
+  const capsKey = (user?.capabilities ?? []).join(",");
+  const visible = useMemo(
+    () => visibleWidgets(user?.capabilities ?? [], isOwner),
+    [capsKey, isOwner], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id, visible));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
-  useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
+  // Only the owner has the Claude-usage tile; skip the (403-ing) fetch for others.
+  useEffect(() => { if (isOwner) api.claudeUsage().then(setUsage).catch(() => {}); }, [isOwner]);
   useEffect(() => {
     const load = () => api.weather().then(setWeather).catch(() => {});
     load();
     const iv = setInterval(load, 15 * 60 * 1000); // refresh every 15 min
     return () => clearInterval(iv);
   }, []);
-  useEffect(() => setArrangement(loadArrangement(user?.id)), [user?.id]);
+  useEffect(() => setArrangement(loadArrangement(user?.id, visible)), [user?.id, visible]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
   }, [arrangement, user?.id]);

@@ -21,14 +21,14 @@ is the single source of truth; the backend is the only thing that touches
 it** — frontend and the future LLM go through the API. Build backend-first;
 AI (Ollama tool-calling) is a later phase, not now.
 
-- `command-center/` — the new self-hosted app (see its own README). This is
-  where active backend work happens.
-- `hub/` + `supabase/` — the OLD Netlify/Supabase Hub. Being superseded by
-  command-center. Don't extend it; the agent will later repoint from
-  Supabase to the FastAPI backend.
-- `Personal command center redesign/` — Nocturne dark-UI redesign
-  (`DESIGN_HANDOFF.md`). Visual source of truth for the NEW frontend
-  (React+Vite+TypeScript talking to FastAPI, not Supabase). Not yet ported.
+- `command-center/` — the self-hosted app (FastAPI backend + React/Vite/TS
+  frontend, Docker Compose). This is where active work happens. Deploy with
+  `command-center/deploy.sh` (rsync to `cc` → `docker compose up -d --build`;
+  the backend entrypoint runs Alembic migrations).
+- `Personal command center redesign new/` — Nocturne dark-UI redesign mockups.
+  Visual reference for the frontend.
+- The old Netlify/Supabase `hub/` + `supabase/` were removed 2026-07-16 (fully
+  superseded by command-center; the agent pushes to the FastAPI backend now).
 
 ## Current state (update as things land)
 
@@ -37,32 +37,28 @@ AI (Ollama tool-calling) is a later phase, not now.
   even though docs/PROJECT_HANDOFF.md §2 still calls them stubs.
   `mod_assign_get_assignments` is not AJAX-allowed on this instance;
   assignments derive from timeline events.
-- `agent/` — the Sync Agent (fetch → diff → notify → snapshot → Supabase
-  push). Handles auth expiry unattended: `EclassClient(auto_relogin=False)`
-  + `login(interactive=False)` — no browser ever opens on a schedule.
-  Cloud pieces (Supabase, ntfy) are optional and env-configured via `.env`.
-- `hub/` — React/Vite dashboard (login, grades + deadlines widgets,
-  realtime grocery list), deployed via netlify.toml. Builds clean; not yet
-  connected to a real Supabase project.
-- `supabase/` — schema.sql + migration 001, not yet applied (waiting on
-  Alden to create the Supabase project and the two auth users).
+- `agent/` — the Sync Agent (fetch → diff → notify → snapshot → push to the
+  Command Center backend). Handles auth expiry unattended:
+  `EclassClient(auto_relogin=False)` + `login(interactive=False)` — no browser
+  ever opens on a schedule. Push (CC backend) + ntfy are optional, env-configured
+  via `.env` (CC_API_URL/CC_API_KEY). Runs on the Mac via launchd.
 - `docs/PLAN.md` — the tracker-era architecture doc; superseded by
   docs/PROJECT_HANDOFF.md where they disagree.
 
 ## Non-negotiables
 
-- `state.json` never leaves this machine; Supabase gets derived data only.
-  Cloud code never touches eClass directly — only the local agent does.
+- `state.json` never leaves this machine; the backend gets derived data only.
+  The backend never touches eClass directly — only the local agent does.
 - Anything scheduled/unattended must never open a browser: on
   `SessionExpired`, notify Alden to re-login manually and back off.
-- Supabase work always ships `supabase/schema.sql` + idempotent versioned
-  migrations (`supabase/migrations/NNN_*.sql`), safe to re-run.
-- Netlify config/secrets come from env vars injected at build; provide
-  `netlify.toml` when needed. No secrets in client code or git, ever.
-- Row Level Security from day one: the roommate's user sees shared tools
-  (grocery list, later chores/expenses) — never grades.
-- Every design choice must preserve a clean migration path to self-hosting
-  (Docker-friendly, no hard vendor lock-in).
+- DB changes ship as idempotent, hand-authored Alembic migrations under
+  `command-center/backend/alembic/versions/`, safe to re-run (the entrypoint
+  applies them on deploy). No secrets in client code or git, ever.
+- Access is per-user **capabilities**, not roles: two roles only — `owner`
+  (admin) and `user`. The catalog + defaults live in
+  `command-center/backend/app/core/capabilities.py`; the owner grants extras
+  per person in the Settings → People screen. A user sees only granted tools
+  (grades/grocery are owner-grant, not defaults).
 
 ## Conventions
 
@@ -70,5 +66,6 @@ AI (Ollama tool-calling) is a later phase, not now.
   match the existing `eclass/` style.
 - Test against the live server with `eclass/.venv/bin/python` from the
   repo root (session cookies in `state.json` — read-only calls only).
-- On public ntfy.sh the topic name is the password: long random string,
-  supplied via env var, never committed.
+- On public ntfy.sh the topic name is the password: a long random string.
+  Each user has their own auto-generated `users.ntfy_topic` (the owner shares
+  it from the People screen); never commit topics.

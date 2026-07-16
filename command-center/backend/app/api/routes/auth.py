@@ -13,11 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.capabilities import available_capabilities, link_url
+from app.core.config import get_settings
 from app.core.security import create_access_token, verify_password
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, Token
-from app.schemas.user import UserRead
+from app.schemas.user import LinkInfo, UserRead
+from app.services import entitlement as entitlement_service
 from app.services import user as user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -38,8 +41,25 @@ async def login(
 
 
 @router.get("/me", response_model=UserRead)
-async def me(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
+async def me(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserRead:
+    settings = get_settings()
+    caps = await entitlement_service.effective_for(session, current_user)
+    available = available_capabilities(settings)
+    available_keys = {c.key for c in available}
+    # Drop any capability whose tool isn't available here (e.g. a link whose URL
+    # isn't configured), so the client never renders a dead entry.
+    caps &= available_keys
+    links = [
+        LinkInfo(key=c.key, label=c.label, icon=c.icon, url=link_url(c, settings))
+        for c in available
+        if c.kind == "link" and c.key in caps
+    ]
+    return UserRead.model_validate(current_user).model_copy(
+        update={"capabilities": sorted(caps), "links": links}
+    )
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

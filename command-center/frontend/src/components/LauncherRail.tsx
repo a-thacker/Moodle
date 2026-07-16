@@ -1,6 +1,8 @@
 // Left launcher rail. Tools switch the main view, and can be dragged to
 // reorder — the arrangement is saved per user in localStorage (like the
-// dashboard tiles). Settings / sign-out / avatar stay pinned at the bottom.
+// dashboard tiles). Which tools appear is driven by the user's capabilities
+// (via NavContext `available`); Settings / sign-out / avatar stay pinned at the
+// bottom.
 
 import { useEffect, useState, type DragEvent } from "react";
 
@@ -25,29 +27,36 @@ const TOOLS: RailTool[] = [
 ];
 const BY_VIEW = new Map(TOOLS.map((t) => [t.view, t]));
 
-function loadOrder(userId: string | undefined): View[] {
-  const known = TOOLS.map((t) => t.view);
+// The rail's tools = the catalog above, limited to what this user can see
+// (Settings is pinned separately, so it's excluded here).
+function toolViews(available: View[]): View[] {
+  return TOOLS.map((t) => t.view).filter((v) => available.includes(v));
+}
+
+function loadOrder(userId: string | undefined, allowed: View[]): View[] {
   try {
     const raw = localStorage.getItem(`cc_rail_${userId ?? "x"}`);
-    if (!raw) return known;
-    const saved = (JSON.parse(raw) as View[]).filter((v) => BY_VIEW.has(v));
-    // Append any tools added since the order was saved; drop unknown ones.
-    for (const v of known) if (!saved.includes(v)) saved.push(v);
+    if (!raw) return allowed;
+    const saved = (JSON.parse(raw) as View[]).filter((v) => allowed.includes(v));
+    // Append any tools added / newly granted since the order was saved.
+    for (const v of allowed) if (!saved.includes(v)) saved.push(v);
     return saved;
   } catch {
-    return known;
+    return allowed;
   }
 }
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();
-  const { view, setView } = useNav();
+  const { view, setView, available } = useNav();
   const name = user?.display_name ?? "?";
-  const [order, setOrder] = useState<View[]>(() => loadOrder(user?.id));
+  const allowed = toolViews(available);
+  const [order, setOrder] = useState<View[]>(() => loadOrder(user?.id, allowed));
   const [dragView, setDragView] = useState<View | null>(null);
   const [overView, setOverView] = useState<View | null>(null);
 
-  useEffect(() => setOrder(loadOrder(user?.id)), [user?.id]);
+  const allowedKey = allowed.join(",");
+  useEffect(() => setOrder(loadOrder(user?.id, allowed)), [user?.id, allowedKey]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_rail_${user.id}`, JSON.stringify(order));
   }, [order, user?.id]);
@@ -116,6 +125,21 @@ export default function LauncherRail() {
         );
       })}
 
+      {/* External services (Jellyfin, Wiki, …) — open in a new tab, gated per
+          user via capabilities. Not reorderable; they sit below the tools. */}
+      {(user?.links ?? []).map((link) => (
+        <a
+          key={link.key}
+          className="rail-link"
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`${link.label}  ·  opens in a new tab`}
+        >
+          <i className={`ph ${link.icon}`} style={{ fontSize: 22 }} />
+        </a>
+      ))}
+
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <button
           type="button"
@@ -134,7 +158,7 @@ export default function LauncherRail() {
           <i className="ph ph-sign-out" style={{ fontSize: 20 }} />
         </button>
         <div
-          title={`${name} · owner`}
+          title={`${name} · ${user?.role ?? "user"}`}
           style={{
             width: 40,
             height: 40,

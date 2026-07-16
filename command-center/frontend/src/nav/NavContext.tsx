@@ -1,11 +1,16 @@
-// Client-side navigation + command-palette state for the owner shell. No
-// router library: the app is a single authenticated shell that swaps the main
-// panel between a handful of views. ⌘K / Ctrl-K toggles the palette globally.
+// Client-side navigation + command-palette state for the app shell. No router
+// library: the app is a single authenticated shell that swaps the main panel
+// between a handful of views. Which views a user actually has is driven by
+// their capabilities (see backend app/core/capabilities.py) — the rail, the
+// palette, and `setView` all respect `available`. ⌘K / Ctrl-K toggles the
+// palette globally.
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -21,18 +26,59 @@ export type View =
   | "assistant"
   | "settings";
 
+// Canonical order; capability keys are 1:1 with view names.
+const VIEW_ORDER: View[] = [
+  "dashboard",
+  "grades",
+  "deadlines",
+  "grocery",
+  "notes",
+  "planner",
+  "scripts",
+  "assistant",
+  "settings",
+];
+
 interface NavState {
   view: View;
   setView: (view: View) => void;
+  /** Views this user is entitled to, in canonical order (includes settings). */
+  available: View[];
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
 }
 
 const NavContext = createContext<NavState | null>(null);
 
-export function NavProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<View>("dashboard");
+function landingView(available: View[]): View {
+  // Land on the first real tool, not Settings.
+  return available.find((v) => v !== "settings") ?? available[0] ?? "settings";
+}
+
+export function NavProvider({
+  children,
+  capabilities,
+}: {
+  children: ReactNode;
+  capabilities: string[];
+}) {
+  const available = useMemo(
+    () => VIEW_ORDER.filter((v) => capabilities.includes(v)),
+    [capabilities],
+  );
+  const [view, setViewState] = useState<View>(() => landingView(available));
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Only navigate to a view the user is entitled to.
+  const setView = useCallback(
+    (next: View) => setViewState((prev) => (available.includes(next) ? next : prev)),
+    [available],
+  );
+
+  // If the entitlement set changes out from under the current view, snap back.
+  useEffect(() => {
+    if (!available.includes(view)) setViewState(landingView(available));
+  }, [available, view]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -48,7 +94,9 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <NavContext.Provider value={{ view, setView, paletteOpen, setPaletteOpen }}>
+    <NavContext.Provider
+      value={{ view, setView, available, paletteOpen, setPaletteOpen }}
+    >
       {children}
     </NavContext.Provider>
   );

@@ -1,14 +1,12 @@
 """Agent configuration from environment variables (plus an optional .env).
 
-Cloud credentials never live in code or git: the Supabase service-role key
-and the ntfy topic come from the environment, or from a `.env` file in the
-working directory (gitignored; see .env.example). A tiny KEY=VALUE parser
-keeps this dependency-free — real environment variables always win over
-the file.
+Cloud credentials never live in code or git: the Command Center API key and
+the ntfy topic come from the environment, or from a `.env` file in the working
+directory (gitignored; see .env.example). A tiny KEY=VALUE parser keeps this
+dependency-free — real environment variables always win over the file.
 
 Both integrations are optional: with nothing configured the agent still
-runs fully local (snapshots + mac/console notifications), which keeps the
-self-host migration path clean.
+runs fully local (snapshots + mac/console notifications).
 """
 
 from __future__ import annotations
@@ -38,12 +36,9 @@ def load_env_file(path: Path | str = DEFAULT_ENV_PATH) -> None:
 
 @dataclass
 class AgentConfig:
-    # Command Center self-hosted backend (the current target).
+    # Command Center self-hosted backend (the push target).
     cc_api_url: Optional[str] = None
     cc_api_key: Optional[str] = None
-    # Supabase (the old Hub — kept as a fallback push target).
-    supabase_url: Optional[str] = None
-    supabase_service_role_key: Optional[str] = None
     ntfy_topic: Optional[str] = None
     ntfy_server: str = DEFAULT_NTFY_SERVER
 
@@ -53,10 +48,6 @@ class AgentConfig:
         return cls(
             cc_api_url=os.environ.get("CC_API_URL") or None,
             cc_api_key=os.environ.get("CC_API_KEY") or None,
-            supabase_url=os.environ.get("SUPABASE_URL") or None,
-            supabase_service_role_key=(
-                os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or None
-            ),
             ntfy_topic=os.environ.get("NTFY_TOPIC") or None,
             ntfy_server=os.environ.get(
                 "NTFY_SERVER", DEFAULT_NTFY_SERVER
@@ -66,10 +57,6 @@ class AgentConfig:
     @property
     def backend_enabled(self) -> bool:
         return bool(self.cc_api_url and self.cc_api_key)
-
-    @property
-    def supabase_enabled(self) -> bool:
-        return bool(self.supabase_url and self.supabase_service_role_key)
 
     @property
     def ntfy_enabled(self) -> bool:

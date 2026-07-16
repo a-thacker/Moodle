@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.models.user import User
 from app.services import eclass as eclass_service
+from app.services import entitlement as entitlement_service
 from app.services import grocery as grocery_service
 from app.services import task as task_service
 
@@ -64,6 +65,8 @@ async def build_user_context(session: AsyncSession, user: User) -> str:
         f"User: {user.display_name} ({user.role}). Location: {_PLACE}.",
     ]
 
+    caps = await entitlement_service.effective_for(session, user)
+
     weather = await current_weather()
     if weather:
         lines.append(f"Weather now: {weather}.")
@@ -77,13 +80,14 @@ async def build_user_context(session: AsyncSession, user: User) -> str:
     else:
         lines.append("Open tasks: none.")
 
-    if user.role == "owner":
+    if "deadlines" in caps:
         deadlines = await eclass_service.list_deadlines(session)
         if deadlines:
             lines.append("Upcoming eClass deadlines:")
             for d in deadlines[:10]:
                 lines.append(f"  - {d.title} ({d.course_name}) — due {d.due:%b %d}")
 
+    if "grades" in caps:
         courses = await eclass_service.list_courses(session)
         if courses:
             lines.append("Courses / current grade:")
@@ -91,9 +95,8 @@ async def build_user_context(session: AsyncSession, user: User) -> str:
                 pct = f"{c.total_percent}%" if c.total_percent is not None else "n/a"
                 lines.append(f"  - {c.full_name}: {pct}")
 
-    # Grocery is the shared apartment list — owner + roommate only, never the
-    # sibling.
-    if user.role in ("owner", "roommate"):
+    # Grocery is the shared list — only users granted the grocery capability.
+    if "grocery" in caps:
         grocery = [g for g in await grocery_service.list_items(session) if not g.done]
         if grocery:
             names = ", ".join(g.name for g in grocery[:25])

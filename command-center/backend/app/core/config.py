@@ -90,6 +90,11 @@ class Settings(BaseSettings):
     weather_longitude: float = -85.0491
     weather_label: str = "Collegedale, TN"
 
+    # --- External service links (shown in the rail when granted) ---------
+    # URLs are deployment-specific; a link tool is hidden until its URL is set.
+    jellyfin_url: str = ""    # JELLYFIN_URL, e.g. http://athacker-cc:8096
+    otterwiki_url: str = ""   # OTTERWIKI_URL, e.g. http://athacker-cc:8080
+
     # --- Notifications (ntfy) -------------------------------------------
     ntfy_topic: str = ""  # owner's topic (NTFY_TOPIC); empty disables his reminders
     sibling_ntfy_topic: str = ""  # sibling's own topic; empty disables his reminders

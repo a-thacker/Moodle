@@ -25,18 +25,24 @@ const COMMANDS: Command[] = [
 ];
 
 export default function CommandPalette() {
-  const { paletteOpen, setPaletteOpen, setView } = useNav();
+  const { paletteOpen, setPaletteOpen, setView, available } = useNav();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Only offer tools this user is entitled to.
+  const commands = useMemo(
+    () => COMMANDS.filter((c) => available.includes(c.view)),
+    [available],
+  );
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return COMMANDS;
-    return COMMANDS.filter(
+    if (!q) return commands;
+    return commands.filter(
       (c) => c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [query, commands]);
 
   useEffect(() => {
     if (paletteOpen) {

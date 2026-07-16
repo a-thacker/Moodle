@@ -7,10 +7,10 @@ Usage (from the project root)::
     python -m agent status           # snapshots on disk + recent runs
 
 Configuration comes from the environment / a `.env` file (see
-.env.example): with Supabase configured, each run also pushes courses,
-grade history, grade change events, and the upcoming-timeline mirror to
-the Hub's database; with NTFY_TOPIC configured, notifications go to your
-phone. With neither, the agent is the original fully-local tracker.
+.env.example): with CC_API_URL/CC_API_KEY configured, each run also pushes
+courses, grade history, grade change events, and the upcoming-timeline mirror
+to the Command Center backend; with NTFY_TOPIC configured, notifications go to
+your phone. With neither, the agent is the original fully-local tracker.
 
 Exit codes: 0 = ran fine (changes or not), 1 = unexpected error,
 2 = eClass session expired (a human needs to run `eclass.main login`).
@@ -33,12 +33,10 @@ from .config import AgentConfig
 from .diff import diff_reports
 from .notify import Notifier, get_notifier
 from .storage import DEFAULT_SNAPSHOT_DIR, SnapshotStore
-from .supabase_push import SupabaseWriter
 
 logger = logging.getLogger(__name__)
 
-# Either push target — they share the same method interface.
-Writer = SupabaseWriter | BackendWriter
+Writer = BackendWriter
 
 
 def _push(description: str, operation) -> bool:
@@ -225,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = cli.add_subparsers(dest="command", required=True)
 
     check_cmd = sub.add_parser(
-        "check", help="Fetch grades, diff, notify, save, push to Supabase"
+        "check", help="Fetch grades, diff, notify, save, push to Command Center"
     )
     check_cmd.add_argument(
         "--notify",
@@ -258,17 +256,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "check":
         notifier = get_notifier(args.notify, config)
-        # Prefer the self-hosted Command Center backend; fall back to the old
-        # Supabase Hub; else run fully local (snapshots + notifications only).
+        # Push to the self-hosted Command Center backend when configured; else
+        # run fully local (snapshots + notifications only).
         writer = None
         if config.backend_enabled:
             writer = BackendWriter(config.cc_api_url, config.cc_api_key)
             logger.info("Pushing to Command Center backend at %s", config.cc_api_url)
-        elif config.supabase_enabled:
-            writer = SupabaseWriter(
-                config.supabase_url, config.supabase_service_role_key
-            )
-            logger.info("Pushing to Supabase.")
         else:
             logger.info("No push target configured; running local-only.")
         try:

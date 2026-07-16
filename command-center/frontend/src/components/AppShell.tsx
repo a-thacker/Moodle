@@ -1,7 +1,11 @@
-// Owner shell: launcher rail + top bar + the active view + command palette.
-// Navigation state lives in NavProvider; the rail and palette switch `view`.
+// The single app shell for every authenticated user: launcher rail + top bar +
+// the active view + command palette. What each person sees is driven entirely
+// by their capabilities (see backend app/core/capabilities.py) — there's no
+// per-role component anymore. NavProvider gets the user's capabilities so the
+// rail, palette, and navigation all stay in sync.
 
 import { NavProvider, useNav } from "../nav/NavContext.tsx";
+import { useAuth } from "../auth/AuthContext.tsx";
 import LauncherRail from "./LauncherRail.tsx";
 import CommandBar from "./CommandBar.tsx";
 import CommandPalette from "./CommandPalette.tsx";
@@ -17,15 +21,34 @@ import ScriptsView from "./ScriptsView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
 
+// Shown for a grades view when the account has no synced eClass data of its own
+// (every account except the owner, until per-user sync exists).
+function GradesPlaceholder() {
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
+      <div style={{ maxWidth: 440, textAlign: "center", padding: 24 }}>
+        <i className="ph ph-exam" style={{ fontSize: 34, color: "var(--cc-accent-soft)" }} />
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: "12px 0 6px" }}>Grades</h2>
+        <p style={{ color: "var(--cc-muted)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+          Your grades aren't connected yet. This shows your own eClass once a sync
+          is set up for your account — it never shows anyone else's.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ActiveView() {
   const { view } = useNav();
+  const { user } = useAuth();
   const { courses, deadlines } = useDashboardData();
+  const isOwner = user?.role === "owner";
 
   switch (view) {
     case "grades":
       return (
         <FocusView title="Grades">
-          <GradesCard courses={courses} />
+          {isOwner ? <GradesCard courses={courses} /> : <GradesPlaceholder />}
         </FocusView>
       );
     case "deadlines":
@@ -55,9 +78,11 @@ function ActiveView() {
   }
 }
 
-export default function OwnerDashboard() {
+export default function AppShell() {
+  const { user } = useAuth();
+
   return (
-    <NavProvider>
+    <NavProvider capabilities={user?.capabilities ?? []}>
       <div
         style={{
           width: "100vw",
