@@ -117,7 +117,8 @@ async def check_proactive() -> None:
                 if await _has_log_since(session, user.id, dedup_since, _hash(text)):
                     continue  # same nudge already sent recently
                 await ntfy.send(
-                    user.ntfy_topic, settings.ntfy_server, "💡 Command Center", text
+                    user.ntfy_topic, settings.ntfy_server, "Command Center", text,
+                    tags="bulb",
                 )
                 session.add(
                     ProactiveLog(user_id=user.id, content=text[:500], content_hash=_hash(text))

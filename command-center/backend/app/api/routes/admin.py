@@ -130,7 +130,7 @@ async def proactive_send(
             detail="You don't have an ntfy topic to send to.",
         )
     settings = get_settings()
-    await ntfy.send(owner.ntfy_topic, settings.ntfy_server, "💡 Command Center", payload.text)
+    await ntfy.send(owner.ntfy_topic, settings.ntfy_server, "Command Center", payload.text, tags="bulb")
     session.add(
         ProactiveLog(
             user_id=owner.id, content=payload.text[:500],
