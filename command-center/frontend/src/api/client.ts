@@ -134,12 +134,18 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ overrides }),
       }),
-    // Dry-run (or, with send=true, actually push) the owner's proactive nudge.
-    proactivePreview: (send: boolean) =>
-      apiFetch<{ would_send: boolean; text: string | null; sent: boolean }>(
-        `/api/v1/admin/proactive/preview?send=${send}`,
+    // Dry-run a proactive nudge for a user (default: the owner). No send.
+    proactivePreview: (userId?: string) =>
+      apiFetch<{ user_id: string; display_name: string; would_send: boolean; text: string | null }>(
+        `/api/v1/admin/proactive/preview${userId ? `?user_id=${userId}` : ""}`,
         { method: "POST" },
       ),
+    // Push a nudge (usually the previewed text) to the owner's own phone.
+    proactiveSend: (text: string) =>
+      apiFetch<{ sent: boolean }>(`/api/v1/admin/proactive/send`, {
+        method: "POST",
+        body: JSON.stringify({ text }),
+      }),
   },
 
   // Laptop script runner: list the Mac's scripts, enqueue a run, poll jobs.

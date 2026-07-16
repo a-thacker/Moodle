@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_owner
@@ -94,24 +95,47 @@ async def set_entitlements(
 
 @router.post("/proactive/preview")
 async def proactive_preview(
-    send: bool = False,
+    user_id: uuid.UUID | None = None,
     session: AsyncSession = Depends(get_db),
     owner: User = Depends(get_current_user),
 ) -> dict:
-    """Dry-run the proactive nudge for the owner: returns what their assistant
-    would send right now (no send, no log). Pass `?send=true` to actually push
-    it to the owner's own ntfy topic for an end-to-end test."""
-    text = await proactive_service.decide(session, owner)
-    sent = False
-    if send and text and owner.ntfy_topic:
-        settings = get_settings()
-        await ntfy.send(owner.ntfy_topic, settings.ntfy_server, "💡 Command Center", text)
-        session.add(
-            ProactiveLog(
-                user_id=owner.id, content=text[:500],
-                content_hash=proactive_service._hash(text),
-            )
+    """Dry-run the proactive nudge for a user (default: the owner) — returns what
+    their assistant would send right now. No send, no log. Pass `?user_id=` to
+    preview what any user's assistant would say."""
+    target = owner if (user_id is None or user_id == owner.id) else await _get_user_or_404(session, user_id)
+    text = await proactive_service.decide(session, target)
+    return {
+        "user_id": str(target.id),
+        "display_name": target.display_name,
+        "would_send": text is not None,
+        "text": text,
+    }
+
+
+class ProactiveSend(BaseModel):
+    text: str = Field(min_length=1, max_length=400)
+
+
+@router.post("/proactive/send")
+async def proactive_send(
+    payload: ProactiveSend,
+    session: AsyncSession = Depends(get_db),
+    owner: User = Depends(get_current_user),
+) -> dict:
+    """Push a proactive nudge (typically the just-previewed text) to the owner's
+    own ntfy topic, end to end, and log it. Owner-only self-test."""
+    if not owner.ntfy_topic:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You don't have an ntfy topic to send to.",
         )
-        await session.commit()
-        sent = True
-    return {"would_send": text is not None, "text": text, "sent": sent}
+    settings = get_settings()
+    await ntfy.send(owner.ntfy_topic, settings.ntfy_server, "💡 Command Center", payload.text)
+    session.add(
+        ProactiveLog(
+            user_id=owner.id, content=payload.text[:500],
+            content_hash=proactive_service._hash(payload.text),
+        )
+    )
+    await session.commit()
+    return {"sent": True}

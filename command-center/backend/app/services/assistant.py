@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from datetime import date, timedelta
 
 import httpx
@@ -190,12 +191,14 @@ async def _call_openai(system: str, messages: list[dict], key: str, model: str, 
 async def complete(user: User, system: str, message: str, *, thread: str = "") -> str | None:
     """Provider-routed one-shot generation with NO history persistence — for
     background/proactive use. Owner → Claude bridge (subscription); everyone else
-    → Codex bridge / OpenAI / Anthropic / Ollama, mirroring `chat`. `thread`
-    namespaces the bridge's per-user memory so background calls don't pollute the
-    interactive conversation. Returns None on failure or if nothing is
-    configured."""
+    → Codex bridge / OpenAI / Anthropic / Ollama, mirroring `chat`. Returns None
+    on failure or if nothing is configured.
+
+    Each call uses a FRESH, unique bridge thread: it must not pollute the user's
+    interactive chat, and every decision must be independent (a stable thread
+    would make the model 'remember' a prior nudge and decline to repeat)."""
     settings = get_settings()
-    key = f"{thread}{user.id}"
+    key = f"{thread}{user.id}-{uuid.uuid4().hex[:12]}"
 
     if user.role == "owner" and settings.claude_bridge_url:
         try:

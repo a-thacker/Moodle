@@ -211,6 +211,10 @@ function People() {
                 </div>
               </div>
             )}
+
+            {selected.capabilities.includes("assistant") && (
+              <UserNudgePreview key={selected.id} userId={selected.id} />
+            )}
           </>
         )}
       </div>
@@ -218,18 +222,73 @@ function People() {
   );
 }
 
-function ProactiveTest() {
-  const [busy, setBusy] = useState<null | "preview" | "send">(null);
-  const [result, setResult] = useState<{ text: string | null; sent: boolean } | null>(null);
+function UserNudgePreview({ userId }: { userId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [text, setText] = useState<string | null | undefined>(undefined);
   const [error, setError] = useState(false);
 
-  async function run(send: boolean) {
-    setBusy(send ? "send" : "preview");
+  async function run() {
+    setBusy(true);
     setError(false);
-    setResult(null);
+    setText(undefined);
     try {
-      const r = await api.admin.proactivePreview(send);
-      setResult({ text: r.text, sent: r.sent });
+      const r = await api.admin.proactivePreview(userId);
+      setText(r.text);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "var(--space-5)", paddingTop: "var(--space-4)", borderTop: "1px solid var(--color-divider)" }}>
+      <div style={{ fontSize: 13, color: "var(--color-neutral-400)", marginBottom: 8 }}>Proactive nudge preview</div>
+      <button type="button" className="btn" disabled={busy} onClick={run}>
+        {busy ? "Thinking…" : "Preview their nudge"}
+      </button>
+      {error && <span style={{ marginLeft: 10, fontSize: 13, color: "var(--color-accent-200)" }}>Couldn't reach their assistant.</span>}
+      {text !== undefined && (
+        <div style={{ marginTop: 10, padding: "var(--space-3)", background: "var(--color-bg)", borderRadius: "var(--radius-sm)", fontSize: 13.5 }}>
+          {text ? (
+            <span style={{ color: "var(--color-text)", lineHeight: 1.5 }}>{text}</span>
+          ) : (
+            <span style={{ color: "var(--color-neutral-500)" }}>Their assistant would stay quiet right now.</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProactiveTest() {
+  const [busy, setBusy] = useState<null | "preview" | "send">(null);
+  const [text, setText] = useState<string | null | undefined>(undefined); // undefined = not run
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState(false);
+
+  async function preview() {
+    setBusy("preview");
+    setError(false);
+    setSent(false);
+    setText(undefined);
+    try {
+      const r = await api.admin.proactivePreview();
+      setText(r.text);
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function send() {
+    if (!text) return;
+    setBusy("send");
+    setError(false);
+    try {
+      await api.admin.proactiveSend(text);
+      setSent(true);
     } catch {
       setError(true);
     } finally {
@@ -243,24 +302,24 @@ function ProactiveTest() {
         The assistant checks each AI-enabled user's schedule on a timer and sends a
         timely nudge to their phone (ntfy) when it's worth it. Off until{" "}
         <code style={{ fontFamily: "var(--font-mono)" }}>PROACTIVE_ENABLED=true</code> is set on the
-        server. Preview what yours would say right now:
+        server. Preview what yours would say right now, then optionally send that to your phone:
       </p>
       <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
-        <button type="button" className="btn" disabled={busy !== null} onClick={() => run(false)}>
+        <button type="button" className="btn" disabled={busy !== null} onClick={preview}>
           {busy === "preview" ? "Thinking…" : "Preview nudge"}
         </button>
-        <button type="button" className="btn btn-primary" disabled={busy !== null} onClick={() => run(true)}>
-          {busy === "send" ? "Sending…" : "Send test to my phone"}
+        <button type="button" className="btn btn-primary" disabled={busy !== null || !text} onClick={send}>
+          {busy === "send" ? "Sending…" : "Send this to my phone"}
         </button>
       </div>
       {error && <p style={{ fontSize: 13, color: "var(--color-accent-200)", marginTop: "var(--space-3)" }}>Couldn't reach the assistant.</p>}
-      {result && (
+      {text !== undefined && (
         <div style={{ marginTop: "var(--space-4)", padding: "var(--space-4)", background: "var(--color-bg)", borderRadius: "var(--radius-sm)", fontSize: 14 }}>
-          {result.text ? (
+          {text ? (
             <>
-              <div style={{ color: "var(--color-text)", lineHeight: 1.5 }}>{result.text}</div>
-              <div style={{ marginTop: 6, fontSize: 12, color: result.sent ? "#6bbf8a" : "var(--color-neutral-500)" }}>
-                {result.sent ? "✓ Sent to your ntfy topic." : "Preview only — not sent."}
+              <div style={{ color: "var(--color-text)", lineHeight: 1.5 }}>{text}</div>
+              <div style={{ marginTop: 6, fontSize: 12, color: sent ? "#6bbf8a" : "var(--color-neutral-500)" }}>
+                {sent ? "✓ Sent to your ntfy topic." : "Preview only — not sent yet."}
               </div>
             </>
           ) : (
