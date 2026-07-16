@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Pushes the Claude Code usage summary to the Command Center every 20 minutes,
+  so the dashboard's usage tile stays current (the server can't read the Mac's
+  ~/.claude logs — the Mac pushes). Reads CC_API_URL / CC_API_KEY from the
+  repo's .env (WorkingDirectory below).
+
+  Install (replace __PROJECT_DIR__ with the absolute repo path):
+    cp agent/launchd/edu.southern.command-center.usage.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/edu.southern.command-center.usage.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>edu.southern.command-center.usage</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT_DIR__/eclass/.venv/bin/python</string>
+    <string>-m</string>
+    <string>agent</string>
+    <string>claude-usage</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>StartInterval</key>
+  <integer>1200</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/snapshots/usage.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/snapshots/usage.err.log</string>
+</dict>
+</plist>

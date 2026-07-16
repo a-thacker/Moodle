@@ -1,5 +1,8 @@
-// Left 62px launcher rail. Tools switch the main view; planned tools (Notes,
-// Assistant) stay dimmed until their backends exist.
+// Left launcher rail. Tools switch the main view, and can be dragged to
+// reorder — the arrangement is saved per user in localStorage (like the
+// dashboard tiles). Settings / sign-out / avatar stay pinned at the bottom.
+
+import { useEffect, useState, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthContext.tsx";
 import { useNav, type View } from "../nav/NavContext.tsx";
@@ -20,13 +23,46 @@ const TOOLS: RailTool[] = [
   { icon: "ph-terminal-window", title: "Scripts — on my Mac", view: "scripts" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
 ];
+const BY_VIEW = new Map(TOOLS.map((t) => [t.view, t]));
 
-const PLANNED: { icon: string; title: string }[] = [];
+function loadOrder(userId: string | undefined): View[] {
+  const known = TOOLS.map((t) => t.view);
+  try {
+    const raw = localStorage.getItem(`cc_rail_${userId ?? "x"}`);
+    if (!raw) return known;
+    const saved = (JSON.parse(raw) as View[]).filter((v) => BY_VIEW.has(v));
+    // Append any tools added since the order was saved; drop unknown ones.
+    for (const v of known) if (!saved.includes(v)) saved.push(v);
+    return saved;
+  } catch {
+    return known;
+  }
+}
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();
   const { view, setView } = useNav();
   const name = user?.display_name ?? "?";
+  const [order, setOrder] = useState<View[]>(() => loadOrder(user?.id));
+  const [dragView, setDragView] = useState<View | null>(null);
+  const [overView, setOverView] = useState<View | null>(null);
+
+  useEffect(() => setOrder(loadOrder(user?.id)), [user?.id]);
+  useEffect(() => {
+    if (user?.id) localStorage.setItem(`cc_rail_${user.id}`, JSON.stringify(order));
+  }, [order, user?.id]);
+
+  function onDrop(target: View) {
+    const src = dragView;
+    setDragView(null);
+    setOverView(null);
+    if (!src || src === target) return;
+    setOrder((prev) => {
+      const arr = prev.filter((v) => v !== src);
+      arr.splice(arr.indexOf(target), 0, src); // insert before the target
+      return arr;
+    });
+  }
 
   return (
     <nav
@@ -58,26 +94,27 @@ export default function LauncherRail() {
         <i className="ph-fill ph-command" style={{ fontSize: 20 }} />
       </div>
 
-      {TOOLS.map((tool) => (
-        <button
-          key={tool.view}
-          type="button"
-          className={`rail-link${view === tool.view ? " active" : ""}`}
-          title={tool.title}
-          onClick={() => setView(tool.view)}
-         
-        >
-          <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
-        </button>
-      ))}
-
-      <div style={{ width: 28, height: 1, background: "#1b1e2c", margin: "8px 0" }} />
-
-      {PLANNED.map((tool) => (
-        <span key={tool.title} className="rail-link dim" title={tool.title} style={{ cursor: "default" }}>
-          <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
-        </span>
-      ))}
+      {order.map((v) => {
+        const tool = BY_VIEW.get(v)!;
+        return (
+          <button
+            key={v}
+            type="button"
+            draggable
+            className={`rail-link${view === v ? " active" : ""}${overView === v ? " rail-over" : ""}`}
+            title={`${tool.title}  ·  drag to reorder`}
+            style={dragView === v ? { opacity: 0.4 } : undefined}
+            onClick={() => setView(v)}
+            onDragStart={(e: DragEvent) => { setDragView(v); e.dataTransfer.effectAllowed = "move"; }}
+            onDragOver={(e: DragEvent) => { e.preventDefault(); if (dragView && dragView !== v) setOverView(v); }}
+            onDragLeave={() => setOverView((o) => (o === v ? null : o))}
+            onDrop={() => onDrop(v)}
+            onDragEnd={() => { setDragView(null); setOverView(null); }}
+          >
+            <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
+          </button>
+        );
+      })}
 
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <button
@@ -85,7 +122,6 @@ export default function LauncherRail() {
           className={`rail-link${view === "settings" ? " active" : ""}`}
           title="Settings"
           onClick={() => setView("settings")}
-         
         >
           <i className="ph ph-gear-six" style={{ fontSize: 20 }} />
         </button>
@@ -94,7 +130,6 @@ export default function LauncherRail() {
           className="rail-link"
           title="Sign out"
           onClick={logout}
-         
         >
           <i className="ph ph-sign-out" style={{ fontSize: 20 }} />
         </button>

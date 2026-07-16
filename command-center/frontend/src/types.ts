@@ -115,10 +115,26 @@ export interface UsageBucket {
   costEst: number;
 }
 
+export interface SessionUsage {
+  io: number;
+  tokens: number;
+  costEst: number;
+  startsAt?: string | null;
+  resetsAt?: string | null;
+}
+
+export interface DailyUsage {
+  date: string; // YYYY-MM-DD
+  io: number;
+  costEst: number;
+}
+
 export interface ClaudeUsage {
   generatedAt?: string;
   updatedAt?: string;
   sessionResetsAt?: string | null;
+  session?: SessionUsage;
+  daily?: DailyUsage[];
   messages?: number;
   totals?: UsageBucket;
   today?: UsageBucket;

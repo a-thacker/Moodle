@@ -411,32 +411,59 @@ export default function DashboardView() {
         </div>
       </>
     ),
-    claude: (
-      <>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <ClaudeMark size={15} />
-            <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
-          </span>
-          <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--cc-accent-soft)", lineHeight: 1 }}>{fmtTok(usage?.today?.io)}</span>
-          <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>today</span>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 14, fontSize: 11.5, fontFamily: MONO }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>today est</span><span style={{ color: "var(--cc-text)" }}>~${usage?.today?.costEst ?? 0}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--cc-muted)" }}>this week</span><span style={{ color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} · ~${usage?.week?.costEst ?? 0}</span></div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "var(--cc-muted)" }}>session</span>
-            <span style={{ color: "var(--cc-good)", display: "flex", alignItems: "center", gap: 5 }}>
-              <span className="pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--cc-good)" }} />{usage ? "healthy" : "idle"}
+    claude: ((): ReactNode => {
+      const sess = usage?.session;
+      const active = !!(sess?.startsAt && sess?.resetsAt);
+      let pct = 0;
+      let resetLabel = "idle";
+      if (active) {
+        const start = new Date(sess!.startsAt!).getTime();
+        const end = new Date(sess!.resetsAt!).getTime();
+        pct = Math.max(3, Math.min(100, ((now.getTime() - start) / (end - start)) * 100));
+        const mins = Math.max(0, Math.round((end - now.getTime()) / 60000));
+        resetLabel = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+      }
+      const daily = usage?.daily ?? [];
+      const dmax = Math.max(1, ...daily.map((d) => d.io));
+      return (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <ClaudeMark size={15} />
+              <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
             </span>
+            <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}</span>
           </div>
-          {!usage && <div style={{ color: "var(--cc-muted)" }}>Run `agent claude-usage`.</div>}
-        </div>
-      </>
-    ),
+
+          {/* Current 5-hour session: bar = elapsed, with a reset countdown. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".06em", color: "var(--cc-muted)" }}>SESSION</span>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: active ? "var(--cc-accent-soft)" : "var(--cc-dim)" }}>{active ? `resets in ${resetLabel}` : "idle"}</span>
+          </div>
+          <div style={{ height: 7, background: "#232739", borderRadius: 4, overflow: "hidden" }}>
+            <div style={{ width: `${active ? pct : 0}%`, height: "100%", background: "linear-gradient(90deg,#8b7cf0,#a99cf5)" }} />
+          </div>
+          <div style={{ marginTop: 5, fontFamily: MONO, fontSize: 11, color: "var(--cc-text)" }}>{fmtTok(sess?.io)} io · ~${sess?.costEst ?? 0} this session</div>
+
+          {/* Last 7 days sparkline (today highlighted). */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "14px 0 6px" }}>
+            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".06em", color: "var(--cc-muted)" }}>THIS WEEK</span>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} io · ~${usage?.week?.costEst ?? 0}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 30 }}>
+            {daily.length === 0
+              ? <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-muted)" }}>Run `agent claude-usage`.</span>
+              : daily.map((d, i) => (
+                <div
+                  key={d.date}
+                  title={`${d.date}: ${fmtTok(d.io)} io · ~$${d.costEst}`}
+                  style={{ flex: 1, height: `${Math.max(6, (d.io / dmax) * 100)}%`, background: i === daily.length - 1 ? "var(--cc-accent)" : "#2f3450", borderRadius: 2, minHeight: 2 }}
+                />
+              ))}
+          </div>
+        </>
+      );
+    })(),
     lists: (
       <>
         <div className="cc-label" style={{ marginBottom: 13 }}>APARTMENT LIST <span style={{ color: "var(--cc-dim)" }}>· shared</span></div>

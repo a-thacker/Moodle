@@ -40,6 +40,8 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     day_io: dict[str, int] = {}  # input+output — the "real work" (no cache)
     day_cost: dict[str, float] = {}
     all_ts: list[datetime] = []
+    # (timestamp, io, tokens, cost) per message, for the active-session sum.
+    msg_events: list[tuple[datetime, int, int, float]] = []
     totals = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "cost": 0.0}
     messages = 0
 
@@ -87,6 +89,7 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
                 try:
                     dt = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone()
                     all_ts.append(dt)
+                    msg_events.append((dt, inp + out, tokens, cost))
                     day = dt.date().isoformat()
                     day_tokens[day] = day_tokens.get(day, 0) + tokens
                     day_io[day] = day_io.get(day, 0) + inp + out
@@ -101,6 +104,7 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     # starts at the first message after any >5h gap, and resets exactly 5h
     # later (Claude counts from the first message, not a floored hour).
     session_resets_at: str | None = None
+    session = {"io": 0, "tokens": 0, "costEst": 0.0, "startsAt": None, "resetsAt": None}
     if all_ts:
         all_ts.sort()
         five = timedelta(hours=5)
@@ -112,6 +116,27 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
         reset = block_start + five
         if reset > datetime.now().astimezone():
             session_resets_at = reset.isoformat()
+            s_io = s_tok = 0
+            s_cost = 0.0
+            for dt, io, tok, cost in msg_events:
+                if dt >= block_start:
+                    s_io += io
+                    s_tok += tok
+                    s_cost += cost
+            session = {
+                "io": s_io, "tokens": s_tok, "costEst": round(s_cost, 2),
+                "startsAt": block_start.isoformat(), "resetsAt": session_resets_at,
+            }
+
+    # Per-day usage for the last 7 days (oldest → today), for a week sparkline.
+    daily = [
+        {
+            "date": (today - timedelta(days=i)).isoformat(),
+            "io": day_io.get((today - timedelta(days=i)).isoformat(), 0),
+            "costEst": round(day_cost.get((today - timedelta(days=i)).isoformat(), 0.0), 2),
+        }
+        for i in range(6, -1, -1)
+    ]
 
     def week_sum(d: dict[str, float]) -> float:
         cutoff = (today.toordinal() - 6)
@@ -120,6 +145,8 @@ def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "sessionResetsAt": session_resets_at,
+        "session": session,
+        "daily": daily,
         "messages": messages,
         "totals": {"tokens": total_tokens, "io": totals["input"] + totals["output"], "costEst": round(totals["cost"], 2), **{k: totals[k] for k in ("input", "output", "cacheRead", "cacheWrite")}},
         "today": {"tokens": day_tokens.get(today_key, 0), "io": day_io.get(today_key, 0), "costEst": round(day_cost.get(today_key, 0.0), 2)},
