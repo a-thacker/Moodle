@@ -129,10 +129,23 @@ export interface DailyUsage {
   costEst: number;
 }
 
+export interface UsageLimit {
+  pct: number;
+  resets: string; // human string from /usage, e.g. "Jul 15 at 11:09pm"
+}
+
+export interface UsageLimits {
+  session?: UsageLimit;
+  weekAll?: UsageLimit;
+  weekFable?: UsageLimit;
+  fetchedAt?: string;
+}
+
 export interface ClaudeUsage {
   generatedAt?: string;
   updatedAt?: string;
   sessionResetsAt?: string | null;
+  limits?: UsageLimits;
   session?: SessionUsage;
   daily?: DailyUsage[];
   messages?: number;

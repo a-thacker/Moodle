@@ -1,16 +1,21 @@
-// Claude's logomark, drawn inline (no asset/dep). Colored via `color`.
+// The Claude Code logomark — the little terminal that "types" (the body hops
+// 1px on a 1s step loop). Animation lives in app.css (.cc-claude-body).
 
-export default function ClaudeMark({ size = 15, color = "var(--cc-accent-soft)" }: { size?: number; color?: string }) {
+export default function ClaudeMark({ size = 16 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      role="img"
-      aria-label="Claude"
-      style={{ display: "block", flexShrink: 0, fill: color }}
-    >
-      <path d="m19.6 66.5 19.7-11 .3-1-.3-.5h-1l-3.3-.2-11.2-.3L14 53l-9.5-.5-2.4-.5L0 49l.2-1.5 2-1.3 2.9.2 6.3.5 9.5.6 6.9.4L38 49.1h1.6l.2-.7-.5-.4-.4-.4L29 41l-10.6-7-5.6-4.1-3-2-1.5-2-.6-4.2 2.7-3 3.7.3.9.2 3.7 2.9 8 6.1L37 36l1.5 1.2.6-.4.1-.3-.7-1.1L33 25l-6-10.4-2.7-4.3-.7-2.6c-.3-1-.4-2-.4-3l3-4.2L28 0l4.2.6L33.8 2l2.6 6 4.1 9.3L47 29.9l2 3.8 1 3.4.3 1h.7v-.5l.5-7.2 1-8.7 1-11.2.3-3.2 1.6-3.8 3-2L61 2.6l2 2.9-.3 1.8-1.1 7.7L59 27.1l-1.5 8.2h.9l1-1.1 4.1-5.4 6.9-8.6 3-3.5L77 13l2.3-1.8h4.3l3.1 4.7-1.4 4.9-4.4 5.6-3.7 4.7-5.3 7.1-3.2 5.7.3.4h.7l12-2.6 6.4-1.1 7.6-1.3 3.5 1.6.4 1.6-1.4 3.4-8.2 2-9.6 2-14.3 3.3-.2.1.2.3 6.4.6 2.8.2h6.8l12.6 1 3.3 2 1.9 2.7-.3 2-5.1 2.6-6.8-1.6-16-3.8-5.4-1.3h-.8v.4l4.6 4.5 8.3 7.5L89 80.1l.5 2.4-1.3 2-1.4-.2-9.2-7-3.6-3-8-6.8h-.5v.7l1.8 2.7 9.8 14.7.5 4.5-.7 1.4-2.6 1-2.7-.6-5.8-8-6-9-4.7-8.2-.5.4-2.9 30.2-1.3 1.5-3 1.2-2.5-2-1.4-3 1.4-6.2 1.6-8 1.3-6.4 1.2-7.9.7-2.6v-.2H49L43 72l-9 12.3-7.2 7.6-1.7.7-3-1.5.3-2.8L24 86l10-12.8 6-7.9 4-4.6-.1-.5h-.3L17.2 77.4l-4.7.6-2-2 .2-3 1-1 8-5.5Z" />
+    <svg width={size} height={size} viewBox="0 0 24 24" role="img" aria-label="Claude Code" style={{ display: "block", flexShrink: 0 }}>
+      <title>Claude Code</title>
+      <path
+        fill="#D97757"
+        fillRule="evenodd"
+        d="M 21 15 v 1 h -1.487 V 20 H 18 v -4 h -1.487 V 20 H 15 v -4 H 9 V 20 H 7.488 v -4 H 6 V 20 H 4.487 v -4 H 3 V 15 h 18 Z"
+      />
+      <path
+        className="cc-claude-body"
+        d="M 20.998 10.949 H 24 v 3.102 h -3 V 17 H 3 V 14.05 H 0 V 10.95 h 3 V 5 h 17.998 v 5.949 z M 6 10.949 h 1.488 V 8.102 H 6 v 2.847 z m 10.51 0 H 18 V 8.102 h -1.49 v 2.847 z"
+        fill="#D97757"
+        fillRule="evenodd"
+      />
     </svg>
   );
 }

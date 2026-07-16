@@ -180,6 +180,15 @@ def claude_usage(config: AgentConfig) -> int:
     from . import claude_usage as cu
 
     summary = cu.summarize()
+    # Real session/week % + reset times from `claude -p /usage` (best-effort).
+    limits = cu.fetch_limits()
+    if limits:
+        summary["limits"] = limits
+        sess = limits.get("session", {})
+        wk = limits.get("weekAll", {})
+        print(f"Usage limits — session {sess.get('pct')}% · week {wk.get('pct')}%.")
+    else:
+        print("Usage limits — /usage not available (showing token estimates only).")
     print(
         f"Claude usage — today: {summary['today']['tokens']:,} tok "
         f"(${summary['today']['costEst']}); total: {summary['totals']['tokens']:,} tok "

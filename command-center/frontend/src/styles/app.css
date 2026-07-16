@@ -109,6 +109,26 @@ body {
   animation: glow 2.4s ease-in-out infinite;
 }
 
+/* Claude Code logomark — the body "types" (hops 1px on a step loop). */
+.cc-claude-body {
+  animation: cc-claude-move 1s steps(1, end) infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+@keyframes cc-claude-move {
+  0%,
+  49% {
+    transform: translateY(0);
+  }
+  50%,
+  99% {
+    transform: translateY(-1px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
 /* The planner's live "now" divider dot. */
 @keyframes nowpulse {
   0%,

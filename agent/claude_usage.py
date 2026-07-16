@@ -9,6 +9,9 @@ dashboard tile (the server can't read the Mac; the Mac pushes).
 from __future__ import annotations
 
 import json
+import os
+import re
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -31,6 +34,45 @@ def _rate(model: str) -> tuple[float, float]:
         if key in model:
             return rate
     return _DEFAULT_RATE
+
+
+# --- Real usage limits via `claude -p "/usage"` -------------------------
+# The exact % / reset that the `/usage` panel shows come live from Anthropic
+# (not in local logs). Headless `claude -p "/usage"` prints them, so we run it
+# and parse. Account-wide limits, so it's the same from any logged-in machine.
+_LIMIT_RE = {
+    "session": re.compile(r"Current session:\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+    "weekAll": re.compile(r"Current week \(all models\):\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+    "weekFable": re.compile(r"Current week \(Fable\):\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+}
+
+
+def fetch_limits() -> dict[str, Any] | None:
+    """Run `claude -p /usage` and parse the session/week % + reset times.
+    Returns None if claude isn't available or the output can't be parsed."""
+    claude = os.path.expanduser("~/.local/bin/claude")
+    if not os.path.exists(claude):
+        claude = "claude"
+    env = dict(os.environ, PATH=f"{os.path.expanduser('~/.local/bin')}:{os.environ.get('PATH', '')}")
+    try:
+        proc = subprocess.run(
+            [claude, "-p", "/usage", "--output-format", "json"],
+            capture_output=True, text=True, timeout=90, env=env,
+        )
+        if proc.returncode != 0:
+            return None
+        result = json.loads(proc.stdout).get("result", "")
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return None
+    out: dict[str, Any] = {}
+    for key, rx in _LIMIT_RE.items():
+        m = rx.search(result)
+        if m:
+            out[key] = {"pct": int(m.group(1)), "resets": m.group(2).strip()}
+    if not out:
+        return None
+    out["fetchedAt"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return out
 
 
 def summarize(claude_dir: Path = DEFAULT_CLAUDE_DIR) -> dict[str, Any]:

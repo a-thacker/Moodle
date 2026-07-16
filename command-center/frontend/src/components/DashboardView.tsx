@@ -23,7 +23,7 @@ import { useGrocery } from "../hooks/useGrocery";
 import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, ScriptInfo, Task, Weather } from "../types";
+import type { ClaudeUsage, Deadline, Task, Weather } from "../types";
 import { relativeDay } from "../utils/format";
 import { CAT_COLOR, CAT_LEGEND, taskColor } from "../utils/category";
 import ClaudeMark from "./ClaudeMark.tsx";
@@ -139,24 +139,24 @@ function DayColumn(props: ColumnProps) {
   );
 }
 
-type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "scripts" | "claude" | "lists";
+type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "claude" | "lists";
 type Footprint = "wide" | "big" | "small";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
   wide: [{ gridColumn: "1 / 3", gridRow: "1" }, { gridColumn: "1 / 3", gridRow: "2" }],
   big: [{ gridColumn: "3 / 5", gridRow: "1 / 3" }],
+  // Row 3: grades, grocery, then Claude usage spanning the last two columns.
   small: [
     { gridColumn: "1", gridRow: "3" },
     { gridColumn: "2", gridRow: "3" },
-    { gridColumn: "3", gridRow: "3" },
-    { gridColumn: "4", gridRow: "3" },
+    { gridColumn: "3 / 5", gridRow: "3" },
   ],
 };
 
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
   big: ["planner"],
-  small: ["grades", "scripts", "lists", "claude"],
+  small: ["grades", "lists", "claude"],
 };
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
@@ -164,7 +164,6 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
   planner: { footprint: "big", className: "cc-tile cc-clickable", view: "planner" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
-  scripts: { footprint: "small", className: "cc-tile cc-clickable", view: "scripts" },
   claude: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
 };
@@ -186,8 +185,6 @@ function dotColor(d: Deadline): string {
   if (["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].includes(rel)) return "var(--cc-warn)";
   return "var(--cc-dim)";
 }
-
-const SCRIPT_STRIPE = ["var(--cc-good)", "var(--cc-warn)", "var(--cc-accent-soft)"];
 
 function loadArrangement(userId: string | undefined): Record<Footprint, WidgetId[]> {
   try {
@@ -214,15 +211,12 @@ export default function DashboardView() {
   const { items: grocery } = useGrocery();
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
-  const [scripts, setScripts] = useState<ScriptInfo[]>([]);
-  const [ranScript, setRanScript] = useState<string | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
   useEffect(() => { api.claudeUsage().then(setUsage).catch(() => {}); }, []);
-  useEffect(() => { api.scripts.list().then(setScripts).catch(() => {}); }, []);
   useEffect(() => {
     const load = () => api.weather().then(setWeather).catch(() => {});
     load();
@@ -246,16 +240,6 @@ export default function DashboardView() {
       [arr[i], arr[j]] = [arr[j], arr[i]];
       return { ...prev, [fp]: arr };
     });
-  }
-
-  async function runScript(id: string) {
-    try {
-      await api.scripts.run(id);
-      setRanScript(id);
-      setTimeout(() => setRanScript((r) => (r === id ? null : r)), 1600);
-    } catch {
-      /* the Scripts view surfaces failures */
-    }
   }
 
   const firstName = (user?.display_name ?? "there").split(" ")[0];
@@ -391,76 +375,49 @@ export default function DashboardView() {
         </div>
       </>
     ),
-    scripts: (
-      <>
-        <div className="cc-label" style={{ marginBottom: 12 }}>SCRIPTS <span style={{ color: "var(--cc-dim)" }}>· one-tap</span></div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          {scripts.slice(0, 3).map((s, i) => (
-            <button
-              key={s.id}
-              className="cc-scriptrow"
-              onClick={(e) => { e.stopPropagation(); runScript(s.id); }}
-              style={{ display: "flex", alignItems: "center", gap: 9, textAlign: "left", background: "#0f101a", border: "1px solid #262a3b", borderRadius: 9, padding: "8px 11px", cursor: "pointer" }}
-            >
-              <span style={{ color: SCRIPT_STRIPE[i % SCRIPT_STRIPE.length], fontFamily: MONO, fontSize: 12 }}>▸</span>
-              <span style={{ flex: 1, color: "var(--cc-text)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
-              {ranScript === s.id && <span style={{ color: "var(--cc-good)", fontSize: 11, fontFamily: MONO }}>queued ✓</span>}
-            </button>
-          ))}
-          {scripts.length === 0 && <span style={{ color: "var(--cc-muted)", fontSize: 12.5 }}>Mac runner offline.</span>}
-        </div>
-      </>
-    ),
     claude: ((): ReactNode => {
-      const sess = usage?.session;
-      const active = !!(sess?.startsAt && sess?.resetsAt);
-      let pct = 0;
-      let resetLabel = "idle";
-      if (active) {
-        const start = new Date(sess!.startsAt!).getTime();
-        const end = new Date(sess!.resetsAt!).getTime();
-        pct = Math.max(3, Math.min(100, ((now.getTime() - start) / (end - start)) * 100));
-        const mins = Math.max(0, Math.round((end - now.getTime()) / 60000));
-        resetLabel = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
-      }
-      const daily = usage?.daily ?? [];
-      const dmax = Math.max(1, ...daily.map((d) => d.io));
+      const lim = usage?.limits;
+      const barColor = (p: number) => (p >= 90 ? "var(--cc-bad)" : p >= 75 ? "var(--cc-warn)" : "var(--cc-accent)");
+      const rows = [
+        { label: "SESSION", entry: lim?.session, showReset: true },
+        { label: "WEEK · ALL", entry: lim?.weekAll, showReset: true },
+        { label: "WEEK · FABLE", entry: lim?.weekFable, showReset: false },
+      ];
       return (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <ClaudeMark size={15} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <ClaudeMark size={18} />
               <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
             </span>
-            <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "run agent"}</span>
+            <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "run agent"}</span>
           </div>
-
-          {/* Current 5-hour session: bar = elapsed, with a reset countdown. */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".06em", color: "var(--cc-muted)" }}>SESSION</span>
-            <span style={{ fontFamily: MONO, fontSize: 11, color: active ? "var(--cc-accent-soft)" : "var(--cc-dim)" }}>{active ? `resets in ${resetLabel}` : "idle"}</span>
-          </div>
-          <div style={{ height: 7, background: "#232739", borderRadius: 4, overflow: "hidden" }}>
-            <div style={{ width: `${active ? pct : 0}%`, height: "100%", background: "linear-gradient(90deg,#8b7cf0,#a99cf5)" }} />
-          </div>
-          <div style={{ marginTop: 5, fontFamily: MONO, fontSize: 11, color: "var(--cc-text)" }}>{fmtTok(sess?.io)} io · ~${sess?.costEst ?? 0} this session</div>
-
-          {/* Last 7 days sparkline (today highlighted). */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "14px 0 6px" }}>
-            <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".06em", color: "var(--cc-muted)" }}>THIS WEEK</span>
-            <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-text)" }}>{fmtTok(usage?.week?.io)} io · ~${usage?.week?.costEst ?? 0}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 30 }}>
-            {daily.length === 0
-              ? <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-muted)" }}>Run `agent claude-usage`.</span>
-              : daily.map((d, i) => (
-                <div
-                  key={d.date}
-                  title={`${d.date}: ${fmtTok(d.io)} io · ~$${d.costEst}`}
-                  style={{ flex: 1, height: `${Math.max(6, (d.io / dmax) * 100)}%`, background: i === daily.length - 1 ? "var(--cc-accent)" : "#2f3450", borderRadius: 2, minHeight: 2 }}
-                />
-              ))}
-          </div>
+          {!lim ? (
+            <div style={{ color: "var(--cc-muted)", fontSize: 12.5 }}>Run <code style={{ fontFamily: MONO, color: "var(--cc-accent-soft)" }}>agent claude-usage</code> to load your session &amp; weekly limits.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+              {rows.map(({ label, entry, showReset }) => {
+                const p = Math.max(0, Math.min(100, entry?.pct ?? 0));
+                return (
+                  <div key={label}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".05em", color: "var(--cc-muted)" }}>
+                        {label}
+                        {showReset && entry && <span style={{ color: "var(--cc-dim)" }}> · resets {entry.resets}</span>}
+                      </span>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: entry ? barColor(p) : "var(--cc-dim)" }}>{entry ? `${p}%` : "—"}</span>
+                    </div>
+                    <div style={{ height: 7, background: "#232739", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ width: `${p}%`, height: "100%", background: barColor(p), transition: "width .3s" }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-dim)" }}>
+                {fmtTok(usage?.session?.io)} io this session · {fmtTok(usage?.week?.io)} this week
+              </div>
+            </div>
+          )}
         </>
       );
     })(),
@@ -482,7 +439,7 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, scripts, ranScript, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
+  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
 
   return (
     <div className="cc-grid">
