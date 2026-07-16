@@ -134,6 +134,12 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ overrides }),
       }),
+    // Dry-run (or, with send=true, actually push) the owner's proactive nudge.
+    proactivePreview: (send: boolean) =>
+      apiFetch<{ would_send: boolean; text: string | null; sent: boolean }>(
+        `/api/v1/admin/proactive/preview?send=${send}`,
+        { method: "POST" },
+      ),
   },
 
   // Laptop script runner: list the Mac's scripts, enqueue a run, poll jobs.

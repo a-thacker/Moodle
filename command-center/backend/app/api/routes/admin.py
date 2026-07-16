@@ -10,13 +10,16 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_owner
+from app.api.deps import get_current_user, require_owner
 from app.core.capabilities import available_capabilities, effective_capabilities
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.proactive import ProactiveLog
 from app.models.user import User
 from app.schemas.entitlement import CapabilityInfo, EntitlementUpdate, UserEntitlements
 from app.services import entitlement as entitlement_service
+from app.services import ntfy
+from app.services import proactive as proactive_service
 from app.services import user as user_service
 
 router = APIRouter(
@@ -87,3 +90,28 @@ async def set_entitlements(
     user = await _get_user_or_404(session, user_id)
     await entitlement_service.set_overrides(session, user.id, payload.overrides)
     return await _user_entitlements(session, user)
+
+
+@router.post("/proactive/preview")
+async def proactive_preview(
+    send: bool = False,
+    session: AsyncSession = Depends(get_db),
+    owner: User = Depends(get_current_user),
+) -> dict:
+    """Dry-run the proactive nudge for the owner: returns what their assistant
+    would send right now (no send, no log). Pass `?send=true` to actually push
+    it to the owner's own ntfy topic for an end-to-end test."""
+    text = await proactive_service.decide(session, owner)
+    sent = False
+    if send and text and owner.ntfy_topic:
+        settings = get_settings()
+        await ntfy.send(owner.ntfy_topic, settings.ntfy_server, "💡 Command Center", text)
+        session.add(
+            ProactiveLog(
+                user_id=owner.id, content=text[:500],
+                content_hash=proactive_service._hash(text),
+            )
+        )
+        await session.commit()
+        sent = True
+    return {"would_send": text is not None, "text": text, "sent": sent}

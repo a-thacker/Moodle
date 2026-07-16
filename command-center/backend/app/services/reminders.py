@@ -20,20 +20,11 @@ from app.core.config import get_settings
 from app.db.session import SessionFactory
 from app.models.task import Task
 from app.models.user import User
+from app.services import ntfy
 
 logger = logging.getLogger(__name__)
 
 _TICK_SECONDS = 60
-
-
-async def _send(topic: str, server: str, title: str, message: str) -> None:
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.post(
-            f"{server.rstrip('/')}/{topic}",
-            content=message.encode("utf-8"),
-            headers={"Title": title},
-        )
-        resp.raise_for_status()
 
 
 async def check_reminders() -> None:
@@ -69,16 +60,16 @@ async def check_reminders() -> None:
             when = t.due_time.strftime("%-I:%M %p")  # type: ignore[union-attr]
             if not t.notified_before and event - before <= now < event:
                 try:
-                    await _send(topic, settings.ntfy_server,
-                                f"Soon: {t.title}", f"at {when}")
+                    await ntfy.send(topic, settings.ntfy_server,
+                                    f"Soon: {t.title}", f"at {when}")
                     t.notified_before = True
                     changed = True
                 except httpx.HTTPError as exc:
                     logger.warning("ntfy before-reminder failed: %s", exc)
             if not t.notified_after and now >= event + after:
                 try:
-                    await _send(topic, settings.ntfy_server,
-                                f"Still open: {t.title}", f"was at {when} — not checked off")
+                    await ntfy.send(topic, settings.ntfy_server,
+                                    f"Still open: {t.title}", f"was at {when} — not checked off")
                     t.notified_after = True
                     changed = True
                 except httpx.HTTPError as exc:

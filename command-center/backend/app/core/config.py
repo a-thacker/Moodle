@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     remind_before_minutes: int = 15  # notify this long before a timed event
     remind_after_minutes: int = 30   # nudge this long after, if not done
 
+    # --- Proactive AI notifications -------------------------------------
+    # A background loop asks each AI-enabled user's assistant whether to send a
+    # timely nudge. OFF by default (it auto-messages phones) — enable per
+    # deployment once you've previewed the output.
+    proactive_enabled: bool = False
+    proactive_interval_minutes: int = 60   # how often the loop wakes up
+    proactive_cooldown_minutes: int = 180  # min gap between nudges per user
+    proactive_dedup_hours: int = 24        # suppress identical nudges within this window
+
     # --- PostgreSQL ------------------------------------------------------
     postgres_host: str = "postgres"
     postgres_port: int = 5432

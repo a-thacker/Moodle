@@ -9,6 +9,7 @@ from app.models.chat import ChatMessage
 from app.models.eclass import Course, GradeEvent, GradeSnapshot, TimelineEvent
 from app.models.entitlement import UserEntitlement
 from app.models.grocery import GroceryItem
+from app.models.proactive import ProactiveLog
 from app.models.script import ScriptJob, ScriptRegistry
 from app.models.task import Task
 from app.models.usage import ClaudeUsage
@@ -21,6 +22,7 @@ __all__ = [
     "GradeEvent",
     "GradeSnapshot",
     "GroceryItem",
+    "ProactiveLog",
     "ScriptJob",
     "ScriptRegistry",
     "Task",

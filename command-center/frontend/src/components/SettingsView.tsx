@@ -218,6 +218,60 @@ function People() {
   );
 }
 
+function ProactiveTest() {
+  const [busy, setBusy] = useState<null | "preview" | "send">(null);
+  const [result, setResult] = useState<{ text: string | null; sent: boolean } | null>(null);
+  const [error, setError] = useState(false);
+
+  async function run(send: boolean) {
+    setBusy(send ? "send" : "preview");
+    setError(false);
+    setResult(null);
+    try {
+      const r = await api.admin.proactivePreview(send);
+      setResult({ text: r.text, sent: r.sent });
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <>
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-3)", lineHeight: 1.6 }}>
+        The assistant checks each AI-enabled user's schedule on a timer and sends a
+        timely nudge to their phone (ntfy) when it's worth it. Off until{" "}
+        <code style={{ fontFamily: "var(--font-mono)" }}>PROACTIVE_ENABLED=true</code> is set on the
+        server. Preview what yours would say right now:
+      </p>
+      <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap" }}>
+        <button type="button" className="btn" disabled={busy !== null} onClick={() => run(false)}>
+          {busy === "preview" ? "Thinking…" : "Preview nudge"}
+        </button>
+        <button type="button" className="btn btn-primary" disabled={busy !== null} onClick={() => run(true)}>
+          {busy === "send" ? "Sending…" : "Send test to my phone"}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: 13, color: "var(--color-accent-200)", marginTop: "var(--space-3)" }}>Couldn't reach the assistant.</p>}
+      {result && (
+        <div style={{ marginTop: "var(--space-4)", padding: "var(--space-4)", background: "var(--color-bg)", borderRadius: "var(--radius-sm)", fontSize: 14 }}>
+          {result.text ? (
+            <>
+              <div style={{ color: "var(--color-text)", lineHeight: 1.5 }}>{result.text}</div>
+              <div style={{ marginTop: 6, fontSize: 12, color: result.sent ? "#6bbf8a" : "var(--color-neutral-500)" }}>
+                {result.sent ? "✓ Sent to your ntfy topic." : "Preview only — not sent."}
+              </div>
+            </>
+          ) : (
+            <span style={{ color: "var(--color-neutral-500)" }}>Nothing worth a nudge right now — the assistant would stay quiet.</span>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function SettingsView() {
   const { user } = useAuth();
 
@@ -236,6 +290,13 @@ export default function SettingsView() {
         <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
           <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>People &amp; tools</h3>
           <People />
+        </section>
+      )}
+
+      {user?.role === "owner" && (
+        <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+          <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Proactive notifications</h3>
+          <ProactiveTest />
         </section>
       )}
     </FocusView>

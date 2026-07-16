@@ -187,6 +187,46 @@ async def _call_openai(system: str, messages: list[dict], key: str, model: str, 
     return (data["choices"][0]["message"]["content"] or "").strip()
 
 
+async def complete(user: User, system: str, message: str, *, thread: str = "") -> str | None:
+    """Provider-routed one-shot generation with NO history persistence — for
+    background/proactive use. Owner → Claude bridge (subscription); everyone else
+    → Codex bridge / OpenAI / Anthropic / Ollama, mirroring `chat`. `thread`
+    namespaces the bridge's per-user memory so background calls don't pollute the
+    interactive conversation. Returns None on failure or if nothing is
+    configured."""
+    settings = get_settings()
+    key = f"{thread}{user.id}"
+
+    if user.role == "owner" and settings.claude_bridge_url:
+        try:
+            result = await _call_claude_bridge(
+                settings.claude_bridge_url, f"{system}\n\n{message}", key
+            )
+        except httpx.HTTPError as exc:
+            logger.warning("Proactive Claude bridge call failed: %s", exc)
+            return None
+        return (result.get("reply") or "").strip() or None
+
+    if not (settings.codex_bridge_url or settings.openai_api_key
+            or settings.anthropic_api_key or settings.ollama_model):
+        return None
+
+    messages = [{"role": "user", "content": message}]
+    try:
+        if settings.codex_bridge_url:
+            reply = await _call_codex_bridge(settings.codex_bridge_url, _flatten(system, messages), key)
+        elif settings.openai_api_key:
+            reply = await _call_openai(system, messages, settings.openai_api_key, settings.openai_model, settings.openai_base_url)
+        elif settings.anthropic_api_key:
+            reply = await _call_anthropic(system, messages, settings.anthropic_api_key, settings.anthropic_model)
+        else:
+            reply = await _call_ollama(system, messages, settings.ollama_url, settings.ollama_model)
+    except (httpx.HTTPError, ValueError, KeyError, IndexError) as exc:
+        logger.warning("Proactive generation failed: %s", exc)
+        return None
+    return (reply or "").strip() or None
+
+
 async def chat(session: AsyncSession, user: User, message: str) -> dict:
     settings = get_settings()
 
