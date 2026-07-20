@@ -22,9 +22,31 @@ Deploy changes: `scp infra/* cc:~/infra/ && ssh cc 'cd ~/infra && docker compose
 
 | Service | URL |
 |---|---|
-| Command Center | `https://athacker-cc.tail5e74e4.ts.net/` (valid cert) |
+| Command Center | `https://athacker.cc` (apex) |
+| Jellyfin | `https://jellyfin.athacker.cc` |
+| OtterWiki | `https://wiki.athacker.cc` |
+| Portainer | `https://portainer.athacker.cc` |
 | NPM admin | `http://athacker-cc:81` |
-| Portainer | `http://athacker-cc:9000` |
+| (fallback) CC | `https://athacker-cc.tail5e74e4.ts.net/` (Tailscale cert) |
+
+## Domain + wildcard cert (athacker.cc, added 2026-07-20)
+
+`athacker.cc` is registered at Cloudflare. In the Cloudflare DNS zone, four
+**A records** (`@`, `jellyfin`, `wiki`, `portainer`) point at the tailnet IP
+`100.112.182.2`, all **DNS-only** (grey cloud) — so the names resolve only for
+tailnet devices; nothing is exposed publicly.
+
+NPM holds a **wildcard Let's Encrypt cert** for `athacker.cc` + `*.athacker.cc`
+(cert id 2), issued and **auto-renewed** via the Cloudflare **DNS-01 challenge**
+(a scoped `Zone.DNS:Edit` + `Zone:Read` API token stored in NPM). Four proxy
+hosts route the names to their upstreams (CC → `command-center-frontend-1:80`;
+Jellyfin → `172.17.0.1:8096` [bare host]; Otter → `172.17.0.1:8080`; Portainer →
+`infra-portainer:9000`), all Force-SSL.
+
+**Token expiry:** the Cloudflare token was set to 90 days — refresh it in NPM
+(SSL Certificates → the wildcard → renew credentials) before it lapses, or
+auto-renewal breaks at the second renewal. The older Tailscale-cert path
+(`renew-tailscale-cert.sh` + cron) still serves the `.ts.net` fallback URL.
 
 ## One-time setup that was done
 
