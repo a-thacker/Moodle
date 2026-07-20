@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Non-interactive DVD/Blu-ray movie ripper for the Command Center rip tool.
+#
+# Unlike ~/bin/ripdvd (which prompts), this takes everything up front via env
+# and never blocks on input, so the CC rip-runner can drive it. Movies only.
+#
+#   RIP_TITLE   movie name, include the year, e.g. "Cars (2006)"   (required)
+#   RIP_EXTRAS  extras | keep | delete   (default: extras)
+#
+# It rips every title with makemkvcon, then treats the LARGEST .mkv as the main
+# movie (renamed to "<title>.mkv") and applies the extras policy to the rest.
+set -euo pipefail
+
+MEDIA_ROOT="/srv/media"
+MOVIE_ROOT="$MEDIA_ROOT/Movies"
+DVD="disc:0"
+DRIVE="/dev/sr0"
+
+TITLE="${RIP_TITLE:-}"
+EXTRAS="${RIP_EXTRAS:-extras}"
+
+if [[ -z "${TITLE// /}" ]]; then
+  echo "ERROR: RIP_TITLE is required." >&2
+  exit 2
+fi
+
+# Never let the title escape the Movies folder.
+SAFE_TITLE="${TITLE//\//-}"
+SAFE_TITLE="${SAFE_TITLE#.}"
+DEST="$MOVIE_ROOT/$SAFE_TITLE"
+
+echo "=============================="
+echo "   Command Center DVD Ripper"
+echo "=============================="
+echo "Movie:  $SAFE_TITLE"
+echo "Extras: $EXTRAS"
+echo "Into:   $DEST"
+echo
+
+mkdir -p "$DEST"
+
+echo ">> Ripping all titles with makemkvcon (this takes a while)…"
+echo
+makemkvcon mkv "$DVD" all "$DEST"
+echo
+echo ">> Rip finished. Sorting files…"
+
+# Largest .mkv = the feature. Print "<size> <path>" so we can sort by size even
+# when filenames contain spaces.
+mapfile -t BYSIZE < <(find "$DEST" -maxdepth 1 -type f -name '*.mkv' -printf '%s\t%p\n' | sort -rn)
+
+if [[ ${#BYSIZE[@]} -eq 0 ]]; then
+  echo "ERROR: no .mkv files were produced — is there a disc in the drive?" >&2
+  eject "$DRIVE" || true
+  exit 1
+fi
+
+MAIN="${BYSIZE[0]#*$'\t'}"
+TARGET="$DEST/$SAFE_TITLE.mkv"
+
+if [[ "$MAIN" != "$TARGET" ]]; then
+  mv -f "$MAIN" "$TARGET"
+fi
+echo "Main movie: $(basename "$TARGET")"
+
+# Everything else is an extra.
+shopt -s nullglob
+for f in "$DEST"/*.mkv; do
+  [[ "$f" == "$TARGET" ]] && continue
+  case "$EXTRAS" in
+    delete) echo "  delete extra: $(basename "$f")"; rm -f "$f" ;;
+    keep)   echo "  keep extra:   $(basename "$f")" ;;
+    *)      mkdir -p "$DEST/extras"; echo "  -> extras/:  $(basename "$f")"; mv -f "$f" "$DEST/extras/" ;;
+  esac
+done
+
+echo
+echo ">> Ejecting disc…"
+eject "$DRIVE" || echo "(couldn't eject — remove the disc manually)"
+
+echo
+echo "Done! '$SAFE_TITLE' is ready in Jellyfin."

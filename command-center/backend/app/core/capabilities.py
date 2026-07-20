@@ -44,6 +44,7 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability("deadlines", "Deadlines", "ph-calendar-dots", default_for_new_user=False),
     Capability("grocery", "Grocery — shared", "ph-basket", default_for_new_user=False),
     Capability("scripts", "Scripts — on my Mac", "ph-terminal-window", default_for_new_user=False),
+    Capability("rip", "Movie ripper", "ph-film-reel", default_for_new_user=False),
     # External services — owner grants per person; hidden until the URL is set.
     Capability("jellyfin", "Jellyfin", "ph-film-slate", default_for_new_user=False,
                kind="link", url_setting="jellyfin_url"),

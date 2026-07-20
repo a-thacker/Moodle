@@ -10,6 +10,7 @@ import type {
   Deadline,
   GradeEvent,
   GroceryItem,
+  RipJob,
   ScriptInfo,
   ScriptJob,
   Task,
@@ -158,6 +159,17 @@ export const api = {
       }),
     jobs: () => apiFetch<ScriptJob[]>("/api/v1/scripts/jobs"),
     clearJobs: () => apiFetch<void>("/api/v1/scripts/jobs", { method: "DELETE" }),
+  },
+
+  // DVD ripper: enqueue a rip, poll jobs (status + streamed progress).
+  rip: {
+    create: (title: string, extras: "extras" | "keep" | "delete") =>
+      apiFetch<RipJob>("/api/v1/rip/jobs", {
+        method: "POST",
+        body: JSON.stringify({ title, extras }),
+      }),
+    jobs: () => apiFetch<RipJob[]>("/api/v1/rip/jobs"),
+    clearJobs: () => apiFetch<void>("/api/v1/rip/jobs", { method: "DELETE" }),
   },
 
   assistant: {

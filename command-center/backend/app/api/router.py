@@ -16,6 +16,7 @@ from app.api.routes import (
     auth,
     eclass,
     grocery,
+    rip,
     scripts,
     tasks,
     usage,
@@ -28,6 +29,7 @@ api_router.include_router(admin.router)
 api_router.include_router(grocery.router)
 api_router.include_router(eclass.router)
 api_router.include_router(scripts.router)
+api_router.include_router(rip.router)
 api_router.include_router(tasks.router)
 api_router.include_router(assistant.router)
 api_router.include_router(usage.router)

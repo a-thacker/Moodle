@@ -100,6 +100,19 @@ export interface ScriptJob {
   finished_at: string | null;
 }
 
+export interface RipJob {
+  id: number;
+  title: string;
+  media_type: string;
+  extras: "extras" | "keep" | "delete";
+  status: "pending" | "running" | "done" | "failed";
+  progress: string | null;
+  exit_code: number | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
 export interface TaskPatch {
   title?: string;
   body?: string | null;

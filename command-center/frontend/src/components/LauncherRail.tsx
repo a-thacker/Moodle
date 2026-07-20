@@ -23,6 +23,7 @@ const TOOLS: RailTool[] = [
   { icon: "ph-note", title: "Notes & Tasks", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },
   { icon: "ph-terminal-window", title: "Scripts — on my Mac", view: "scripts" },
+  { icon: "ph-film-reel", title: "Movie ripper", view: "rip" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
 ];
 const BY_VIEW = new Map(TOOLS.map((t) => [t.view, t]));

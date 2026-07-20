@@ -18,6 +18,7 @@ import NotesView from "./NotesView.tsx";
 import PlannerView from "./PlannerView.tsx";
 import AssistantView from "./AssistantView.tsx";
 import ScriptsView from "./ScriptsView.tsx";
+import RipView from "./RipView.tsx";
 import SettingsView from "./SettingsView.tsx";
 import { useDashboardData } from "../hooks/useDashboardData";
 
@@ -71,6 +72,8 @@ function ActiveView() {
       return <AssistantView />;
     case "scripts":
       return <ScriptsView />;
+    case "rip":
+      return <RipView />;
     case "settings":
       return <SettingsView />;
     default:
