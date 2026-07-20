@@ -6,7 +6,46 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { api, type CapabilityInfo, type UserEntitlements } from "../api/client";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { useNav } from "../nav/NavContext.tsx";
+import { RAIL_TOOLS } from "./LauncherRail.tsx";
 import FocusView from "./FocusView.tsx";
+
+function SidebarCustomizer() {
+  const { available, hidden, toggleHidden } = useNav();
+  // Everything this user can see, minus Settings (always pinned in the rail).
+  const tools = RAIL_TOOLS.filter((t) => available.includes(t.view) && t.view !== "settings");
+
+  return (
+    <>
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-4)", lineHeight: 1.6 }}>
+        Choose which tools show in your sidebar. Hidden ones are still reachable
+        from the ⌘K command palette.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {tools.map((t) => {
+          const on = !hidden.includes(t.view);
+          return (
+            <button
+              key={t.view}
+              type="button"
+              onClick={() => toggleHidden(t.view)}
+              className="row-hover"
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", background: "none", border: "none", cursor: "pointer", textAlign: "left", opacity: on ? 1 : 0.5 }}
+            >
+              <i className={`ph ${t.icon}`} style={{ fontSize: 18, color: on ? "var(--color-accent-200)" : "var(--color-neutral-500)", width: 20 }} />
+              <span style={{ flex: 1, fontSize: 14, color: "var(--color-text)" }}>{t.title}</span>
+              <i
+                className={`ph ${on ? "ph-eye" : "ph-eye-slash"}`}
+                style={{ fontSize: 17, color: on ? "var(--color-accent)" : "var(--color-neutral-500)" }}
+                title={on ? "Shown — click to hide" : "Hidden — click to show"}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
 
 function ChangePassword() {
   const [current, setCurrent] = useState("");
@@ -335,7 +374,7 @@ export default function SettingsView() {
   const { user } = useAuth();
 
   return (
-    <FocusView title="Settings">
+    <FocusView title="Settings" icon="ph-gear-six">
       <section className="card" style={{ padding: "var(--space-6)" }}>
         <div style={{ fontSize: 13, color: "var(--color-neutral-400)", marginBottom: "var(--space-4)" }}>
           Signed in as <span style={{ color: "var(--color-text)" }}>{user?.email}</span>
@@ -343,6 +382,11 @@ export default function SettingsView() {
           <span className="tag tag-neutral">{user?.role}</span>
         </div>
         <ChangePassword />
+      </section>
+
+      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+        <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Sidebar</h3>
+        <SidebarCustomizer />
       </section>
 
       {user?.role === "owner" && (

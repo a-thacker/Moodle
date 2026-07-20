@@ -48,19 +48,19 @@ function ActiveView() {
   switch (view) {
     case "grades":
       return (
-        <FocusView title="Grades">
+        <FocusView title="Grades" icon="ph-exam">
           {isOwner ? <GradesCard courses={courses} /> : <GradesPlaceholder />}
         </FocusView>
       );
     case "deadlines":
       return (
-        <FocusView title="Deadlines">
+        <FocusView title="Deadlines" icon="ph-calendar-dots">
           <DeadlinesCard deadlines={deadlines} />
         </FocusView>
       );
     case "grocery":
       return (
-        <FocusView title="Grocery">
+        <FocusView title="Grocery" icon="ph-basket">
           <GroceryCard />
         </FocusView>
       );
@@ -85,7 +85,7 @@ export default function AppShell() {
   const { user } = useAuth();
 
   return (
-    <NavProvider capabilities={user?.capabilities ?? []}>
+    <NavProvider capabilities={user?.capabilities ?? []} userId={user?.id}>
       <div
         style={{
           width: "100vw",

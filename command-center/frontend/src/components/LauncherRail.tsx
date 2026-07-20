@@ -9,13 +9,14 @@ import { useEffect, useState, type DragEvent } from "react";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { useNav, type View } from "../nav/NavContext.tsx";
 
-interface RailTool {
+export interface RailTool {
   icon: string;
   title: string;
   view: View;
 }
 
-const TOOLS: RailTool[] = [
+// The canonical tool list — shared with the Settings → Sidebar customizer.
+export const RAIL_TOOLS: RailTool[] = [
   { icon: "ph-squares-four", title: "Dashboard", view: "dashboard" },
   { icon: "ph-exam", title: "Grades", view: "grades" },
   { icon: "ph-calendar-dots", title: "Deadlines", view: "deadlines" },
@@ -26,6 +27,7 @@ const TOOLS: RailTool[] = [
   { icon: "ph-film-reel", title: "Movie ripper", view: "rip" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },
 ];
+const TOOLS = RAIL_TOOLS;
 const BY_VIEW = new Map(TOOLS.map((t) => [t.view, t]));
 
 // The rail's tools = the catalog above, limited to what this user can see
@@ -49,9 +51,10 @@ function loadOrder(userId: string | undefined, allowed: View[]): View[] {
 
 export default function LauncherRail() {
   const { user, logout } = useAuth();
-  const { view, setView, available } = useNav();
+  const { view, setView, available, hidden } = useNav();
   const name = user?.display_name ?? "?";
-  const allowed = toolViews(available);
+  // Tools this user is entitled to, minus any they hid from the sidebar.
+  const allowed = toolViews(available).filter((v) => !hidden.includes(v));
   const [order, setOrder] = useState<View[]>(() => loadOrder(user?.id, allowed));
   const [dragView, setDragView] = useState<View | null>(null);
   const [overView, setOverView] = useState<View | null>(null);
