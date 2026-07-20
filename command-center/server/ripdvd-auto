@@ -11,6 +11,11 @@
 # movie (renamed to "<title>.mkv") and applies the extras policy to the rest.
 set -euo pipefail
 
+# Force a permissive umask so created dirs/files are group+world readable — the
+# Jellyfin service user must be able to traverse the movie folder. (Never rely
+# on the umask the runner happens to inherit.)
+umask 022
+
 MEDIA_ROOT="/srv/media"
 MOVIE_ROOT="$MEDIA_ROOT/Movies"
 DVD="disc:0"
@@ -73,6 +78,13 @@ for f in "$DEST"/*.mkv; do
     *)      mkdir -p "$DEST/extras"; echo "  -> extras/:  $(basename "$f")"; mv -f "$f" "$DEST/extras/" ;;
   esac
 done
+
+echo
+echo ">> Fixing permissions so Jellyfin can read the movie…"
+# Match the media convention (group jellyfin, group/other readable). athacker is
+# in the jellyfin group, so chgrp needs no root.
+chgrp -R jellyfin "$DEST" 2>/dev/null || true
+chmod -R a+rX "$DEST"
 
 echo
 echo ">> Ejecting disc…"
