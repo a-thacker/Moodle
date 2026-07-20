@@ -1,0 +1,47 @@
+# Homelab infrastructure: visual Docker management (Portainer) + a reverse proxy
+# with HTTPS (Nginx Proxy Manager). Runs OUTSIDE the command-center stack and
+# fronts it (and, later, Jellyfin / OtterWiki).
+#
+# Deployed to ~/infra on athacker-cc; persistent data lives in ~/infra/data,
+# which is deliberately NOT inside the rsync-deployed ~/command-center tree, so
+# `deploy.sh --delete` can never wipe NPM's certs/config or Portainer's DB.
+#
+#   cd ~/infra && docker compose up -d
+
+services:
+  portainer:
+    image: portainer/portainer-ce:2.21.4
+    container_name: infra-portainer
+    restart: unless-stopped
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "9000:9000" # web UI over the tailnet (set an admin password on first open)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/portainer:/data
+
+  npm:
+    image: jc21/nginx-proxy-manager:2.11.3
+    container_name: infra-npm
+    restart: unless-stopped
+    ports:
+      - "80:80"   # http (NPM redirects to https)
+      - "443:443" # https front door (needs `tailscale serve reset` to free it)
+      - "81:81"   # NPM admin UI
+    # Join the command-center network so NPM can reach its containers by name
+    # (nginx resolves upstreams via Docker DNS, which knows container names but
+    # not /etc/hosts entries like host.docker.internal). host-gateway is kept
+    # for reaching bare host services (e.g. Jellyfin on systemd) later.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - cc
+    volumes:
+      - ./data/npm/data:/data
+      - ./data/npm/letsencrypt:/etc/letsencrypt
+
+networks:
+  cc:
+    external: true
+    name: command-center_default
