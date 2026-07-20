@@ -1,11 +1,8 @@
 # Command Center stack. Postgres is the source of truth; the backend is the
-# only service that talks to it. Ollama + Open WebUI are included as infra for
-# the future AI layer (Phase 4) but nothing depends on them yet.
+# only service that talks to it. The assistant runs on the host Claude/Codex
+# bridges (subscription), so no local LLM services live here anymore.
 #
-# Bring up just the data plane + API for now:
-#   docker compose up -d postgres backend
-# Everything (adds the LLM services):
-#   docker compose --profile ai up -d
+#   docker compose up -d
 
 services:
   postgres:
@@ -77,25 +74,3 @@ services:
       - backend
     ports:
       - "5173:80"
-
-  ollama:
-    image: ollama/ollama:latest
-    profiles: ["ai"]
-    restart: unless-stopped
-    volumes:
-      - ./data/ollama:/root/.ollama
-    ports:
-      - "11434:11434"
-
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    profiles: ["ai"]
-    restart: unless-stopped
-    depends_on:
-      - ollama
-    environment:
-      OLLAMA_BASE_URL: http://ollama:11434
-    volumes:
-      - ./data/open-webui:/app/backend/data
-    ports:
-      - "3000:8080"
