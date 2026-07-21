@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { api, type CapabilityInfo, type UserEntitlements } from "../api/client";
+import { api, ApiError, type CapabilityInfo, type UserEntitlements } from "../api/client";
 import { useAuth } from "../auth/AuthContext.tsx";
 import { useNav } from "../nav/NavContext.tsx";
 import { RAIL_TOOLS } from "./LauncherRail.tsx";
@@ -100,6 +100,58 @@ function ChangePassword() {
   );
 }
 
+function AddPerson({ onCreated }: { onCreated: (u: UserEntitlements) => void }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (pw.length < 8) return setErr("Password must be at least 8 characters.");
+    setBusy(true);
+    try {
+      const created = await api.admin.createUser(email.trim(), name.trim(), pw);
+      onCreated(created);
+      setOpen(false);
+      setEmail(""); setName(""); setPw("");
+    } catch (e) {
+      setErr(e instanceof ApiError && e.status === 409
+        ? "That email already has an account."
+        : "Couldn't create the account.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" className="btn" onClick={() => setOpen(true)}
+        style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+        <i className="ph ph-user-plus" style={{ fontSize: 15 }} /> Add person
+      </button>
+    );
+  }
+  return (
+    <form onSubmit={submit} className="card" style={{ padding: "var(--space-4)", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 13, color: "var(--color-text)", marginBottom: 2 }}>New account</div>
+      <input className="input" type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+      <input className="input" type="email" placeholder="Email" value={email} autoComplete="off" onChange={(e) => setEmail(e.target.value)} required />
+      <input className="input" type="text" placeholder="Temporary password (8+ chars)" value={pw} autoComplete="off" onChange={(e) => setPw(e.target.value)} required />
+      {err && <div style={{ fontSize: 12.5, color: "var(--color-accent-200)" }}>{err}</div>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="submit" className="btn btn-primary" disabled={busy} style={{ flex: 1, justifyContent: "center" }}>
+          {busy ? "Creating…" : "Create"}
+        </button>
+        <button type="button" className="btn" onClick={() => { setOpen(false); setErr(null); }}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
 function People() {
   const [users, setUsers] = useState<UserEntitlements[] | null>(null);
   const [caps, setCaps] = useState<CapabilityInfo[]>([]);
@@ -165,6 +217,12 @@ function People() {
     <div style={{ display: "flex", gap: "var(--space-6)", flexWrap: "wrap" }}>
       {/* User picker */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 200 }}>
+        <AddPerson
+          onCreated={(u) => {
+            setUsers((prev) => [...(prev ?? []), u]);
+            setSelectedId(u.id);
+          }}
+        />
         {users.map((u) => (
           <button
             key={u.id}

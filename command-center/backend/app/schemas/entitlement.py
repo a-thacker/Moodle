@@ -4,7 +4,18 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class NewUser(BaseModel):
+    """Owner-provisioned account. Always created as a plain `user`; the owner
+    grants extra tools afterward from the People screen."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    display_name: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class CapabilityInfo(BaseModel):

@@ -17,7 +17,12 @@ from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.proactive import ProactiveLog
 from app.models.user import User
-from app.schemas.entitlement import CapabilityInfo, EntitlementUpdate, UserEntitlements
+from app.schemas.entitlement import (
+    CapabilityInfo,
+    EntitlementUpdate,
+    NewUser,
+    UserEntitlements,
+)
 from app.services import entitlement as entitlement_service
 from app.services import ntfy
 from app.services import proactive as proactive_service
@@ -65,6 +70,27 @@ async def _user_entitlements(session: AsyncSession, user: User) -> UserEntitleme
 async def list_users(session: AsyncSession = Depends(get_db)) -> list[UserEntitlements]:
     users = await user_service.list_users(session)
     return [await _user_entitlements(session, u) for u in users]
+
+
+@router.post("/users", response_model=UserEntitlements, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    payload: NewUser, session: AsyncSession = Depends(get_db)
+) -> UserEntitlements:
+    """Provision a new account (role `user`). It starts with the default tools
+    and its own auto-generated ntfy topic; the owner grants extras afterward."""
+    if await user_service.get_by_email(session, payload.email) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with that email already exists.",
+        )
+    user = await user_service.upsert_user(
+        session,
+        email=str(payload.email),
+        password=payload.password,
+        display_name=payload.display_name,
+        role="user",
+    )
+    return await _user_entitlements(session, user)
 
 
 async def _get_user_or_404(session: AsyncSession, user_id: uuid.UUID) -> User:

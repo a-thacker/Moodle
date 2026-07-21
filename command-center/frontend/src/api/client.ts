@@ -128,6 +128,11 @@ export const api = {
   admin: {
     capabilities: () => apiFetch<CapabilityInfo[]>("/api/v1/admin/capabilities"),
     listUsers: () => apiFetch<UserEntitlements[]>("/api/v1/admin/users"),
+    createUser: (email: string, display_name: string, password: string) =>
+      apiFetch<UserEntitlements>("/api/v1/admin/users", {
+        method: "POST",
+        body: JSON.stringify({ email, display_name, password }),
+      }),
     getEntitlements: (id: string) =>
       apiFetch<UserEntitlements>(`/api/v1/admin/users/${id}/entitlements`),
     setEntitlements: (id: string, overrides: Record<string, boolean>) =>
