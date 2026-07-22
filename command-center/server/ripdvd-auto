@@ -93,7 +93,9 @@ eject "$DRIVE" || echo "(couldn't eject — remove the disc manually)"
 echo
 echo "Done! '$SAFE_TITLE' is ready in Jellyfin."
 
-# Phone notification (same topic as the original ~/bin/ripdvd).
+# Phone notification (same topic as the original ~/bin/ripdvd). The Icon header
+# brands it with the Command Center site favicon, matching the app's other pushes.
 curl -s -H "Title: DVD Rip Complete" -H "Priority: default" \
+  -H "Icon: https://athacker.cc/android-chrome-192x192.png" \
   -d "$SAFE_TITLE has finished ripping. Ready for post-processing." \
   "https://ntfy.sh/2prUsoVg7SXLfVX2E6yFweZq4" >/dev/null || true

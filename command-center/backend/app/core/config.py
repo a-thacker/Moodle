@@ -99,6 +99,10 @@ class Settings(BaseSettings):
     ntfy_topic: str = ""  # owner's topic (NTFY_TOPIC); empty disables his reminders
     sibling_ntfy_topic: str = ""  # sibling's own topic; empty disables his reminders
     ntfy_server: str = "https://ntfy.sh"
+    # Notification icon shown by the ntfy app — the Command Center site favicon.
+    # The ntfy app fetches + caches this URL (reachable on the tailnet); set
+    # NTFY_ICON_URL to "" to disable, or to a public URL to always show.
+    ntfy_icon_url: str = "https://athacker.cc/android-chrome-192x192.png"
     remind_before_minutes: int = 15  # notify this long before a timed event
     remind_after_minutes: int = 30   # nudge this long after, if not done
 
