@@ -1,12 +1,17 @@
-// Left launcher rail. Tools switch the main view, and can be dragged to
-// reorder — the arrangement is saved per user in localStorage (like the
-// dashboard tiles). Which tools appear is driven by the user's capabilities
-// (via NavContext `available`); Settings / sign-out / avatar stay pinned at the
-// bottom.
+// Launcher rail. Tools switch the main view and can be dragged to reorder — the
+// arrangement is saved in the user's synced preferences (so it follows them to
+// any device), like which tools are hidden and the dashboard layout. Which
+// tools appear is driven by the user's capabilities (via NavContext
+// `available`); Settings / sign-out / avatar stay pinned at the end.
+//
+// Two orientations: a vertical rail on the left (desktop) and a horizontal bar
+// pinned to the bottom (mobile). Drag-to-reorder is desktop-only — touch drag
+// is unreliable and the bar scrolls horizontally instead.
 
-import { useEffect, useState, type DragEvent } from "react";
+import { useMemo, useState, type CSSProperties, type DragEvent } from "react";
 
 import { useAuth } from "../auth/AuthContext.tsx";
+import { usePrefs } from "../prefs/PrefsContext.tsx";
 import { useNav, type View } from "../nav/NavContext.tsx";
 
 export interface RailTool {
@@ -36,50 +41,62 @@ function toolViews(available: View[]): View[] {
   return TOOLS.map((t) => t.view).filter((v) => available.includes(v));
 }
 
-function loadOrder(userId: string | undefined, allowed: View[]): View[] {
-  try {
-    const raw = localStorage.getItem(`cc_rail_${userId ?? "x"}`);
-    if (!raw) return allowed;
-    const saved = (JSON.parse(raw) as View[]).filter((v) => allowed.includes(v));
-    // Append any tools added / newly granted since the order was saved.
-    for (const v of allowed) if (!saved.includes(v)) saved.push(v);
-    return saved;
-  } catch {
-    return allowed;
-  }
+// Apply a saved order to the currently-allowed tools: keep the saved sequence,
+// drop anything no longer allowed, and append newly-granted tools at the end.
+function mergeOrder(saved: View[] | undefined, allowed: View[]): View[] {
+  if (!saved) return allowed;
+  const filtered = saved.filter((v) => allowed.includes(v));
+  for (const v of allowed) if (!filtered.includes(v)) filtered.push(v);
+  return filtered;
 }
 
-export default function LauncherRail() {
+export default function LauncherRail({
+  orientation = "vertical",
+}: {
+  orientation?: "vertical" | "horizontal";
+}) {
   const { user, logout } = useAuth();
+  const { prefs, patch } = usePrefs();
   const { view, setView, available, hidden } = useNav();
   const name = user?.display_name ?? "?";
+  const horizontal = orientation === "horizontal";
+
   // Tools this user is entitled to, minus any they hid from the sidebar.
   const allowed = toolViews(available).filter((v) => !hidden.includes(v));
-  const [order, setOrder] = useState<View[]>(() => loadOrder(user?.id, allowed));
+  const allowedKey = allowed.join(",");
+  // Order comes from synced prefs so it ports across machines.
+  const order = useMemo(
+    () => mergeOrder(prefs.railOrder as View[] | undefined, allowed),
+    [prefs.railOrder, allowedKey], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   const [dragView, setDragView] = useState<View | null>(null);
   const [overView, setOverView] = useState<View | null>(null);
-
-  const allowedKey = allowed.join(",");
-  useEffect(() => setOrder(loadOrder(user?.id, allowed)), [user?.id, allowedKey]);
-  useEffect(() => {
-    if (user?.id) localStorage.setItem(`cc_rail_${user.id}`, JSON.stringify(order));
-  }, [order, user?.id]);
 
   function onDrop(target: View) {
     const src = dragView;
     setDragView(null);
     setOverView(null);
     if (!src || src === target) return;
-    setOrder((prev) => {
-      const arr = prev.filter((v) => v !== src);
-      arr.splice(arr.indexOf(target), 0, src); // insert before the target
-      return arr;
-    });
+    const arr = order.filter((v) => v !== src);
+    arr.splice(arr.indexOf(target), 0, src); // insert before the target
+    patch({ railOrder: arr });
   }
 
-  return (
-    <nav
-      style={{
+  const navStyle: CSSProperties = horizontal
+    ? {
+        width: "100%",
+        flexShrink: 0,
+        background: "#0e0f16",
+        borderTop: "1px solid #1b1e2c",
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        padding: "8px 10px calc(8px + env(safe-area-inset-bottom))",
+        overflowX: "auto",
+      }
+    : {
         width: 76,
         flexShrink: 0,
         background: "#0e0f16",
@@ -87,30 +104,31 @@ export default function LauncherRail() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        // Safe-area padding: clear the status bar/notch at the top, the home
-        // indicator at the bottom, and a landscape notch on the left when the
-        // app runs standalone.
         padding:
           "calc(20px + env(safe-area-inset-top)) 0 calc(20px + env(safe-area-inset-bottom))",
         paddingLeft: "env(safe-area-inset-left)",
         gap: 4,
-      }}
-    >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 13,
-          border: "1px solid var(--cc-accent)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--cc-accent)",
-          marginBottom: 14,
-        }}
-      >
-        <i className="ph-fill ph-command" style={{ fontSize: 20 }} />
-      </div>
+      };
+
+  return (
+    <nav style={navStyle}>
+      {!horizontal && (
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 13,
+            border: "1px solid var(--cc-accent)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--cc-accent)",
+            marginBottom: 14,
+          }}
+        >
+          <i className="ph-fill ph-command" style={{ fontSize: 20 }} />
+        </div>
+      )}
 
       {order.map((v) => {
         const tool = BY_VIEW.get(v)!;
@@ -118,16 +136,16 @@ export default function LauncherRail() {
           <button
             key={v}
             type="button"
-            draggable
+            draggable={!horizontal}
             className={`rail-link${view === v ? " active" : ""}${overView === v ? " rail-over" : ""}`}
-            title={`${tool.title}  ·  drag to reorder`}
-            style={dragView === v ? { opacity: 0.4 } : undefined}
+            title={horizontal ? tool.title : `${tool.title}  ·  drag to reorder`}
+            style={{ flexShrink: 0, ...(dragView === v ? { opacity: 0.4 } : undefined) }}
             onClick={() => setView(v)}
-            onDragStart={(e: DragEvent) => { setDragView(v); e.dataTransfer.effectAllowed = "move"; }}
-            onDragOver={(e: DragEvent) => { e.preventDefault(); if (dragView && dragView !== v) setOverView(v); }}
-            onDragLeave={() => setOverView((o) => (o === v ? null : o))}
-            onDrop={() => onDrop(v)}
-            onDragEnd={() => { setDragView(null); setOverView(null); }}
+            onDragStart={horizontal ? undefined : (e: DragEvent) => { setDragView(v); e.dataTransfer.effectAllowed = "move"; }}
+            onDragOver={horizontal ? undefined : (e: DragEvent) => { e.preventDefault(); if (dragView && dragView !== v) setOverView(v); }}
+            onDragLeave={horizontal ? undefined : () => setOverView((o) => (o === v ? null : o))}
+            onDrop={horizontal ? undefined : () => onDrop(v)}
+            onDragEnd={horizontal ? undefined : () => { setDragView(null); setOverView(null); }}
           >
             <i className={`ph ${tool.icon}`} style={{ fontSize: 22 }} />
           </button>
@@ -135,7 +153,7 @@ export default function LauncherRail() {
       })}
 
       {/* External services (Jellyfin, Wiki, …) — open in a new tab, gated per
-          user via capabilities. Not reorderable; they sit below the tools. */}
+          user via capabilities. Not reorderable; they sit after the tools. */}
       {(user?.links ?? []).map((link) => (
         <a
           key={link.key}
@@ -144,16 +162,24 @@ export default function LauncherRail() {
           target="_blank"
           rel="noopener noreferrer"
           title={`${link.label}  ·  opens in a new tab`}
+          style={{ flexShrink: 0 }}
         >
           <i className={`ph ${link.icon}`} style={{ fontSize: 22 }} />
         </a>
       ))}
 
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div
+        style={
+          horizontal
+            ? { marginLeft: "auto", display: "flex", flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }
+            : { marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }
+        }
+      >
         <button
           type="button"
           className={`rail-link${view === "settings" ? " active" : ""}`}
           title="Settings"
+          style={{ flexShrink: 0 }}
           onClick={() => setView("settings")}
         >
           <i className="ph ph-gear-six" style={{ fontSize: 20 }} />
@@ -162,6 +188,7 @@ export default function LauncherRail() {
           type="button"
           className="rail-link"
           title="Sign out"
+          style={{ flexShrink: 0 }}
           onClick={logout}
         >
           <i className="ph ph-sign-out" style={{ fontSize: 20 }} />
@@ -180,6 +207,7 @@ export default function LauncherRail() {
             fontFamily: "var(--font-display)",
             fontSize: 15,
             fontWeight: 600,
+            flexShrink: 0,
           }}
         >
           {name.charAt(0)}

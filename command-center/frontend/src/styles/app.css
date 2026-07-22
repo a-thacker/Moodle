@@ -209,6 +209,42 @@ button {
   cursor: pointer;
 }
 
+/* Mobile: the bento grid collapses into a single scrolling column of tiles
+   (positioning is handled in DashboardView, which drops the grid spans on
+   narrow screens); the planner's two day-columns stack. */
+.cc-grid-mobile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cc-grid-mobile > .cc-slot {
+  flex-shrink: 0;
+}
+.cc-focusview {
+  padding: var(--space-8);
+}
+
+@media (max-width: 760px) {
+  .cc-planner-cols {
+    flex-direction: column;
+  }
+  .cc-focusview {
+    padding: var(--space-4);
+  }
+  /* On touch, the drag grip isn't usable — hide it to reclaim the space. */
+  .cc-handle {
+    display: none;
+  }
+  /* Keyboard-only affordances (⌘K) and secondary chrome hide on phones. */
+  .cc-hide-mobile {
+    display: none !important;
+  }
+}
+
 /* Drag-to-rearrange: a grip that appears on tile hover. */
 .cc-slot {
   position: relative;

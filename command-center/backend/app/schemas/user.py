@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -41,6 +42,9 @@ class UserRead(UserBase):
     updated_at: datetime
     # The user's own private reminder topic, so they can self-subscribe in ntfy.
     ntfy_topic: str | None = None
+    # Per-account UI preferences (sidebar/dashboard layout, weather location).
+    # Opaque to the server; the client defines the shape.
+    preferences: dict[str, Any] = Field(default_factory=dict)
     # Effective capability keys (from app.core.capabilities). Filled by the
     # route since it's computed from role + per-user overrides, not an ORM col.
     capabilities: list[str] = Field(default_factory=list)

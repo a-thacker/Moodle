@@ -18,10 +18,12 @@ import {
 
 import { useAuth } from "../auth/AuthContext.tsx";
 import { useClock } from "../hooks/useClock";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useGrocery } from "../hooks/useGrocery";
 import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
+import { usePrefs } from "../prefs/PrefsContext.tsx";
 import { api } from "../api/client";
 import type { ClaudeUsage, Deadline, Task, Weather } from "../types";
 import { relativeDay } from "../utils/format";
@@ -30,20 +32,6 @@ import ClaudeMark from "./ClaudeMark.tsx";
 import WeatherLocationPicker, { type WeatherLoc } from "./WeatherLocationPicker.tsx";
 
 const MONO = "var(--font-mono)";
-
-function loadWeatherLoc(): WeatherLoc | null {
-  try {
-    const raw = localStorage.getItem("cc_weather_loc");
-    return raw ? (JSON.parse(raw) as WeatherLoc) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveWeatherLoc(loc: WeatherLoc | null): void {
-  if (loc) localStorage.setItem("cc_weather_loc", JSON.stringify(loc));
-  else localStorage.removeItem("cc_weather_loc");
-}
 
 function toMin(dueTime: string): number {
   const [h, m] = dueTime.split(":").map(Number);
@@ -220,28 +208,24 @@ function dotColor(d: Deadline): string {
 }
 
 function loadArrangement(
-  userId: string | undefined,
+  saved: Record<Footprint, WidgetId[]> | undefined,
   visible: Record<Footprint, WidgetId[]>,
 ): Record<Footprint, WidgetId[]> {
-  try {
-    const raw = localStorage.getItem(`cc_dashboard_${userId ?? "x"}`);
-    if (!raw) return visible;
-    const saved = JSON.parse(raw) as Record<Footprint, WidgetId[]>;
-    // Keep a saved arrangement only if it's a permutation of what this user is
-    // allowed to see; otherwise fall back to the visible defaults.
-    for (const fp of ORDER) {
-      const a = [...(saved[fp] ?? [])].sort();
-      const b = [...visible[fp]].sort();
-      if (a.length !== b.length || a.some((x, i) => x !== b[i])) return visible;
-    }
-    return saved;
-  } catch {
-    return visible;
+  if (!saved) return visible;
+  // Keep a saved arrangement only if it's a permutation of what this user is
+  // allowed to see; otherwise fall back to the visible defaults.
+  for (const fp of ORDER) {
+    const a = [...(saved[fp] ?? [])].sort();
+    const b = [...visible[fp]].sort();
+    if (a.length !== b.length || a.some((x, i) => x !== b[i])) return visible;
   }
+  return saved;
 }
 
 export default function DashboardView() {
   const { user } = useAuth();
+  const { prefs, patch } = usePrefs();
+  const isMobile = useIsMobile();
   const clock = useClock();
   const { setView } = useNav();
   const { courses, deadlines } = useDashboardData();
@@ -249,7 +233,9 @@ export default function DashboardView() {
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
-  const [weatherLoc, setWeatherLoc] = useState<WeatherLoc | null>(() => loadWeatherLoc());
+  // Weather location + tile arrangement live in synced prefs so they follow the
+  // user across devices.
+  const weatherLoc = (prefs.weatherLoc as WeatherLoc | null | undefined) ?? null;
   const [locPickerOpen, setLocPickerOpen] = useState(false);
   const isOwner = user?.role === "owner";
   const capsKey = (user?.capabilities ?? []).join(",");
@@ -257,7 +243,9 @@ export default function DashboardView() {
     () => visibleWidgets(user?.capabilities ?? [], isOwner),
     [capsKey, isOwner], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(user?.id, visible));
+  const savedArrangement = prefs.dashboard as Record<Footprint, WidgetId[]> | undefined;
+  const savedKey = JSON.stringify(savedArrangement ?? null);
+  const [arrangement, setArrangement] = useState<Record<Footprint, WidgetId[]>>(() => loadArrangement(savedArrangement, visible));
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
@@ -278,27 +266,25 @@ export default function DashboardView() {
   }, [weatherLoc]);
 
   function changeWeatherLoc(loc: WeatherLoc | null) {
-    setWeatherLoc(loc);
-    saveWeatherLoc(loc);
+    patch({ weatherLoc: loc });
     setLocPickerOpen(false);
   }
-  useEffect(() => setArrangement(loadArrangement(user?.id, visible)), [user?.id, visible]);
-  useEffect(() => {
-    if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
-  }, [arrangement, user?.id]);
+  // Re-derive the arrangement when the allowed tiles change or synced prefs
+  // arrive (e.g. from another device / first load).
+  useEffect(() => setArrangement(loadArrangement(savedArrangement, visible)), [savedKey, visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function onDrop(fp: Footprint, targetId: WidgetId) {
     const src = dragRef.current;
     dragRef.current = null;
     setDragFp(null);
     if (!src || src.fp !== fp || src.id === targetId) return;
-    setArrangement((prev) => {
-      const arr = [...prev[fp]];
-      const i = arr.indexOf(src.id);
-      const j = arr.indexOf(targetId);
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-      return { ...prev, [fp]: arr };
-    });
+    const arr = [...arrangement[fp]];
+    const i = arr.indexOf(src.id);
+    const j = arr.indexOf(targetId);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const next = { ...arrangement, [fp]: arr };
+    setArrangement(next);
+    patch({ dashboard: next });
   }
 
   const firstName = (user?.display_name ?? "there").split(" ")[0];
@@ -410,7 +396,7 @@ export default function DashboardView() {
             </span>
           ))}
         </div>
-        <div style={{ flex: 1, display: "flex", gap: 14, minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div className="cc-planner-cols" style={{ flex: 1, display: "flex", gap: 14, minHeight: 0 }} onClick={(e) => e.stopPropagation()}>
           <DayColumn
             label="TODAY" sub={daySub(now)} addLabel="today" addDate={todayStr}
             accent="var(--cc-accent-soft)" pillBg="#8b7cf022" pillColor="#a99cf5"
@@ -513,30 +499,35 @@ export default function DashboardView() {
 
   return (
     <>
-    <div className="cc-grid">
+    <div className={isMobile ? "cc-grid-mobile" : "cc-grid"}>
       {ORDER.flatMap((fp) =>
         arrangement[fp].map((id, k) => {
           const m = META[id];
           const dropOk = dragFp === fp;
+          // On mobile, drop the grid-span positioning (tiles just stack) and
+          // give each a sensible min-height — the planner needs the most room.
+          const mobileStyle: CSSProperties = { minHeight: fp === "big" ? 520 : fp === "wide" ? 150 : 168 };
           return (
             <div
               key={id}
               className={`cc-slot ${m.className ?? ""} ${dropOk ? "cc-drop-ok" : ""}`}
-              style={{ ...m.style, ...SLOTS[fp][k] }}
+              style={isMobile ? { ...m.style, ...mobileStyle } : { ...m.style, ...SLOTS[fp][k] }}
               onClick={m.view ? () => setView(m.view!) : undefined}
-              onDragOver={(e) => { if (dragFp === fp) e.preventDefault(); }}
-              onDrop={() => onDrop(fp, id)}
+              onDragOver={isMobile ? undefined : (e) => { if (dragFp === fp) e.preventDefault(); }}
+              onDrop={isMobile ? undefined : () => onDrop(fp, id)}
             >
-              <span
-                className="cc-handle"
-                draggable
-                title="Drag to rearrange"
-                onClick={(e) => e.stopPropagation()}
-                onDragStart={(e) => { dragRef.current = { fp, id }; setDragFp(fp); e.dataTransfer.effectAllowed = "move"; }}
-                onDragEnd={() => { dragRef.current = null; setDragFp(null); }}
-              >
-                <i className="ph ph-dots-six-vertical" style={{ fontSize: 15 }} />
-              </span>
+              {!isMobile && (
+                <span
+                  className="cc-handle"
+                  draggable
+                  title="Drag to rearrange"
+                  onClick={(e) => e.stopPropagation()}
+                  onDragStart={(e) => { dragRef.current = { fp, id }; setDragFp(fp); e.dataTransfer.effectAllowed = "move"; }}
+                  onDragEnd={() => { dragRef.current = null; setDragFp(null); }}
+                >
+                  <i className="ph ph-dots-six-vertical" style={{ fontSize: 15 }} />
+                </span>
+              )}
               {content[id]}
             </div>
           );

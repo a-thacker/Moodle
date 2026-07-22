@@ -15,6 +15,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { usePrefs } from "../prefs/PrefsContext.tsx";
+
 export type View =
   | "dashboard"
   | "grades"
@@ -69,43 +71,37 @@ function landingView(available: View[], hidden: View[]): View {
   );
 }
 
-function loadHidden(userId: string | undefined): View[] {
-  try {
-    const raw = localStorage.getItem(`cc_rail_hidden_${userId ?? "x"}`);
-    if (!raw) return [];
-    return (JSON.parse(raw) as View[]).filter((v) => !NEVER_HIDE.includes(v));
-  } catch {
-    return [];
-  }
-}
-
 export function NavProvider({
   children,
   capabilities,
-  userId,
 }: {
   children: ReactNode;
   capabilities: string[];
-  userId?: string;
 }) {
+  const { prefs, patch } = usePrefs();
   const available = useMemo(
     () => VIEW_ORDER.filter((v) => capabilities.includes(v)),
     [capabilities],
   );
-  const [hidden, setHidden] = useState<View[]>(() => loadHidden(userId));
+  // Hidden tools live in synced preferences so the choice ports across devices.
+  const hidden = useMemo(
+    () =>
+      ((prefs.hiddenTools as View[] | undefined) ?? []).filter(
+        (v) => !NEVER_HIDE.includes(v),
+      ),
+    [prefs.hiddenTools],
+  );
   const [view, setViewState] = useState<View>(() => landingView(available, hidden));
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Reload the hidden set when the user changes; persist it on change.
-  useEffect(() => setHidden(loadHidden(userId)), [userId]);
-  useEffect(() => {
-    if (userId) localStorage.setItem(`cc_rail_hidden_${userId}`, JSON.stringify(hidden));
-  }, [hidden, userId]);
-
-  const toggleHidden = useCallback((v: View) => {
-    if (NEVER_HIDE.includes(v)) return;
-    setHidden((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
-  }, []);
+  const toggleHidden = useCallback(
+    (v: View) => {
+      if (NEVER_HIDE.includes(v)) return;
+      const next = hidden.includes(v) ? hidden.filter((x) => x !== v) : [...hidden, v];
+      patch({ hiddenTools: next });
+    },
+    [hidden, patch],
+  );
 
   // Only navigate to a view the user is entitled to.
   const setView = useCallback(

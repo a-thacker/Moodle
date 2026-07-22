@@ -85,6 +85,8 @@ export interface CurrentUser {
   capabilities: string[];
   /** External-service links this user may open (Jellyfin, Wiki, …). */
   links: ServiceLink[];
+  /** Per-account UI preferences (sidebar/dashboard layout, weather location). */
+  preferences: Record<string, unknown>;
 }
 
 /** One tool in the capability catalog (for the owner's provisioning UI). */
@@ -123,6 +125,18 @@ export const api = {
       apiFetch<void>("/api/v1/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
+      }),
+  },
+
+  // Per-account UI preferences (sidebar/dashboard layout, weather location):
+  // stored server-side so they follow the user across devices. PUT shallow-
+  // merges a patch of top-level keys and returns the full preferences.
+  prefs: {
+    get: () => apiFetch<Record<string, unknown>>("/api/v1/prefs"),
+    update: (patch: Record<string, unknown>) =>
+      apiFetch<Record<string, unknown>>("/api/v1/prefs", {
+        method: "PUT",
+        body: JSON.stringify(patch),
       }),
   },
 

@@ -24,8 +24,12 @@ export default defineConfig({
       // through to the build as-is (icons live in public/).
       includeAssets: ["favicon.ico", "favicon-16x16.png", "favicon-32x32.png", "apple-touch-icon.png"],
       manifest: {
-        name: "Command Center",
-        short_name: "Command",
+        // Intentionally blank home-screen label. A truly empty string makes
+        // browsers fall back to the hostname, so we use U+2800 (Braille blank),
+        // which renders as nothing but still satisfies the "has a name" install
+        // requirement.
+        name: "⠀",
+        short_name: "⠀",
         description: "Your personal command center — grades, deadlines, groceries, and more.",
         // Standalone: launches like a native app, no address bar or tabs.
         display: "standalone",

@@ -248,8 +248,8 @@ export default function CommandBar() {
           />
         </form>
         {busy && <span style={{ color: "var(--cc-muted)", fontSize: 12, fontFamily: "var(--font-mono)" }}>…</span>}
-        <button type="button" onClick={() => setPaletteOpen(true)} title="Jump to a tool (⌘K)" style={{ background: "none", border: "1px solid #2b3044", borderRadius: 5, padding: "2px 8px", color: "var(--cc-muted)", fontFamily: "var(--font-mono)", fontSize: 12, cursor: "pointer", flexShrink: 0 }}>⌘K</button>
-        <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontFamily: "var(--font-mono)", color: "#7a8099", flexShrink: 0 }}>
+        <button type="button" className="cc-hide-mobile" onClick={() => setPaletteOpen(true)} title="Jump to a tool (⌘K)" style={{ background: "none", border: "1px solid #2b3044", borderRadius: 5, padding: "2px 8px", color: "var(--cc-muted)", fontFamily: "var(--font-mono)", fontSize: 12, cursor: "pointer", flexShrink: 0 }}>⌘K</button>
+        <span className="cc-hide-mobile" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontFamily: "var(--font-mono)", color: "#7a8099", flexShrink: 0 }}>
           <span className="pulse status-dot" /> {clock.hm} <span style={{ color: "var(--cc-dim)" }}>{clock.ampm}</span>
         </span>
       </div>

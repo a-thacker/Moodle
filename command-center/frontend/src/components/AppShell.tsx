@@ -5,7 +5,9 @@
 // rail, palette, and navigation all stay in sync.
 
 import { NavProvider, useNav } from "../nav/NavContext.tsx";
+import { PrefsProvider } from "../prefs/PrefsContext.tsx";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import LauncherRail from "./LauncherRail.tsx";
 import CommandBar from "./CommandBar.tsx";
 import CommandPalette from "./CommandPalette.tsx";
@@ -81,48 +83,63 @@ function ActiveView() {
   }
 }
 
+function Shell() {
+  const isMobile = useIsMobile();
+
+  // Desktop: vertical rail on the left. Mobile: a horizontal bar pinned to the
+  // bottom (thumb reach), content stacked above it.
+  return (
+    <div
+      style={{
+        width: "100vw",
+        // dvh tracks the real viewport when launched standalone (no jumpy
+        // toolbars); 100vh fallback for older engines.
+        height: "100dvh",
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        background: "var(--color-bg)",
+        color: "var(--color-text)",
+        fontFamily: "var(--font-body)",
+        overflow: "hidden",
+      }}
+    >
+      {!isMobile && <LauncherRail />}
+      {/* Safe-area padding so a standalone launch doesn't hide content under the
+          status bar / notch (top) or the home indicator (bottom). Padding
+          tightens on mobile so the UI isn't cramped. */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          padding: isMobile
+            ? "calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left))"
+            : "calc(22px + env(safe-area-inset-top)) calc(26px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) 26px",
+          gap: isMobile ? 12 : 16,
+          minWidth: 0,
+          minHeight: 0,
+        }}
+      >
+        {/* Contained so no view can overflow onto (and cover) the command bar. */}
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <ActiveView />
+        </div>
+        <CommandBar />
+      </div>
+      {isMobile && <LauncherRail orientation="horizontal" />}
+      <CommandPalette />
+    </div>
+  );
+}
+
 export default function AppShell() {
   const { user } = useAuth();
 
   return (
-    <NavProvider capabilities={user?.capabilities ?? []} userId={user?.id}>
-      <div
-        style={{
-          width: "100vw",
-          // dvh tracks the real viewport when launched standalone (no jumpy
-          // toolbars); 100vh fallback for older engines.
-          height: "100dvh",
-          display: "flex",
-          background: "var(--color-bg)",
-          color: "var(--color-text)",
-          fontFamily: "var(--font-body)",
-          overflow: "hidden",
-        }}
-      >
-        <LauncherRail />
-        {/* Safe-area padding so a standalone launch doesn't hide the top of the
-            content under the status bar / notch or the command bar under the
-            iOS home indicator. */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            padding:
-              "calc(22px + env(safe-area-inset-top)) calc(26px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) 26px",
-            gap: 16,
-            minWidth: 0,
-            minHeight: 0,
-          }}
-        >
-          {/* Contained so no view can overflow onto (and cover) the command bar. */}
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <ActiveView />
-          </div>
-          <CommandBar />
-        </div>
-        <CommandPalette />
-      </div>
-    </NavProvider>
+    <PrefsProvider>
+      <NavProvider capabilities={user?.capabilities ?? []}>
+        <Shell />
+      </NavProvider>
+    </PrefsProvider>
   );
 }

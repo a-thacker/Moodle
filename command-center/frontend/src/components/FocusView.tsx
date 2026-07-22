@@ -18,7 +18,7 @@ export default function FocusView({
   children: ReactNode;
 }) {
   return (
-    <div style={{ flex: 1, overflow: "auto", padding: "var(--space-8)" }}>
+    <div className="cc-focusview" style={{ flex: 1, overflow: "auto" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {icon && <i className={`ph ${icon}`} style={{ color: "var(--cc-accent)", fontSize: 20 }} />}

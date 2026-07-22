@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +50,24 @@ async def authenticate(
 async def set_password(session: AsyncSession, user: User, new_password: str) -> None:
     user.hashed_password = hash_password(new_password)
     await session.commit()
+
+
+async def update_preferences(
+    session: AsyncSession, user: User, patch: dict[str, Any]
+) -> dict[str, Any]:
+    """Shallow-merge `patch` into the user's preferences and persist. Reassigns
+    a fresh dict (not an in-place mutation) so SQLAlchemy flags the JSON column
+    as dirty. A key set to null is removed."""
+    merged = {**(user.preferences or {})}
+    for key, value in patch.items():
+        if value is None:
+            merged.pop(key, None)
+        else:
+            merged[key] = value
+    user.preferences = merged
+    await session.commit()
+    await session.refresh(user)
+    return user.preferences
 
 
 async def upsert_user(
