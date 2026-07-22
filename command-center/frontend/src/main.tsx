@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "./fonts"; // self-hosted fonts + icon fonts (bundled, offline-capable)
 import "./styles/nocturne.css"; // design tokens + component classes (first)
 import "./styles/app.css"; // app-level interaction styles (override after)
 import "./pwa"; // capture the install prompt at load, before the app mounts

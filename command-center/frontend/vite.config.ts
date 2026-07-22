@@ -1,9 +1,29 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 // Minimal typing for the Node global (we don't pull in @types/node just for this).
 declare const process: { env: Record<string, string | undefined> };
+
+// The Phosphor icon fonts ship woff2 + legacy woff/ttf/svg fallbacks; the svg
+// ones are ~3 MB each and no browser we target ever uses them (woff2 is first in
+// the src list and universally supported). Strip the non-woff2 sources from the
+// icon @font-face at build time so those huge assets are never emitted.
+function phosphorWoff2Only(): Plugin {
+  return {
+    name: "phosphor-woff2-only",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.includes("@phosphor-icons/web") || !id.endsWith(".css")) return;
+      return code
+        .replace(
+          /\s*url\([^)]*\.(?:woff|ttf|svg|eot)[^)]*\)\s*format\("(?:woff|truetype|svg|embedded-opentype)"\),?/g,
+          "",
+        )
+        .replace(/,\s*;/g, ";");
+    },
+  };
+}
 
 // Dev server proxies /api to the FastAPI backend so the browser talks to one
 // origin (no CORS in dev). Point it at a backend with CC_BACKEND, e.g.
@@ -13,6 +33,7 @@ const BACKEND = process.env.CC_BACKEND || "http://localhost:8000";
 
 export default defineConfig({
   plugins: [
+    phosphorWoff2Only(),
     react(),
     // Installable PWA: the app opens standalone (its own window, no browser
     // chrome) once added to the home screen. `registerType: "prompt"` means we
@@ -47,8 +68,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Precache the built app shell (hashed JS/CSS/HTML). Unknown routes fall
-        // back to index.html so client-side routing works offline.
+        // Precache the built app shell (hashed JS/CSS/HTML) plus the self-hosted
+        // font + icon files, so the installed app renders fully offline. Unknown
+        // routes fall back to index.html so client-side routing works offline.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,ttf}"],
         navigateFallback: "/index.html",
         // Never let the SW answer for the API: this is live, auth-gated data, so
         // a cached response would be stale or leak across sessions. Let it hit
