@@ -27,8 +27,23 @@ import type { ClaudeUsage, Deadline, Task, Weather } from "../types";
 import { relativeDay } from "../utils/format";
 import { CAT_COLOR, CAT_LEGEND, taskColor } from "../utils/category";
 import ClaudeMark from "./ClaudeMark.tsx";
+import WeatherLocationPicker, { type WeatherLoc } from "./WeatherLocationPicker.tsx";
 
 const MONO = "var(--font-mono)";
+
+function loadWeatherLoc(): WeatherLoc | null {
+  try {
+    const raw = localStorage.getItem("cc_weather_loc");
+    return raw ? (JSON.parse(raw) as WeatherLoc) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWeatherLoc(loc: WeatherLoc | null): void {
+  if (loc) localStorage.setItem("cc_weather_loc", JSON.stringify(loc));
+  else localStorage.removeItem("cc_weather_loc");
+}
 
 function toMin(dueTime: string): number {
   const [h, m] = dueTime.split(":").map(Number);
@@ -234,6 +249,8 @@ export default function DashboardView() {
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [weatherLoc, setWeatherLoc] = useState<WeatherLoc | null>(() => loadWeatherLoc());
+  const [locPickerOpen, setLocPickerOpen] = useState(false);
   const isOwner = user?.role === "owner";
   const capsKey = (user?.capabilities ?? []).join(",");
   const visible = useMemo(
@@ -247,11 +264,17 @@ export default function DashboardView() {
   // Only the owner has the Claude-usage tile; skip the (403-ing) fetch for others.
   useEffect(() => { if (isOwner) api.claudeUsage().then(setUsage).catch(() => {}); }, [isOwner]);
   useEffect(() => {
-    const load = () => api.weather().then(setWeather).catch(() => {});
+    const load = () => api.weather(weatherLoc ?? undefined).then(setWeather).catch(() => {});
     load();
     const iv = setInterval(load, 15 * 60 * 1000); // refresh every 15 min
     return () => clearInterval(iv);
-  }, []);
+  }, [weatherLoc]);
+
+  function changeWeatherLoc(loc: WeatherLoc | null) {
+    setWeatherLoc(loc);
+    saveWeatherLoc(loc);
+    setLocPickerOpen(false);
+  }
   useEffect(() => setArrangement(loadArrangement(user?.id, visible)), [user?.id, visible]);
   useEffect(() => {
     if (user?.id) localStorage.setItem(`cc_dashboard_${user.id}`, JSON.stringify(arrangement));
@@ -316,7 +339,16 @@ export default function DashboardView() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", position: "relative" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, opacity: 0.66 }}>
-              <span className="pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "#1f7a4d" }} />Agent synced · {weather?.label ?? "Collegedale, TN"}
+              <span className="pulse" style={{ width: 7, height: 7, borderRadius: "50%", background: "#1f7a4d" }} />Agent synced ·{" "}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setLocPickerOpen(true); }}
+                title="Change weather location"
+                style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "underline", textUnderlineOffset: 2, textDecorationColor: "#100f1c66" }}
+              >
+                {weather?.label ?? "Collegedale, TN"}
+                <i className="ph ph-caret-down" style={{ fontSize: 11 }} />
+              </button>
             </div>
             {weather?.available ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
@@ -473,6 +505,7 @@ export default function DashboardView() {
   }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
 
   return (
+    <>
     <div className="cc-grid">
       {ORDER.flatMap((fp) =>
         arrangement[fp].map((id, k) => {
@@ -503,5 +536,7 @@ export default function DashboardView() {
         }),
       )}
     </div>
+    <WeatherLocationPicker open={locPickerOpen} onClose={() => setLocPickerOpen(false)} onPick={changeWeatherLoc} />
+    </>
   );
 }

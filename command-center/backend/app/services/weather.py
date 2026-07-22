@@ -18,8 +18,8 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 _CACHE_TTL = 15 * 60  # seconds
-_cache: dict[str, Any] = {}
-_cache_at: float = 0.0
+# Cached per location: (rounded lat, rounded lon) -> (fetched_at, payload).
+_cache: dict[tuple[float, float], tuple[float, dict[str, Any]]] = {}
 
 # WMO weather codes → (short text, Phosphor icon name). Grouped sensibly.
 _WMO: dict[int, tuple[str, str]] = {
@@ -58,17 +58,25 @@ def _describe(code: int) -> tuple[str, str]:
     return _WMO.get(code, ("—", "ph-cloud"))
 
 
-async def get_weather() -> dict[str, Any]:
-    """Current conditions for the configured location (cached ~15 min)."""
-    global _cache, _cache_at
-    now = time.monotonic()
-    if _cache and (now - _cache_at) < _CACHE_TTL:
-        return _cache
-
+async def get_weather(
+    lat: float | None = None, lon: float | None = None, label: str | None = None
+) -> dict[str, Any]:
+    """Current conditions for a location (cached ~15 min per location). Falls
+    back to the configured default when no lat/lon is given."""
     settings = get_settings()
+    la = lat if lat is not None else settings.weather_latitude
+    lo = lon if lon is not None else settings.weather_longitude
+    place = label or settings.weather_label
+    key = (round(la, 3), round(lo, 3))
+
+    now = time.monotonic()
+    cached = _cache.get(key)
+    if cached and (now - cached[0]) < _CACHE_TTL:
+        return cached[1]
+
     params = {
-        "latitude": settings.weather_latitude,
-        "longitude": settings.weather_longitude,
+        "latitude": la,
+        "longitude": lo,
         "current": "temperature_2m,weather_code,is_day,apparent_temperature",
         "daily": "temperature_2m_max,temperature_2m_min",
         "temperature_unit": "fahrenheit",
@@ -83,9 +91,9 @@ async def get_weather() -> dict[str, Any]:
         cur = data["current"]
         daily = data["daily"]
         text, icon = _describe(int(cur["weather_code"]))
-        _cache = {
+        payload = {
             "available": True,
-            "label": settings.weather_label,
+            "label": place,
             "temp": round(cur["temperature_2m"]),
             "feelsLike": round(cur.get("apparent_temperature", cur["temperature_2m"])),
             "high": round(daily["temperature_2m_max"][0]),
@@ -94,8 +102,8 @@ async def get_weather() -> dict[str, Any]:
             "icon": icon,
             "isDay": bool(cur.get("is_day", 1)),
         }
-        _cache_at = now
-        return _cache
+        _cache[key] = (now, payload)
+        return payload
     except (httpx.HTTPError, KeyError, ValueError, IndexError) as exc:
         logger.warning("Weather fetch failed: %s", exc)
-        return {"available": False, "label": settings.weather_label}
+        return {"available": False, "label": place}

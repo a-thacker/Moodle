@@ -13,5 +13,9 @@ router = APIRouter(tags=["weather"])
 
 
 @router.get("/weather", dependencies=[Depends(require_owner)])
-async def get_weather() -> dict[str, Any]:
-    return await weather_service.get_weather()
+async def get_weather(
+    lat: float | None = None, lon: float | None = None, label: str | None = None
+) -> dict[str, Any]:
+    """Current conditions. With lat/lon, use that location (from the dashboard's
+    location picker); otherwise the configured default."""
+    return await weather_service.get_weather(lat, lon, label)

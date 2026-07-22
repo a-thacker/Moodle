@@ -204,7 +204,12 @@ export const api = {
       apiFetch<void>(`/api/v1/grocery/${id}`, { method: "DELETE" }),
   },
 
-  weather: () => apiFetch<Weather>("/api/v1/weather"),
+  weather: (loc?: { lat: number; lon: number; label: string }) => {
+    const qs = loc
+      ? `?lat=${loc.lat}&lon=${loc.lon}&label=${encodeURIComponent(loc.label)}`
+      : "";
+    return apiFetch<Weather>(`/api/v1/weather${qs}`);
+  },
 
   tasks: {
     list: () => apiFetch<Task[]>("/api/v1/tasks"),
