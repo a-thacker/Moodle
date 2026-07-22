@@ -261,8 +261,15 @@ export default function DashboardView() {
   const [dragFp, setDragFp] = useState<Footprint | null>(null);
   const dragRef = useRef<{ fp: Footprint; id: WidgetId } | null>(null);
 
-  // Only the owner has the Claude-usage tile; skip the (403-ing) fetch for others.
-  useEffect(() => { if (isOwner) api.claudeUsage().then(setUsage).catch(() => {}); }, [isOwner]);
+  // Only the owner has the Claude-usage tile; skip the (403-ing) fetch for
+  // others. Re-poll so server-side refreshes show up without a page reload.
+  useEffect(() => {
+    if (!isOwner) return;
+    const load = () => api.claudeUsage().then(setUsage).catch(() => {});
+    load();
+    const iv = setInterval(load, 10 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, [isOwner]);
   useEffect(() => {
     const load = () => api.weather(weatherLoc ?? undefined).then(setWeather).catch(() => {});
     load();
