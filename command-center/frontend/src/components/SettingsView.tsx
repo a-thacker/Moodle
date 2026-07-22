@@ -9,6 +9,7 @@ import { useAuth } from "../auth/AuthContext.tsx";
 import { useNav } from "../nav/NavContext.tsx";
 import { RAIL_TOOLS } from "./LauncherRail.tsx";
 import FocusView from "./FocusView.tsx";
+import { canInstall, isIos, isStandalone, promptInstall, subscribeInstall } from "../pwa";
 
 function SidebarCustomizer() {
   const { available, hidden, toggleHidden } = useNav();
@@ -464,6 +465,58 @@ function MyReminders() {
   );
 }
 
+// "Install this app" — on Android/Chrome we can fire the native install sheet;
+// on iOS there's no API, so we show the Add-to-Home-Screen instructions. Hidden
+// entirely once the app is already running installed (standalone).
+function InstallApp() {
+  const [, force] = useState(0);
+  const [installable, setInstallable] = useState(canInstall());
+
+  useEffect(() => subscribeInstall(() => setInstallable(canInstall())), []);
+
+  if (isStandalone()) {
+    return (
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: 0, lineHeight: 1.6 }}>
+        You're running the installed app. <i className="ph ph-check-circle" style={{ color: "var(--cc-accent-soft)" }} />
+      </p>
+    );
+  }
+
+  if (isIos()) {
+    return (
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: 0, lineHeight: 1.6 }}>
+        On iPhone/iPad: tap the <strong>Share</strong> button{" "}
+        <i className="ph ph-export" /> in Safari, then <strong>Add to Home Screen</strong>.
+        It opens full-screen like a native app.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-3)", lineHeight: 1.6 }}>
+        Add Command Center to your home screen or desktop — it opens in its own
+        window, no browser bar.
+      </p>
+      {installable ? (
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={async () => { await promptInstall(); force((n) => n + 1); }}
+        >
+          <i className="ph ph-download-simple" style={{ marginRight: 6 }} />
+          Install app
+        </button>
+      ) : (
+        <p style={{ fontSize: 13, color: "var(--color-neutral-500)", margin: 0 }}>
+          Your browser will offer an install button in its address bar. (If you
+          don't see one, the app may already be installed.)
+        </p>
+      )}
+    </>
+  );
+}
+
 export default function SettingsView() {
   const { user } = useAuth();
 
@@ -476,6 +529,11 @@ export default function SettingsView() {
           <span className="tag tag-neutral">{user?.role}</span>
         </div>
         <ChangePassword />
+      </section>
+
+      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+        <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Install app</h3>
+        <InstallApp />
       </section>
 
       <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>

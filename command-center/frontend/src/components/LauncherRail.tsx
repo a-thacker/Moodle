@@ -87,7 +87,12 @@ export default function LauncherRail() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "20px 0",
+        // Safe-area padding: clear the status bar/notch at the top, the home
+        // indicator at the bottom, and a landscape notch on the left when the
+        // app runs standalone.
+        padding:
+          "calc(20px + env(safe-area-inset-top)) 0 calc(20px + env(safe-area-inset-bottom))",
+        paddingLeft: "env(safe-area-inset-left)",
         gap: 4,
       }}
     >

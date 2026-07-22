@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from "./auth/AuthContext.tsx";
 import Login from "./components/Login.tsx";
 import AppShell from "./components/AppShell.tsx";
+import PwaUpdater from "./components/PwaUpdater.tsx";
 
 // Every authenticated user gets the same shell; what they see inside it is
 // driven by their capabilities (owner is the admin with everything). Roles are
@@ -34,6 +35,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Routed />
+      <PwaUpdater />
     </AuthProvider>
   );
 }

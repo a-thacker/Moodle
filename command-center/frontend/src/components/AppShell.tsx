@@ -89,7 +89,9 @@ export default function AppShell() {
       <div
         style={{
           width: "100vw",
-          height: "100vh",
+          // dvh tracks the real viewport when launched standalone (no jumpy
+          // toolbars); 100vh fallback for older engines.
+          height: "100dvh",
           display: "flex",
           background: "var(--color-bg)",
           color: "var(--color-text)",
@@ -98,7 +100,21 @@ export default function AppShell() {
         }}
       >
         <LauncherRail />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "22px 26px", gap: 16, minWidth: 0, minHeight: 0 }}>
+        {/* Safe-area padding so a standalone launch doesn't hide the top of the
+            content under the status bar / notch or the command bar under the
+            iOS home indicator. */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            padding:
+              "calc(22px + env(safe-area-inset-top)) calc(26px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) 26px",
+            gap: 16,
+            minWidth: 0,
+            minHeight: 0,
+          }}
+        >
           {/* Contained so no view can overflow onto (and cover) the command bar. */}
           <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <ActiveView />
