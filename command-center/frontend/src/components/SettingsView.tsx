@@ -428,6 +428,42 @@ function ProactiveTest() {
   );
 }
 
+function MyReminders() {
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+  const topic = user?.ntfy_topic;
+
+  if (!topic) {
+    return (
+      <p style={{ fontSize: 13, color: "var(--color-neutral-500)", margin: 0 }}>
+        No reminder channel is set up for your account yet.
+      </p>
+    );
+  }
+  return (
+    <>
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-3)", lineHeight: 1.6 }}>
+        Install the <strong>ntfy</strong> app (or open{" "}
+        <a href="https://ntfy.sh" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent-200)" }}>ntfy.sh</a>)
+        and subscribe to this topic to get your reminders and nudges on your phone.
+        Keep it private — the topic name is the password.
+      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <code style={{ fontSize: 13, background: "var(--color-bg)", padding: "6px 10px", borderRadius: "var(--radius-sm)", userSelect: "all", wordBreak: "break-all" }}>
+          {topic}
+        </code>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => { navigator.clipboard?.writeText(topic); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+        >
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default function SettingsView() {
   const { user } = useAuth();
 
@@ -440,6 +476,11 @@ export default function SettingsView() {
           <span className="tag tag-neutral">{user?.role}</span>
         </div>
         <ChangePassword />
+      </section>
+
+      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+        <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Reminders</h3>
+        <MyReminders />
       </section>
 
       <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>

@@ -79,6 +79,8 @@ export interface CurrentUser {
   email: string;
   display_name: string;
   role: "owner" | "user";
+  /** The user's own private ntfy reminder topic (to subscribe in the app). */
+  ntfy_topic: string | null;
   /** Effective capability keys (see backend app/core/capabilities.py). */
   capabilities: string[];
   /** External-service links this user may open (Jellyfin, Wiki, …). */
