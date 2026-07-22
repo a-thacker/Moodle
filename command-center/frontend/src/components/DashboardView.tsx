@@ -30,14 +30,6 @@ import ClaudeMark from "./ClaudeMark.tsx";
 
 const MONO = "var(--font-mono)";
 
-function fmtTok(n?: number): string {
-  if (!n) return "0";
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return String(n);
-}
-
 function toMin(dueTime: string): number {
   const [h, m] = dueTime.split(":").map(Number);
   return h * 60 + m;
@@ -419,26 +411,31 @@ export default function DashboardView() {
         { label: "SESSION", entry: lim?.session, showReset: true },
         { label: "WEEK · ALL", entry: lim?.weekAll, showReset: true },
         { label: "WEEK · FABLE", entry: lim?.weekFable, showReset: false },
-      ];
+      ].filter((r) => r.entry || r.label !== "WEEK · FABLE"); // hide Fable if absent
+      const updated = usage?.updatedAt
+        ? new Date(usage.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+        : null;
       return (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <ClaudeMark size={18} />
-              <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
-            </span>
-            <span className="cc-label">{usage?.updatedAt ? new Date(usage.updatedAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "run agent"}</span>
+        <div style={{ display: "flex", height: "100%", gap: 16, alignItems: "stretch", minHeight: 0 }}>
+          {/* Left half: the mascot, big. */}
+          <div style={{ flex: "0 0 42%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, minWidth: 0 }}>
+            <ClaudeMark size={96} />
+            <span className="cc-label" style={{ fontWeight: 500 }}>CLAUDE USAGE</span>
           </div>
-          {!lim ? (
-            <div style={{ color: "var(--cc-muted)", fontSize: 12.5 }}>Run <code style={{ fontFamily: MONO, color: "var(--cc-accent-soft)" }}>agent claude-usage</code> to load your session &amp; weekly limits.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-              {rows.map(({ label, entry, showReset }) => {
+          {/* Right half: the usage meters. */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 12 }}>
+            {updated && (
+              <div className="cc-label" style={{ textAlign: "right", marginBottom: -2 }}>updated {updated}</div>
+            )}
+            {!lim ? (
+              <div style={{ color: "var(--cc-muted)", fontSize: 12.5, lineHeight: 1.5 }}>Waiting for the server to report your session &amp; weekly limits…</div>
+            ) : (
+              rows.map(({ label, entry, showReset }) => {
                 const p = Math.max(0, Math.min(100, entry?.pct ?? 0));
                 return (
                   <div key={label}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-                      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".05em", color: "var(--cc-muted)" }}>
+                      <span style={{ fontFamily: MONO, fontSize: 11, letterSpacing: ".05em", color: "var(--cc-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {label}
                         {showReset && entry && <span style={{ color: "var(--cc-dim)" }}> · resets {entry.resets}</span>}
                       </span>
@@ -449,13 +446,10 @@ export default function DashboardView() {
                     </div>
                   </div>
                 );
-              })}
-              <div style={{ fontFamily: MONO, fontSize: 11, color: "var(--cc-dim)" }}>
-                {fmtTok(usage?.session?.io)} io this session · {fmtTok(usage?.week?.io)} this week
-              </div>
-            </div>
-          )}
-        </>
+              })
+            )}
+          </div>
+        </div>
       );
     })(),
     lists: (

@@ -30,6 +30,7 @@ from app.models.user import User
 from app.services import assistant as assistant_service
 from app.services import entitlement as entitlement_service
 from app.services import ntfy
+from app.services import usage as usage_service
 from app.services.context import build_user_context
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,13 @@ async def proactive_loop() -> None:
         get_settings().proactive_enabled,
     )
     while True:
+        # Refresh the Claude usage tile from the server's own Claude each cycle
+        # (this is the loop that sends notifications).
+        try:
+            async with SessionFactory() as session:
+                await usage_service.refresh_from_bridge(session)
+        except Exception as exc:  # never let the loop die
+            logger.warning("Usage refresh tick failed: %s", exc)
         try:
             await check_proactive()
         except Exception as exc:  # never let the loop die

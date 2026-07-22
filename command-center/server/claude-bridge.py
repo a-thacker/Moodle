@@ -24,9 +24,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import threading
 from collections import defaultdict
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 WORKDIR = os.path.expanduser(os.environ.get("CC_AGENT_DIR", "~/cc-agent"))
@@ -34,6 +36,40 @@ CLAUDE = os.path.expanduser(os.environ.get("CC_CLAUDE_BIN", "~/.local/bin/claude
 PORT = int(os.environ.get("CC_CLAUDE_BRIDGE_PORT", "8787"))
 MODEL = os.environ.get("CC_CLAUDE_MODEL", "")  # empty => claude's own default
 TIMEOUT = int(os.environ.get("CC_CLAUDE_TIMEOUT", "240"))
+# Timezone for `/usage` reset times (claude formats them in the machine's TZ;
+# the server is UTC, so force the user's local zone).
+USAGE_TZ = os.environ.get("CC_USAGE_TZ", "America/New_York")
+
+_LIMIT_RE = {
+    "session": re.compile(r"Current session:\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+    "weekAll": re.compile(r"Current week \(all models\):\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+    "weekFable": re.compile(r"Current week \(Fable\):\s*(\d+)%\s+used.*?resets\s+([^\n(]+?)\s*(?:\(|$)", re.I | re.M),
+}
+
+
+def _usage() -> dict | None:
+    """Run `claude -p /usage` on the host subscription and parse the session /
+    weekly limits (%, reset time). Returns None if it can't be read."""
+    env = dict(os.environ, PATH=f"{os.path.dirname(CLAUDE)}:{os.environ.get('PATH', '')}", TZ=USAGE_TZ)
+    try:
+        proc = subprocess.run(
+            [CLAUDE, "-p", "/usage", "--output-format", "json"],
+            cwd=WORKDIR, capture_output=True, text=True, timeout=90, env=env,
+            stdin=subprocess.DEVNULL,  # avoid the "no stdin" warning polluting stdout
+        )
+        if proc.returncode != 0:
+            return None
+        result = json.loads(proc.stdout).get("result", "")
+    except (subprocess.SubprocessError, ValueError, OSError):
+        return None
+    limits: dict = {}
+    for key, rx in _LIMIT_RE.items():
+        m = rx.search(result)
+        if m:
+            limits[key] = {"pct": int(m.group(1)), "resets": m.group(2).strip()}
+    if not limits:
+        return None
+    return {"limits": limits, "fetchedAt": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 # user_id -> claude session_id, plus a per-user lock so one user's turns run
 # sequentially (a Claude session can't be resumed concurrently).
@@ -80,6 +116,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/health":
             self._json(200, {"ok": True})
+        elif self.path == "/usage":
+            data = _usage()
+            if data is None:
+                self._json(200, {"available": False})
+            else:
+                self._json(200, {"available": True, **data})
         else:
             self._json(404, {"error": "not found"})
 

@@ -36,4 +36,6 @@ async def get_usage(session: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     row = await session.get(ClaudeUsage, 1)
     if row is None:
         return {}
-    return {**row.data, "updatedAt": row.updated_at.isoformat()}
+    # updated_at is stored naive-UTC; mark it so the browser converts to local
+    # time instead of misreading it as local (the "wrong time" bug).
+    return {**row.data, "updatedAt": row.updated_at.isoformat() + "Z"}
