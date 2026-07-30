@@ -522,7 +522,7 @@ export default function SettingsView() {
 
   return (
     <FocusView title="Settings" icon="ph-gear-six">
-      <section className="card" style={{ padding: "var(--space-6)" }}>
+      <section className="cc-panel" style={{ padding: "var(--space-6)" }}>
         <div style={{ fontSize: 13, color: "var(--color-neutral-400)", marginBottom: "var(--space-4)" }}>
           Signed in as <span style={{ color: "var(--color-text)" }}>{user?.email}</span>
           {" · "}
@@ -531,30 +531,30 @@ export default function SettingsView() {
         <ChangePassword />
       </section>
 
-      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+      <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
         <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Install app</h3>
         <InstallApp />
       </section>
 
-      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+      <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
         <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Reminders</h3>
         <MyReminders />
       </section>
 
-      <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+      <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
         <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Sidebar</h3>
         <SidebarCustomizer />
       </section>
 
       {user?.role === "owner" && (
-        <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+        <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
           <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>People &amp; tools</h3>
           <People />
         </section>
       )}
 
       {user?.role === "owner" && (
-        <section className="card" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+        <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
           <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Proactive notifications</h3>
           <ProactiveTest />
         </section>

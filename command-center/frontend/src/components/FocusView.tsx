@@ -1,8 +1,10 @@
-// A single focused tool view — one centered column with a consistent icon +
-// title header (matches the standalone tool pages). Used by the Grades,
-// Deadlines, Grocery, and Settings views.
+// A single focused tool view — the shared page frame (PageShell) wrapping one
+// centered reading column. Used by the Grades, Deadlines, Grocery, and Settings
+// views so they match the standalone tool pages.
 
 import type { ReactNode } from "react";
+
+import PageShell from "./PageShell";
 
 export default function FocusView({
   title,
@@ -11,22 +13,26 @@ export default function FocusView({
   children,
 }: {
   title: string;
-  /** Phosphor icon name shown before the title (e.g. "ph-exam"). */
+  /** Phosphor icon name shown in the header chip (e.g. "ph-exam"). */
   icon?: string;
-  /** Optional muted text/count shown after the title. */
+  /** Optional muted context shown under the title. */
   meta?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="cc-focusview" style={{ flex: 1, overflow: "auto" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {icon && <i className={`ph ${icon}`} style={{ color: "var(--cc-accent)", fontSize: 20 }} />}
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: 0 }}>{title}</h2>
-          {meta != null && <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>{meta}</span>}
-        </div>
+    <PageShell title={title} icon={icon} subtitle={meta}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 640,
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-6)",
+        }}
+      >
         {children}
       </div>
-    </div>
+    </PageShell>
   );
 }

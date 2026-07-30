@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "../api/client";
 import type { ScriptInfo, ScriptJob } from "../types";
+import PageShell from "./PageShell";
 
 const MONO = "var(--font-mono)";
 
@@ -73,15 +74,12 @@ export default function ScriptsView() {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <i className="ph ph-terminal-window" style={{ fontSize: 20, color: "var(--cc-accent)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: 0 }}>Scripts</h2>
-        <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>
-          run on your Mac · <code style={{ color: "var(--cc-accent-soft)" }}>~/cc-scripts/</code>
-        </span>
-      </div>
-
+    <PageShell
+      title="Scripts"
+      icon="ph-terminal-window"
+      subtitle={<>run on your Mac · <code style={{ color: "var(--cc-accent-soft)" }}>~/cc-scripts/</code></>}
+      scroll={false}
+    >
       <div style={{ flex: 1, display: "flex", gap: 16, minHeight: 0 }}>
         {/* Left: scripts + run bar */}
         <div style={{ width: 320, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
@@ -184,6 +182,6 @@ export default function ScriptsView() {
           </div>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

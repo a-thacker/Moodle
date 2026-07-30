@@ -9,6 +9,7 @@ import { useTasks } from "../hooks/useTasks";
 import type { Task } from "../types";
 import { parseTaskInput, fmtTime } from "../utils/time";
 import { taskColor } from "../utils/category";
+import PageShell from "./PageShell";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -205,12 +206,10 @@ export default function PlannerView() {
   const step = mode === "week" ? 7 : 1;
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <i className="ph ph-calendar-check" style={{ color: "var(--cc-accent)", fontSize: 20 }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: 0 }}>Planner</h2>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--cc-muted)" }}>{rangeLabel}</span>
-        <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }}>
+    <PageShell title="Planner" icon="ph-calendar-check" subtitle={rangeLabel} scroll={false}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }}>
           {(["week", "day"] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: mode === m ? "var(--cc-accent)" : "transparent", color: mode === m ? "#100f1c" : "var(--cc-muted)", textTransform: "capitalize" }}>{m}</button>
           ))}
@@ -241,6 +240,7 @@ export default function PlannerView() {
       <div style={{ maxHeight: "24%", display: "flex", flexDirection: "column", minHeight: 0 }}>
         {column(null, "Unscheduled", String(byKey(null).length), false, false)}
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

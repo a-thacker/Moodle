@@ -15,6 +15,7 @@ import {
 
 import { api } from "../api/client";
 import { notifyTasksChanged } from "../hooks/useTasks";
+import PageShell from "./PageShell";
 
 interface Msg {
   role: "user" | "assistant";
@@ -106,18 +107,19 @@ export default function AssistantView({
   const empty = loaded && messages.length === 0;
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span className="pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--cc-accent)" }} />
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 20, margin: 0 }}>Assistant</h2>
-        <span style={{ fontSize: 12, color: "var(--cc-muted)" }}>{subtitle}</span>
-        {messages.length > 0 && (
-          <button className="btn btn-ghost" style={{ marginLeft: "auto", fontSize: 12 }} onClick={clearAll}>
+    <PageShell
+      title="Assistant"
+      icon="ph-sparkle"
+      subtitle={subtitle}
+      scroll={false}
+      actions={
+        messages.length > 0 ? (
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={clearAll}>
             Clear
           </button>
-        )}
-      </div>
-
+        ) : undefined
+      }
+    >
       <div
         ref={scrollRef}
         style={{
@@ -194,7 +196,7 @@ export default function AssistantView({
           {busy ? "…" : "Send"}
         </button>
       </form>
-    </div>
+    </PageShell>
   );
 }
 
