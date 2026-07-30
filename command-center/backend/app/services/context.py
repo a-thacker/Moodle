@@ -5,6 +5,7 @@ is injected into every prompt so the model can answer about *their* data.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -19,6 +20,12 @@ from app.services import eclass as eclass_service
 from app.services import entitlement as entitlement_service
 from app.services import grocery as grocery_service
 from app.services import task as task_service
+from app.services import vault as vault_service
+
+# How much flagged-vault markdown to fold into the context, so the assistant can
+# read notes and pull deadlines/plans into the planner without blowing the prompt.
+_VAULT_TOTAL_BUDGET = 12_000  # chars across all AI-readable vaults
+_VAULT_PER_NOTE = 2_000       # chars per note
 
 logger = logging.getLogger(__name__)
 
@@ -102,4 +109,41 @@ async def build_user_context(session: AsyncSession, user: User) -> str:
             names = ", ".join(g.name for g in grocery[:25])
             lines.append(f"Grocery to buy: {names}.")
 
+    # Obsidian notes the user flagged AI-readable — read from the synced
+    # checkouts so the assistant can act on their content (e.g. add planner
+    # tasks for deadlines written in a note).
+    if "notes" in caps:
+        vaults = [v for v in await vault_service.list_vaults(session, user.id) if v.ai_readable]
+        if vaults:
+            block = await asyncio.to_thread(_collect_vault_text, vaults)
+            if block:
+                lines.append(block)
+
     return "\n".join(lines)
+
+
+def _collect_vault_text(vaults) -> str:
+    """Read markdown from the given (AI-readable) vault checkouts into a single
+    bounded block. Blocking file IO — call via asyncio.to_thread."""
+    out: list[str] = ["OBSIDIAN NOTES (flagged for the assistant to read):"]
+    used = 0
+    for v in vaults:
+        try:
+            notes = vault_service.list_notes(v)
+        except Exception:  # a missing/failed checkout shouldn't break context
+            continue
+        if not notes:
+            continue
+        out.append(f"Vault '{v.name}' — {len(notes)} note(s):")
+        for n in notes:
+            body = (vault_service.read_note(v, n["path"]) or "").strip()
+            if not body:
+                continue
+            entry = f"--- {v.name}/{n['path']} ---\n{body[:_VAULT_PER_NOTE]}"
+            if used + len(entry) > _VAULT_TOTAL_BUDGET:
+                out.append("(more notes not shown — flagged vault is large)")
+                return "\n".join(out)
+            out.append(entry)
+            used += len(entry)
+    # Nothing but the heading/vault labels means no readable content.
+    return "\n".join(out) if used else ""

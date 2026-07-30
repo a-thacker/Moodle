@@ -19,7 +19,12 @@ COPY . .
 
 RUN chmod +x ./entrypoint.sh \
     && adduser --disabled-password --gecos "" appuser \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    # Obsidian vault checkouts land here (a named volume mounts over it). Create
+    # it owned by appuser so the fresh volume inherits that ownership and the
+    # non-root process can clone into it.
+    && mkdir -p /vault-data \
+    && chown appuser:appuser /vault-data
 USER appuser
 
 EXPOSE 8000

@@ -15,6 +15,7 @@ from app.models.script import ScriptJob, ScriptRegistry
 from app.models.task import Task
 from app.models.usage import ClaudeUsage
 from app.models.user import User
+from app.models.vault import VaultRepo
 
 __all__ = [
     "ChatMessage",
@@ -31,4 +32,5 @@ __all__ = [
     "TimelineEvent",
     "User",
     "UserEntitlement",
+    "VaultRepo",
 ]

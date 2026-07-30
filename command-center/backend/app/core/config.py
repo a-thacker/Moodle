@@ -90,6 +90,17 @@ class Settings(BaseSettings):
     weather_longitude: float = -85.0491
     weather_label: str = "Collegedale, TN"
 
+    # --- Obsidian vault hub ---------------------------------------------
+    # Git-backed Obsidian vaults are cloned/pulled into this directory (a Docker
+    # volume, so clones survive redeploys). The backend reads markdown from here.
+    vault_data_dir: str = "/vault-data"
+    # Optional credential for private vault repos, applied to https remotes at
+    # pull time (e.g. a GitHub PAT). Lives only in the server .env, never on the
+    # row or in git. Empty = only public/ssh-key-reachable repos work.
+    vault_git_token: str = ""
+    # How often the background loop re-pulls every registered vault.
+    vault_sync_interval_minutes: int = 15
+
     # --- External service links (shown in the rail when granted) ---------
     # URLs are deployment-specific; a link tool is hidden until its URL is set.
     jellyfin_url: str = ""    # JELLYFIN_URL, e.g. http://athacker-cc:8096

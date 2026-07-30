@@ -10,12 +10,16 @@ import type {
   Deadline,
   GradeEvent,
   GroceryItem,
+  NoteContent,
+  NoteMeta,
   RipJob,
+  RipRequest,
   ScriptInfo,
   ScriptJob,
   Task,
   TaskCategory,
   TaskPatch,
+  Vault,
   Weather,
 } from "../types";
 
@@ -182,15 +186,36 @@ export const api = {
     clearJobs: () => apiFetch<void>("/api/v1/scripts/jobs", { method: "DELETE" }),
   },
 
-  // DVD ripper: enqueue a rip, poll jobs (status + streamed progress).
+  // DVD/Blu-ray ripper: enqueue a movie or TV rip, poll jobs (status + progress).
   rip: {
-    create: (title: string, extras: "extras" | "keep" | "delete") =>
+    create: (req: RipRequest) =>
       apiFetch<RipJob>("/api/v1/rip/jobs", {
         method: "POST",
-        body: JSON.stringify({ title, extras }),
+        body: JSON.stringify(req),
       }),
     jobs: () => apiFetch<RipJob[]>("/api/v1/rip/jobs"),
     clearJobs: () => apiFetch<void>("/api/v1/rip/jobs", { method: "DELETE" }),
+    // Remove one job regardless of status — unsticks a job wedged in the queue.
+    deleteJob: (id: number) => apiFetch<void>(`/api/v1/rip/jobs/${id}`, { method: "DELETE" }),
+  },
+
+  // Obsidian hub: register git-backed vaults, sync them, browse + read notes.
+  vaults: {
+    list: () => apiFetch<Vault[]>("/api/v1/vaults"),
+    create: (body: {
+      name: string;
+      git_url: string;
+      branch?: string;
+      subpath?: string;
+      ai_readable?: boolean;
+    }) => apiFetch<Vault>("/api/v1/vaults", { method: "POST", body: JSON.stringify(body) }),
+    update: (id: number, patch: Partial<Pick<Vault, "name" | "git_url" | "branch" | "subpath" | "ai_readable">>) =>
+      apiFetch<Vault>(`/api/v1/vaults/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    remove: (id: number) => apiFetch<void>(`/api/v1/vaults/${id}`, { method: "DELETE" }),
+    sync: (id: number) => apiFetch<Vault>(`/api/v1/vaults/${id}/sync`, { method: "POST" }),
+    notes: (id: number) => apiFetch<NoteMeta[]>(`/api/v1/vaults/${id}/notes`),
+    note: (id: number, path: string) =>
+      apiFetch<NoteContent>(`/api/v1/vaults/${id}/note?path=${encodeURIComponent(path)}`),
   },
 
   assistant: {

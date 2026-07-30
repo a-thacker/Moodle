@@ -22,6 +22,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.services.proactive import proactive_loop
 from app.services.reminders import reminder_loop
+from app.services.vault import vault_sync_loop
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,11 @@ async def lifespan(app: FastAPI):
     )
     reminders = asyncio.create_task(reminder_loop())
     proactive = asyncio.create_task(proactive_loop())
+    vault_sync = asyncio.create_task(vault_sync_loop())
     yield
     reminders.cancel()
     proactive.cancel()
+    vault_sync.cancel()
     logger.info("Shutting down %s", settings.app_name)
 
 

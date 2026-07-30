@@ -103,14 +103,28 @@ export interface ScriptJob {
 export interface RipJob {
   id: number;
   title: string;
-  media_type: string;
+  media_type: "movie" | "tv" | string;
   extras: "extras" | "keep" | "delete";
+  show_name: string | null;
+  season: number | null;
+  start_episode: number | null;
+  episode_count: number | null;
   status: "pending" | "running" | "done" | "failed";
   progress: string | null;
   exit_code: number | null;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+}
+
+export interface RipRequest {
+  media_type: "movie" | "tv";
+  title?: string;
+  extras?: "extras" | "keep" | "delete";
+  show?: string;
+  season?: number;
+  start_episode?: number;
+  episode_count?: number;
 }
 
 export interface TaskPatch {
@@ -153,6 +167,33 @@ export interface UsageLimits {
   weekAll?: UsageLimit;
   weekFable?: UsageLimit;
   fetchedAt?: string;
+}
+
+// Obsidian vault hub -------------------------------------------------------
+export interface Vault {
+  id: number;
+  name: string;
+  git_url: string;
+  branch: string;
+  subpath: string;
+  ai_readable: boolean;
+  last_synced_at: string | null;
+  last_sync_ok: boolean | null;
+  last_sync_error: string | null;
+  note_count: number;
+  created_at: string;
+}
+
+export interface NoteMeta {
+  path: string;
+  title: string;
+  size: number;
+  modified: string;
+}
+
+export interface NoteContent {
+  path: string;
+  markdown: string;
 }
 
 export interface ClaudeUsage {
