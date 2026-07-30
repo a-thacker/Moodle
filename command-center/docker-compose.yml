@@ -55,6 +55,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      VAULT_GIT_TOKEN: ${VAULT_GIT_TOKEN:-}
+    # Obsidian vault checkouts live on a named volume (seeded with appuser
+    # ownership from the image, so the non-root backend can clone into it).
+    # Named volumes persist across `up -d --build` redeploys.
+    volumes:
+      - vault_data:/vault-data
     ports:
       - "8000:8000"
     healthcheck:
@@ -74,3 +80,35 @@ services:
       - backend
     ports:
       - "5173:80"
+
+  # Pi-hole — network-wide DNS ad-blocker, reached over Tailscale. DNS (53) and
+  # the admin UI bind to the server's TAILNET ip, so every tailnet device can use
+  # it once you set this host as the tailnet's global nameserver in the Tailscale
+  # admin console (see the deploy notes). Binding to the tailnet ip rather than
+  # 0.0.0.0 deliberately avoids the systemd-resolved stub that already holds
+  # 127.0.0.53:53 on this host — so there's nothing to disable.
+  pihole:
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    # PIHOLE_HOST_IP is the server's tailnet ip; the default matches this box.
+    ports:
+      - "${PIHOLE_HOST_IP:-100.112.182.2}:53:53/tcp"
+      - "${PIHOLE_HOST_IP:-100.112.182.2}:53:53/udp"
+      - "${PIHOLE_HOST_IP:-100.112.182.2}:8053:80/tcp"  # admin UI: http://<tailnet-ip>:8053/admin
+    environment:
+      TZ: ${TIMEZONE:-America/New_York}
+      # Pi-hole v6 config (FTLCONF_*). Password + upstreams live in .env.
+      FTLCONF_webserver_api_password: ${PIHOLE_PASSWORD:-}
+      FTLCONF_dns_upstreams: "${PIHOLE_UPSTREAMS:-1.1.1.1;1.0.0.1}"
+      # Answer queries arriving from other subnets (the tailnet), not just local.
+      FTLCONF_dns_listeningMode: "all"
+    # Config + gravity DB persist in the git-excluded data dir (survives
+    # redeploys; the container runs as root so bind-mount ownership is fine).
+    volumes:
+      - ./data/pihole:/etc/pihole
+    cap_add:
+      - SYS_NICE  # optional; lets FTL raise its scheduling priority
+
+volumes:
+  # Obsidian vault git checkouts (read by the backend; source of truth is git).
+  vault_data:
