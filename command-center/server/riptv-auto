@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# Non-interactive TV-episode ripper for the Command Center rip tool. A TV disc
+# holds several similar-length episode titles, usually alongside menus, short
+# extras, and a hidden "play all" title (all episodes concatenated — the LONGEST
+# thing on the disc). This scans the disc, keeps the episode-length titles,
+# drops the play-all, and rips them as "<Show> - SxxEyy.mkv" into the Jellyfin
+# TV library. Movies use the sibling ripdvd-auto instead.
+#
+#   RIP_SHOW           show name, e.g. "Planet Earth"          (required)
+#   RIP_SEASON         season number, e.g. 1                   (required)
+#   RIP_START_EPISODE  episode number of the first title       (required)
+#   RIP_EPISODE_COUNT  how many episodes are on THIS disc       (required)
+#   RIP_MIN_MINUTES    ignore titles shorter than this (menus)  (default 15)
+set -euo pipefail
+umask 022
+
+MEDIA_ROOT="/srv/media"
+SHOWS_ROOT="$MEDIA_ROOT/Shows"
+DVD="disc:0"
+DRIVE="/dev/sr0"
+
+SHOW="${RIP_SHOW:-}"
+SEASON="${RIP_SEASON:-}"
+START_EP="${RIP_START_EPISODE:-}"
+EP_COUNT="${RIP_EPISODE_COUNT:-}"
+MIN_MINUTES="${RIP_MIN_MINUTES:-15}"
+# makemkvcon numbers titles over the set that survives its --minlength filter, so
+# the scan and the rip MUST use the same value or the indices won't line up.
+MIN_SECONDS=$(( MIN_MINUTES * 60 ))
+
+fail() { echo "ERROR: $1" >&2; exit 2; }
+[[ -z "${SHOW// /}" ]] && fail "RIP_SHOW is required."
+[[ "$SEASON"   =~ ^[0-9]+$ ]] || fail "RIP_SEASON must be a number."
+[[ "$START_EP" =~ ^[0-9]+$ ]] || fail "RIP_START_EPISODE must be a number."
+[[ "$EP_COUNT" =~ ^[0-9]+$ ]] || fail "RIP_EPISODE_COUNT must be a number."
+
+# Never let the show name escape the Shows folder.
+SHOW_SAFE="${SHOW//\//-}"
+SHOW_SAFE="${SHOW_SAFE#.}"
+SEASON_PAD=$(printf "%02d" "$SEASON")
+SHOW_DIR="$SHOWS_ROOT/$SHOW_SAFE"
+DEST="$SHOW_DIR/Season $SEASON_PAD"
+
+echo "=============================="
+echo "  Command Center TV Ripper"
+echo "=============================="
+echo "Show:     $SHOW_SAFE"
+echo "Season:   $SEASON  (episodes on this disc: $EP_COUNT, starting at E$START_EP)"
+echo "Into:     $DEST"
+echo
+
+# Stage rips in a hidden dir; only finished episodes move into the library, so a
+# killed/failed rip never leaves partials for Jellyfin. Cleared on any exit.
+STAGING="$SHOWS_ROOT/.rip-staging.$$"
+mkdir -p "$STAGING"
+trap 'rm -rf "$STAGING"' EXIT
+
+echo ">> Scanning disc for episode-length titles…"
+# A just-inserted disc may not be ready (makemkvcon reports "Failed to open
+# disc"). Retry the scan a few times, giving the drive time to spin up.
+INFO=""
+for attempt in 1 2 3 4 5 6; do
+  INFO=$(makemkvcon -r --minlength="$MIN_SECONDS" info "$DVD" 2>/dev/null || true)
+  printf '%s\n' "$INFO" | grep -q '^TINFO:' && break
+  echo "   disc not ready yet (try $attempt) — waiting for it to spin up…"
+  sleep 15
+done
+if ! printf '%s\n' "$INFO" | grep -q '^TINFO:'; then
+  echo "ERROR: couldn't read the disc after several tries — is a TV disc fully seated in the drive?" >&2
+  eject "$DRIVE" 2>/dev/null || true
+  exit 1
+fi
+
+# Pick the episode titles. Prints the chosen title indices (in disc order) to
+# stdout; a human summary goes to stderr (streamed to the job log).
+SELECTED=$(
+  printf '%s\n' "$INFO" | RIP_MIN_MINUTES="$MIN_MINUTES" RIP_EPISODE_COUNT="$EP_COUNT" python3 -c '
+import os, re, sys
+min_sec = int(os.environ["RIP_MIN_MINUTES"]) * 60
+count   = int(os.environ["RIP_EPISODE_COUNT"])
+dur = {}
+for ln in sys.stdin:
+    m = re.match(r"TINFO:(\d+),9,\d+,\"([\d:]+)\"", ln)
+    if m:
+        s = 0
+        for p in m.group(2).split(":"):
+            s = s * 60 + int(p)
+        dur[int(m.group(1))] = s
+def hms(s): return f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}"
+sys.stderr.write("   titles on disc: " + ", ".join(f"#{t}={hms(dur[t])}" for t in sorted(dur)) + "\n")
+q = sorted(((t, s) for t, s in dur.items() if s >= min_sec), key=lambda x: -x[1])
+# Drop a "play all": the single longest, when it dwarfs the next longest.
+if len(q) > count and len(q) >= 2 and q[0][1] >= 1.6 * q[1][1]:
+    sys.stderr.write(f"   ignoring #{q[0][0]} ({hms(q[0][1])}) — looks like a play-all title\n")
+    q = q[1:]
+eps = sorted(q[:count], key=lambda x: x[0])  # the N longest, back in disc order
+if len(eps) < count:
+    sys.stderr.write(f"   WARNING: only found {len(eps)} episode-length title(s), expected {count}\n")
+sys.stderr.write("   episodes: " + ", ".join(f"#{t} ({hms(s)})" for t, s in eps) + "\n")
+print(" ".join(str(t) for t, _ in eps))
+'
+)
+
+if [[ -z "${SELECTED// /}" ]]; then
+  echo "ERROR: no episode-length titles found (try lowering RIP_MIN_MINUTES)." >&2
+  eject "$DRIVE" 2>/dev/null || true
+  exit 1
+fi
+
+echo
+echo ">> Ripping episodes…"
+EP="$START_EP"
+SAVED=0
+FAILED=""
+for TID in $SELECTED; do
+  EP_PAD=$(printf "%02d" "$EP")
+  NAME="$SHOW_SAFE - S${SEASON_PAD}E${EP_PAD}.mkv"
+  echo "  title #$TID  ->  $NAME"
+  rm -f "$STAGING"/*.mkv
+  OK=1
+  makemkvcon --minlength="$MIN_SECONDS" mkv "$DVD" "$TID" "$STAGING" || OK=0
+  OUT=$(find "$STAGING" -maxdepth 1 -type f -name '*.mkv' | head -1)
+  if [[ "$OK" -eq 1 && -n "$OUT" ]]; then
+    mkdir -p "$DEST"          # created only once an episode actually finishes
+    mv -f "$OUT" "$DEST/$NAME"
+    echo "     ✓ saved $NAME"
+    SAVED=$(( SAVED + 1 ))
+  else
+    # Don't abort the whole disc for one bad episode: a corrupt/damaged section
+    # (common on scratched discs) only breaks that title. Skip it and keep going
+    # so the other episodes on the disc still rip.
+    echo "     ✗ FAILED episode $EP (title #$TID) — a corrupt/damaged section of the disc." >&2
+    FAILED="${FAILED:+$FAILED, }E$EP"
+  fi
+  EP=$(( EP + 1 ))
+done
+
+if [[ "$SAVED" -gt 0 ]]; then
+  echo
+  echo ">> Fixing permissions so Jellyfin can read the show…"
+  chgrp -R jellyfin "$SHOW_DIR" 2>/dev/null || true
+  chmod -R a+rX "$SHOW_DIR"
+fi
+
+echo
+echo ">> Ejecting disc…"
+eject "$DRIVE" || echo "(couldn't eject — remove the disc manually)"
+
+echo
+if [[ -n "$FAILED" ]]; then
+  echo "Finished with problems: $SAVED episode(s) saved; FAILED: $FAILED — likely disc damage (try cleaning the disc)."
+  NTFY_TITLE="TV Rip — partial"
+  NTFY_MSG="$SHOW_SAFE S${SEASON_PAD}: $SAVED saved, failed $FAILED (disc damage?)"
+else
+  echo "Done! $SHOW_SAFE Season $SEASON — $SAVED episode(s) are ready in Jellyfin."
+  NTFY_TITLE="TV Rip Complete"
+  NTFY_MSG="$SHOW_SAFE S${SEASON_PAD}: $SAVED episode(s) ripped."
+fi
+
+# Phone notification, branded with the Command Center favicon (matches the app).
+curl -s -H "Title: $NTFY_TITLE" -H "Priority: default" \
+  -H "Icon: https://athacker.cc/android-chrome-192x192.png" \
+  -d "$NTFY_MSG" \
+  "https://ntfy.sh/2prUsoVg7SXLfVX2E6yFweZq4" >/dev/null || true
+
+# Flag the job if anything failed — but the good episodes are already saved.
+[[ -n "$FAILED" ]] && exit 1 || exit 0

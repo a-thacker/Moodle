@@ -35,8 +35,14 @@ class RipJob(Base):
     id: Mapped[int] = mapped_column(_AutoBigInt, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     media_type: Mapped[str] = mapped_column(String(20), default="movie", nullable=False)
-    # How to handle the non-main MKVs: extras | keep | delete.
+    # How to handle the non-main MKVs: extras | keep | delete (movies only).
     extras: Mapped[str] = mapped_column(String(20), default="extras", nullable=False)
+    # TV shows (media_type == "tv"): describes the episodes on this disc; the
+    # ripper names them "<Show> - SxxEyy.mkv". Null for movies.
+    show_name: Mapped[str | None] = mapped_column(String(300), default=None)
+    season: Mapped[int | None] = mapped_column(Integer, default=None)
+    start_episode: Mapped[int | None] = mapped_column(Integer, default=None)
+    episode_count: Mapped[int | None] = mapped_column(Integer, default=None)
     # pending -> running -> done | failed
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
     # Live streamed stdout from the ripper (progress), plus final output.
