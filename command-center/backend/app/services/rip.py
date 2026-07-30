@@ -16,22 +16,45 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.rip import RipJob
+from app.schemas.rip import RipRequest
 
 _MAX_OUTPUT = 200_000  # progress can be long (a full rip); keep rows bounded
 _JOBS_LIMIT = 25
 _VALID_EXTRAS = {"extras", "keep", "delete"}
 
 
+def _tv_title(show: str, season: int, start: int, count: int) -> str:
+    """Human label for a TV rip job, e.g. 'Planet Earth — S1 E1–E3'."""
+    label = f"{show} — S{season} E{start}"
+    if count and count > 1:
+        label += f"–E{start + count - 1}"
+    return label
+
+
 async def create_job(
-    session: AsyncSession, user_id: uuid.UUID, title: str, extras: str
+    session: AsyncSession, user_id: uuid.UUID, payload: RipRequest
 ) -> RipJob:
-    job = RipJob(
-        title=title.strip()[:300],
-        media_type="movie",
-        extras=extras if extras in _VALID_EXTRAS else "extras",
-        requested_by=user_id,
-        status="pending",
-    )
+    if payload.media_type == "tv":
+        show = (payload.show or "").strip()[:300]
+        job = RipJob(
+            title=_tv_title(show, payload.season, payload.start_episode, payload.episode_count),
+            media_type="tv",
+            extras="extras",
+            show_name=show,
+            season=payload.season,
+            start_episode=payload.start_episode,
+            episode_count=payload.episode_count,
+            requested_by=user_id,
+            status="pending",
+        )
+    else:
+        job = RipJob(
+            title=(payload.title or "").strip()[:300],
+            media_type="movie",
+            extras=payload.extras if payload.extras in _VALID_EXTRAS else "extras",
+            requested_by=user_id,
+            status="pending",
+        )
     session.add(job)
     await session.commit()
     await session.refresh(job)
@@ -50,6 +73,18 @@ async def clear_finished_jobs(session: AsyncSession) -> None:
     in-flight rip isn't orphaned from its result."""
     await session.execute(delete(RipJob).where(RipJob.status.in_(("done", "failed"))))
     await session.commit()
+
+
+async def delete_job(session: AsyncSession, job_id: int) -> bool:
+    """Remove a single job regardless of status. Used to clear a job that's
+    stuck in the queue (e.g. enqueued while the host runner was offline, so it
+    sits `pending`/`running` forever). Returns True if a row was deleted."""
+    job = await session.get(RipJob, job_id)
+    if job is None:
+        return False
+    await session.delete(job)
+    await session.commit()
+    return True
 
 
 async def claim_pending(session: AsyncSession, limit: int = 1) -> list[RipJob]:

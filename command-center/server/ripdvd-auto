@@ -42,17 +42,68 @@ echo "Extras: $EXTRAS"
 echo "Into:   $DEST"
 echo
 
-mkdir -p "$DEST"
+# Rip into a hidden STAGING dir first (same filesystem as the library, so the
+# final move is instant). Nothing reaches the library until the rip succeeds and
+# is sorted — so a killed/failed rip can never leave raw partials for Jellyfin to
+# scan as bogus "movies". The trap clears staging on any exit.
+STAGING="$MOVIE_ROOT/.rip-staging.$$"
+mkdir -p "$STAGING"
+trap 'rm -rf "$STAGING"' EXIT
 
-echo ">> Ripping all titles with makemkvcon (this takes a while)…"
+# Guard against a rip that wedges forever (e.g. a Blu-ray this drive can't
+# decrypt, which pins a core with no output and locks the drive). The watchdog
+# aborts only on a hard time cap (MAX_HOURS) — a real rip always finishes well
+# under it. The no-progress ("stall") abort is OFF by default (STALL_MIN=0):
+# makemkvcon legitimately stops writing for a long time while working around
+# scratched/corrupt sectors, so a stall abort kills healthy rips.
+MAX_HOURS="${RIP_MAX_HOURS:-6}"
+STALL_MIN="${RIP_STALL_MINUTES:-0}"
+
+echo ">> Ripping all titles with makemkvcon (hard cap ${MAX_HOURS}h$([ "$STALL_MIN" -gt 0 ] && echo "; stall abort ${STALL_MIN}m"))…"
 echo
-makemkvcon mkv "$DVD" all "$DEST"
+makemkvcon mkv "$DVD" all "$STAGING" &
+MK_PID=$!
+
+(
+  waited=0; stall=0; last=-1
+  max_min=$(( MAX_HOURS * 60 ))
+  while kill -0 "$MK_PID" 2>/dev/null; do
+    sleep 60
+    waited=$(( waited + 1 ))
+    cur=$(du -sb "$STAGING" 2>/dev/null | cut -f1); cur=${cur:-0}
+    if [ "$cur" = "$last" ]; then stall=$(( stall + 1 )); else stall=0; last="$cur"; fi
+    if [ "$STALL_MIN" -gt 0 ] && [ "$stall" -ge "$STALL_MIN" ]; then
+      echo ">> No progress for ${STALL_MIN} min — aborting (RIP_STALL_MINUTES)." >&2
+      kill -TERM "$MK_PID" 2>/dev/null; sleep 5; kill -KILL "$MK_PID" 2>/dev/null; break
+    fi
+    if [ "$waited" -ge "$max_min" ]; then
+      echo ">> Hit the ${MAX_HOURS}h cap — aborting." >&2
+      kill -TERM "$MK_PID" 2>/dev/null; sleep 5; kill -KILL "$MK_PID" 2>/dev/null; break
+    fi
+  done
+) &
+WATCH_PID=$!
+
+# Capture makemkvcon's status without letting `set -e` abort the script first.
+MK_RC=0
+wait "$MK_PID" || MK_RC=$?
+kill "$WATCH_PID" 2>/dev/null || true
+wait "$WATCH_PID" 2>/dev/null || true
+
+if [ "$MK_RC" -ne 0 ]; then
+  echo
+  echo "ERROR: makemkvcon did not finish cleanly (exit $MK_RC). Nothing added to the library." >&2
+  echo ">> Ejecting disc…"
+  eject "$DRIVE" 2>/dev/null || echo "(couldn't eject — remove the disc manually)"
+  exit "$MK_RC"
+fi
+
 echo
 echo ">> Rip finished. Sorting files…"
 
 # Largest .mkv = the feature. Print "<size> <path>" so we can sort by size even
 # when filenames contain spaces.
-mapfile -t BYSIZE < <(find "$DEST" -maxdepth 1 -type f -name '*.mkv' -printf '%s\t%p\n' | sort -rn)
+mapfile -t BYSIZE < <(find "$STAGING" -maxdepth 1 -type f -name '*.mkv' -printf '%s\t%p\n' | sort -rn)
 
 if [[ ${#BYSIZE[@]} -eq 0 ]]; then
   echo "ERROR: no .mkv files were produced — is there a disc in the drive?" >&2
@@ -60,21 +111,19 @@ if [[ ${#BYSIZE[@]} -eq 0 ]]; then
   exit 1
 fi
 
+# Promote into the library only now that the rip is complete. Largest title is
+# the feature; everything left in staging is an extra.
+mkdir -p "$DEST"
 MAIN="${BYSIZE[0]#*$'\t'}"
 TARGET="$DEST/$SAFE_TITLE.mkv"
-
-if [[ "$MAIN" != "$TARGET" ]]; then
-  mv -f "$MAIN" "$TARGET"
-fi
+mv -f "$MAIN" "$TARGET"
 echo "Main movie: $(basename "$TARGET")"
 
-# Everything else is an extra.
 shopt -s nullglob
-for f in "$DEST"/*.mkv; do
-  [[ "$f" == "$TARGET" ]] && continue
+for f in "$STAGING"/*.mkv; do
   case "$EXTRAS" in
     delete) echo "  delete extra: $(basename "$f")"; rm -f "$f" ;;
-    keep)   echo "  keep extra:   $(basename "$f")" ;;
+    keep)   echo "  keep extra:   $(basename "$f")"; mv -f "$f" "$DEST/" ;;
     *)      mkdir -p "$DEST/extras"; echo "  -> extras/:  $(basename "$f")"; mv -f "$f" "$DEST/extras/" ;;
   esac
 done

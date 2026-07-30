@@ -4,6 +4,7 @@ Browser side (needs the `rip` capability):
     POST   /rip/jobs        enqueue a rip -> RipJob (pending)
     GET    /rip/jobs        recent jobs (status + streamed progress), newest first
     DELETE /rip/jobs        clear finished jobs
+    DELETE /rip/jobs/{id}   remove one job (any status — unstick a queued job)
 
 Host runner side (X-API-Key):
     GET  /rip/queue                 claim pending jobs (marks them running)
@@ -37,7 +38,7 @@ async def create_job(
     session: AsyncSession = Depends(get_db),
     user: User = Depends(require_rip),
 ) -> RipJobOut:
-    job = await rip_service.create_job(session, user.id, payload.title, payload.extras)
+    job = await rip_service.create_job(session, user.id, payload)
     return RipJobOut.model_validate(job)
 
 
@@ -49,6 +50,17 @@ async def jobs(session: AsyncSession = Depends(get_db)) -> list[RipJobOut]:
 @router.delete("/jobs", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_rip)])
 async def clear_jobs(session: AsyncSession = Depends(get_db)) -> None:
     await rip_service.clear_finished_jobs(session)
+
+
+@router.delete(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_rip)],
+)
+async def delete_job(job_id: int, session: AsyncSession = Depends(get_db)) -> None:
+    """Remove a single job, including one wedged in the queue (pending/running)."""
+    if not await rip_service.delete_job(session, job_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown job")
 
 
 # --- Host runner (agent key) --------------------------------------------
