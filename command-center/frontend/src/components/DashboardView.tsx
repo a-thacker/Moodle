@@ -25,7 +25,7 @@ import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { usePrefs } from "../prefs/PrefsContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, Task, Weather } from "../types";
+import type { ClaudeUsage, Deadline, RipJob, Task, Weather } from "../types";
 import { relativeDay } from "../utils/format";
 import { CAT_COLOR, CAT_LEGEND, taskColor } from "../utils/category";
 import ClaudeMark from "./ClaudeMark.tsx";
@@ -134,8 +134,8 @@ function DayColumn(props: ColumnProps) {
   );
 }
 
-type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "claude" | "lists";
-type Footprint = "wide" | "big" | "small";
+type WidgetId = "hero" | "dueSoon" | "planner" | "grades" | "claude" | "lists" | "ripper";
+type Footprint = "wide" | "big" | "small" | "strip";
 
 const SLOTS: Record<Footprint, CSSProperties[]> = {
   wide: [{ gridColumn: "1 / 3", gridRow: "1" }, { gridColumn: "1 / 3", gridRow: "2" }],
@@ -146,12 +146,15 @@ const SLOTS: Record<Footprint, CSSProperties[]> = {
     { gridColumn: "2", gridRow: "3" },
     { gridColumn: "3 / 5", gridRow: "3" },
   ],
+  // Row 4 (only present when the user has the rip tool): a full-width status strip.
+  strip: [{ gridColumn: "1 / 5", gridRow: "4" }],
 };
 
 const DEFAULT: Record<Footprint, WidgetId[]> = {
   wide: ["hero", "dueSoon"],
   big: ["planner"],
   small: ["grades", "lists", "claude"],
+  strip: ["ripper"],
 };
 
 // Which capability each tile needs to be shown (null = always; "owner" = the
@@ -164,6 +167,7 @@ const WIDGET_CAP: Record<WidgetId, string | null> = {
   grades: "grades",
   lists: "grocery",
   claude: "owner",
+  ripper: "rip",
 };
 
 function visibleWidgets(caps: string[], isOwner: boolean): Record<Footprint, WidgetId[]> {
@@ -177,6 +181,7 @@ function visibleWidgets(caps: string[], isOwner: boolean): Record<Footprint, Wid
     wide: DEFAULT.wide.filter(ok),
     big: DEFAULT.big.filter(ok),
     small: DEFAULT.small.filter(ok),
+    strip: DEFAULT.strip.filter(ok),
   };
 }
 
@@ -187,9 +192,10 @@ const META: Record<WidgetId, { footprint: Footprint; className?: string; style?:
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
   claude: { footprint: "small", className: "cc-tile" },
   lists: { footprint: "small", className: "cc-tile cc-clickable", view: "grocery" },
+  ripper: { footprint: "strip", className: "cc-tile cc-clickable", style: { padding: "14px 22px" }, view: "rip" },
 };
 
-const ORDER: Footprint[] = ["wide", "big", "small"];
+const ORDER: Footprint[] = ["wide", "big", "small", "strip"];
 
 function Label({ children, extra }: { children: ReactNode; extra?: ReactNode }) {
   return (
@@ -233,6 +239,8 @@ export default function DashboardView() {
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [ripJobs, setRipJobs] = useState<RipJob[]>([]);
+  const canRip = (user?.capabilities ?? []).includes("rip");
   // Weather location + tile arrangement live in synced prefs so they follow the
   // user across devices.
   const weatherLoc = (prefs.weatherLoc as WeatherLoc | null | undefined) ?? null;
@@ -264,6 +272,14 @@ export default function DashboardView() {
     const iv = setInterval(load, 15 * 60 * 1000); // refresh every 15 min
     return () => clearInterval(iv);
   }, [weatherLoc]);
+  // Rip jobs for the dashboard strip — only fetched for users who have the tool.
+  useEffect(() => {
+    if (!canRip) return;
+    const load = () => api.rip.jobs().then(setRipJobs).catch(() => {});
+    load();
+    const iv = setInterval(load, 5000);
+    return () => clearInterval(iv);
+  }, [canRip]);
 
   function changeWeatherLoc(loc: WeatherLoc | null) {
     patch({ weatherLoc: loc });
@@ -495,18 +511,58 @@ export default function DashboardView() {
         </div>
       </>
     ),
-  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
+    ripper: ((): ReactNode => {
+      const activeJob = ripJobs.find((j) => j.status === "pending" || j.status === "running");
+      const last = ripJobs[0];
+      const tailLine = (j: RipJob) => (j.progress?.trim().split("\n").filter(Boolean).pop() ?? "").slice(0, 80);
+      const statusColor = (s: RipJob["status"]) =>
+        s === "done" ? "var(--cc-good)" : s === "failed" ? "var(--cc-bad)" : "var(--cc-accent-soft)";
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: 11, height: "100%", minWidth: 0 }}>
+          <i className="ph ph-film-reel" style={{ fontSize: 18, color: "var(--cc-accent-soft)", flexShrink: 0 }} />
+          <span className="cc-label" style={{ fontWeight: 500, flexShrink: 0 }}>RIPPER</span>
+          {activeJob ? (
+            <>
+              <span className="pulse" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--cc-accent-soft)", flexShrink: 0, marginLeft: 4 }} />
+              <span style={{ color: "var(--cc-bright)", fontSize: 13, fontWeight: 500, flexShrink: 0 }}>Ripping</span>
+              <span style={{ color: "var(--cc-text)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{activeJob.title}</span>
+              <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 11, color: "var(--cc-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "42%" }}>{tailLine(activeJob)}</span>
+            </>
+          ) : last ? (
+            <>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(last.status), flexShrink: 0, marginLeft: 4 }} />
+              <span style={{ color: "var(--cc-text)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{last.title}</span>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: statusColor(last.status), flexShrink: 0 }}>{last.status}</span>
+              <span className="cc-label" style={{ marginLeft: "auto", flexShrink: 0 }}>rip another →</span>
+            </>
+          ) : (
+            <>
+              <span style={{ color: "var(--cc-muted)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Idle — insert a disc to rip a movie or TV show</span>
+              <span className="cc-label" style={{ marginLeft: "auto", flexShrink: 0 }}>open →</span>
+            </>
+          )}
+        </div>
+      );
+    })(),
+  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, ripJobs, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
+
+  // When the rip strip is present, the desktop grid needs a 4th (short) row.
+  const hasStrip = (arrangement.strip?.length ?? 0) > 0;
+  const gridStyle: CSSProperties | undefined =
+    !isMobile && hasStrip
+      ? { gridTemplateRows: "minmax(150px,1.1fr) minmax(104px,1fr) minmax(112px,1fr) minmax(72px,0.55fr)" }
+      : undefined;
 
   return (
     <>
-    <div className={isMobile ? "cc-grid-mobile" : "cc-grid"}>
+    <div className={isMobile ? "cc-grid-mobile" : "cc-grid"} style={gridStyle}>
       {ORDER.flatMap((fp) =>
         arrangement[fp].map((id, k) => {
           const m = META[id];
           const dropOk = dragFp === fp;
           // On mobile, drop the grid-span positioning (tiles just stack) and
           // give each a sensible min-height — the planner needs the most room.
-          const mobileStyle: CSSProperties = { minHeight: fp === "big" ? 520 : fp === "wide" ? 150 : 168 };
+          const mobileStyle: CSSProperties = { minHeight: fp === "big" ? 520 : fp === "wide" ? 150 : fp === "strip" ? 66 : 168 };
           return (
             <div
               key={id}
