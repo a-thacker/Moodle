@@ -201,6 +201,21 @@ Supabase ◄──(Realtime)──► Hub dashboard (Netlify) ◄── Alden + 
 - Implement `get_calendar()` / `get_assignments()` in the eClass client.
 - Measure eClass session lifetime; tune sync schedule.
 
+### Calendar module — LANDED (2026-07-31)
+
+A provider-agnostic, per-user calendar now exists (supersedes the "Calendar"
+CRUD bullet below). Sources feed one unified calendar: the eClass calendar
+(pushed by the agent — now the primary school-events source, since the timeline
+is often empty) and read-only external feeds via **`.ics` URLs** (Google "secret
+iCal address" / Apple public calendar), fetched on a background loop. Imports are
+read-only mirrors (`calendar_events`, upserted by source + external UID) that
+show in a Calendar view and overlay the Planner; an "add as task" action spins
+off a real to-do rather than copying events into `tasks`. `calendar` is an
+owner-grant capability, so a non-owner (e.g. Dad) can use Apple/Google feeds with
+no eClass infrastructure. Import-only for now (no write-back). See
+`command-center/backend/app/{models,services,api/routes}/calendar*` and
+`services/calendar_ics.py`.
+
 ### Phase 3 — Intelligence (Ollama)
 
 - Local Ollama instance; an "assistant" module that reads Supabase data
@@ -221,6 +236,13 @@ Chore rotation (shared), expense splitter (shared), meal planner tied to
 grocery list, assignment timeline visualizer, study-session logger, weather
 alerts, concert tracker, Skull King stats tracker, GPA calculator fed by the
 grades data, package tracker, server status monitor.
+
+**Media stack** (extends the disc ripper + Jellyfin library): **Radarr** for
+automated movie library management (monitor, fetch, organize into the library
+the ripper stages into) and **Jellyseerr** as the request front-end
+(roommate/user requests → Radarr). Both are self-hosted Docker services on
+`athacker-cc`, surfaced in the dashboard as a tool alongside the ripper widget;
+gate access behind capabilities like the other owner-grant tools.
 
 ---
 
