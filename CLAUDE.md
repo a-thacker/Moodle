@@ -41,7 +41,19 @@ AI (Ollama tool-calling) is a later phase, not now.
   Command Center backend). Handles auth expiry unattended:
   `EclassClient(auto_relogin=False)` + `login(interactive=False)` — no browser
   ever opens on a schedule. Push (CC backend) + ntfy are optional, env-configured
-  via `.env` (CC_API_URL/CC_API_KEY). Runs on the Mac via launchd.
+  via `.env` (CC_API_URL/CC_API_KEY). Runs on the Mac via launchd. Pushes courses,
+  grades, the timeline mirror, AND the eClass **calendar** (2026-07-31) — the
+  calendar (`get_calendar()`) is now the primary school-events source since the
+  timeline is often empty.
+- **Calendar** (2026-07-31) — a provider-agnostic, per-user calendar layer:
+  `calendar_sources` (a user's feeds: `eclass` agent-fed, or `ics` a read-only
+  Google/Apple feed URL) + `calendar_events` (imported mirrors, upserted by
+  `(source_id, external_uid)`). `.ics` feeds are fetched on a background loop
+  (`services/calendar_ics.py`, `icalendar` + `recurring_ical_events`); eClass
+  events map to the owner. Read-only imports show in the Calendar view AND overlay
+  the Planner (never copied into `tasks` — an "add as task" button spins off a
+  real to-do). `calendar` is an owner-grant capability, so a non-owner (e.g. Dad)
+  can have Apple/Google feeds with no eClass infrastructure.
 - `docs/PLAN.md` — the tracker-era architecture doc; superseded by
   docs/PROJECT_HANDOFF.md where they disagree.
 
@@ -58,7 +70,7 @@ AI (Ollama tool-calling) is a later phase, not now.
   (admin) and `user`. The catalog + defaults live in
   `command-center/backend/app/core/capabilities.py`; the owner grants extras
   per person in the Settings → People screen. A user sees only granted tools
-  (grades/grocery are owner-grant, not defaults).
+  (grades/grocery/calendar are owner-grant, not defaults).
 
 ## Conventions
 

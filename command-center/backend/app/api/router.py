@@ -14,6 +14,7 @@ from app.api.routes import (
     admin,
     assistant,
     auth,
+    calendar,
     eclass,
     grocery,
     prefs,
@@ -31,6 +32,7 @@ api_router.include_router(admin.router)
 api_router.include_router(grocery.router)
 api_router.include_router(prefs.router)
 api_router.include_router(eclass.router)
+api_router.include_router(calendar.router)
 api_router.include_router(scripts.router)
 api_router.include_router(rip.router)
 api_router.include_router(tasks.router)

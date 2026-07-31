@@ -6,7 +6,7 @@
 
   Install:
     1. Replace __PROJECT_DIR__ below with the absolute repo path
-       (e.g. /Users/aldenthacker/Downloads/Projects/Moodle).
+       (e.g. /Users/aldenthacker/Downloads/Projects/CommandCenter).
     2. cp agent/launchd/edu.southern.command-center.agent.plist \
          ~/Library/LaunchAgents/
     3. launchctl load ~/Library/LaunchAgents/edu.southern.command-center.agent.plist

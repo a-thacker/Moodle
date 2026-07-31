@@ -135,6 +135,57 @@ def main() -> None:
           client.patch(f"/api/v1/tasks/{task_id}", json={"done": False}, headers=room_auth).status_code == 404)
     check("delete task -> 204", client.delete(f"/api/v1/tasks/{task_id}", headers=owner_auth).status_code == 204)
 
+    # --- calendar: eClass ingest (API key) -> owner's eclass source ---
+    # The agent sends tz-aware times (local offset); they must be stored as
+    # naive local wall-clock (10:00 EDT -> "10:00:00", not UTC-shifted 14:00).
+    r = client.put("/api/v1/ingest/calendar", headers=KEY, json=[
+        {"id": 5001, "name": "Exam 1", "start": "2026-08-01T10:00:00-04:00",
+         "end": "2026-08-01T11:00:00-04:00", "course_name": "BIO", "location": "Hall A"},
+        {"id": 5002, "name": "Lab due", "start": "2026-08-03T23:59:00-04:00", "course_name": "BIO"},
+    ])
+    check("ingest calendar -> synced 2", r.status_code == 200 and r.json()["synced"] == 2)
+
+    r = client.get("/api/v1/calendar/events", headers=owner_auth)
+    ev = r.json()
+    check("owner GET /calendar/events -> 2 (camelCase, eclass source)",
+          r.status_code == 200 and len(ev) == 2 and ev[0]["courseName"] == "BIO"
+          and ev[0]["allDay"] is False and ev[0]["source"] == "eclass")
+    check("tz-aware start normalized to naive local wall-clock",
+          ev[0]["start"] == "2026-08-01T10:00:00")
+
+    r = client.get("/api/v1/calendar/sources", headers=owner_auth)
+    srcs = r.json()
+    check("owner GET /calendar/sources -> 1 eclass source, eventCount 2",
+          r.status_code == 200 and len(srcs) == 1 and srcs[0]["kind"] == "eclass"
+          and srcs[0]["eventCount"] == 2)
+
+    # Re-ingest a smaller set: upsert updates title, reconcile prunes the rest.
+    client.put("/api/v1/ingest/calendar", headers=KEY, json=[
+        {"id": 5001, "name": "Exam 1 (moved)", "start": "2026-08-01T10:00:00", "course_name": "BIO"},
+    ])
+    r = client.get("/api/v1/calendar/events", headers=owner_auth)
+    check("re-ingest prunes to 1 + updates title",
+          len(r.json()) == 1 and r.json()[0]["title"] == "Exam 1 (moved)")
+
+    check("roommate GET /calendar/events -> 403 (no capability)",
+          client.get("/api/v1/calendar/events", headers=room_auth).status_code == 403)
+
+    # .ics parsing + RRULE expansion, exercised directly (no network).
+    from datetime import date  # noqa: PLC0415
+    from zoneinfo import ZoneInfo  # noqa: PLC0415
+
+    from app.services.calendar_ics import parse_ics  # noqa: PLC0415
+    sample_ics = (
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n"
+        "BEGIN:VEVENT\r\nUID:weekly-1\r\nSUMMARY:Standup\r\n"
+        "DTSTART:20260801T090000Z\r\nDTEND:20260801T091500Z\r\n"
+        "RRULE:FREQ=WEEKLY;COUNT=3\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+    )
+    occ = parse_ics(sample_ics, ZoneInfo("America/New_York"), date(2026, 7, 31))
+    check(".ics RRULE expands to 3 distinct occurrences",
+          len(occ) == 3 and len({e.external_uid for e in occ}) == 3
+          and all(e.title == "Standup" for e in occ))
+
     os.unlink(_db.name)
     print(f"\n{'ALL PASSED' if not failures else f'{len(failures)} FAILURE(S): ' + ', '.join(failures)}")
     raise SystemExit(1 if failures else 0)

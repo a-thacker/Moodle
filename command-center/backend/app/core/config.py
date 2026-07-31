@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # How often the background loop re-pulls every registered vault.
     vault_sync_interval_minutes: int = 15
 
+    # --- Calendar (.ics feed import) ------------------------------------
+    # How often the background loop re-fetches every enabled .ics calendar feed.
+    calendar_sync_interval_minutes: int = 30
+
     # --- External service links (shown in the rail when granted) ---------
     # URLs are deployment-specific; a link tool is hidden until its URL is set.
     jellyfin_url: str = ""    # JELLYFIN_URL, e.g. http://athacker-cc:8096

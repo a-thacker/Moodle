@@ -266,6 +266,11 @@ Deadline reminders
 
 ntfy integration
 
+Media stack: Radarr (movie library automation) + Jellyseerr (request front-end),
+self-hosted on athacker-cc, extending the disc ripper + Jellyfin library.
+Surfaced as a capability-gated dashboard tool. See docs/PROJECT_HANDOFF.md §5
+"Backlog of tool ideas" for the full note.
+
 Phase 7
 
 Advanced intelligence

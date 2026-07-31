@@ -68,6 +68,40 @@ export interface Task {
   doneAt: string | null;
 }
 
+// Calendar -----------------------------------------------------------------
+// A read-only event imported from a source (school eClass feed, or a Google/
+// Apple .ics feed). Mirrored into the CC calendar; never edited here.
+export interface CalendarEvent {
+  id: number;
+  sourceId: number;
+  source: "eclass" | "ics" | "manual";
+  title: string;
+  description: string | null;
+  location: string | null;
+  url: string | null;
+  /** ISO 8601 (naive local); date-only semantics when allDay. */
+  start: string;
+  end: string | null;
+  allDay: boolean;
+  courseName: string | null;
+}
+
+// A configured calendar feed for a user: the agent-fed "eclass" source, or a
+// read-only "ics" URL (Google "secret iCal address" / Apple public calendar).
+export interface CalendarSource {
+  id: number;
+  kind: "eclass" | "ics";
+  label: string;
+  color: string | null;
+  url: string | null;
+  enabled: boolean;
+  lastSyncedAt: string | null;
+  lastSyncOk: boolean | null;
+  lastSyncError: string | null;
+  eventCount: number;
+  createdAt: string;
+}
+
 export interface Weather {
   available: boolean;
   label: string;
