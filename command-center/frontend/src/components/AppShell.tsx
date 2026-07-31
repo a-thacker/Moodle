@@ -115,10 +115,13 @@ function Shell() {
           flex: 1,
           display: "flex",
           flexDirection: "column",
+          // On mobile the command bar + rail hug the very bottom: no bottom
+          // padding here, so the content column runs straight into them (the
+          // rail carries the home-indicator safe-area inset itself).
           padding: isMobile
-            ? "calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left))"
+            ? "calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left))"
             : "calc(22px + env(safe-area-inset-top)) calc(26px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) 26px",
-          gap: isMobile ? 12 : 16,
+          gap: isMobile ? 8 : 16,
           minWidth: 0,
           minHeight: 0,
         }}

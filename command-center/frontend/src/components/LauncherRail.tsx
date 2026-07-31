@@ -94,7 +94,9 @@ export default function LauncherRail({
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        padding: "8px 10px calc(8px + env(safe-area-inset-bottom))",
+        // Sit at the very bottom: minimal chrome padding + just the home-
+        // indicator safe-area inset underneath.
+        padding: "5px 10px calc(3px + env(safe-area-inset-bottom))",
         overflowX: "auto",
       }
     : {

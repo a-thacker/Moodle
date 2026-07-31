@@ -63,6 +63,10 @@ const NavContext = createContext<NavState | null>(null);
 // it can never be hidden.
 const NEVER_HIDE: View[] = ["settings"];
 
+// Remember the last-open view per device (localStorage, not synced prefs — a
+// reload should land you back where you were on this device).
+const LAST_VIEW_KEY = "cc:lastView";
+
 function landingView(available: View[], hidden: View[]): View {
   // Land on the first visible real tool, not Settings.
   return (
@@ -93,8 +97,27 @@ export function NavProvider({
       ),
     [prefs.hiddenTools],
   );
-  const [view, setViewState] = useState<View>(() => landingView(available, hidden));
+  const [view, setViewState] = useState<View>(() => {
+    // Restore the last-open view on reload, if it's still one this user has.
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(LAST_VIEW_KEY);
+    } catch {
+      /* private mode / storage disabled */
+    }
+    if (saved && available.includes(saved as View)) return saved as View;
+    return landingView(available, hidden);
+  });
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Persist the current view so a page reload returns to it.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_VIEW_KEY, view);
+    } catch {
+      /* ignore */
+    }
+  }, [view]);
 
   const toggleHidden = useCallback(
     (v: View) => {

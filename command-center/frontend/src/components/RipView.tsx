@@ -223,7 +223,7 @@ export default function RipView() {
       </div>
 
       {/* Jobs */}
-      <div style={{ display: "flex", alignItems: "center", marginTop: 20, marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", marginTop: 20, marginBottom: 10, flexShrink: 0 }}>
         <span className="cc-label">RECENT RIPS</span>
         {jobs.some((j) => j.status === "done" || j.status === "failed") && (
           <button onClick={clearRuns} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--cc-muted)", fontSize: 12, fontFamily: MONO }}>
@@ -232,7 +232,7 @@ export default function RipView() {
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", minHeight: 0, display: "flex", flexDirection: "column", gap: 8 }}>
         {loaded && jobs.length === 0 && (
           <div style={{ margin: "auto", color: "var(--cc-muted)", fontSize: 13, textAlign: "center", padding: 24 }}>
             No rips yet. Insert a disc and rip your first movie above.
@@ -266,7 +266,10 @@ export default function RipView() {
                 <div style={{ padding: "0 15px 14px" }}>
                   <div style={{ fontSize: 12.5, color: st.color, marginBottom: 8 }}>{st.blurb}</div>
                   {job.progress && (
-                    <pre style={{ margin: 0, padding: 12, background: "#0e0f16", borderRadius: 9, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: MONO, fontSize: 11.5, lineHeight: 1.5, color: job.status === "failed" ? "#f0a48e" : "var(--cc-text)", maxHeight: 300, overflowY: "auto" }}>
+                    // Its own scroll region: overscroll-contain keeps the wheel/
+                    // touch inside the log instead of chaining to the list, and
+                    // the drag handle lets you enlarge a long log.
+                    <pre style={{ margin: 0, padding: 12, background: "#0e0f16", borderRadius: 9, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: MONO, fontSize: 11.5, lineHeight: 1.5, color: job.status === "failed" ? "#f0a48e" : "var(--cc-text)", height: 240, minHeight: 96, maxHeight: "60vh", resize: "vertical", overflowY: "auto", overscrollBehavior: "contain" }}>
                       {job.progress}
                     </pre>
                   )}

@@ -9,9 +9,19 @@ of crashes. Every model has ``to_dict()`` for JSON export.
 
 from __future__ import annotations
 
+import html
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from typing import Any, Optional
+
+
+def _clean(text: Optional[str]) -> Optional[str]:
+    """Decode the HTML entities Moodle embeds in names (e.g. ``&amp;`` → ``&``,
+    ``&#39;`` → ``'``) and trim. ``None``/empty passes through unchanged, so a
+    required str field stays a str."""
+    if not text:
+        return text
+    return html.unescape(text).strip()
 
 
 @dataclass
@@ -31,9 +41,9 @@ class Course:
         """Build from ``core_course_get_enrolled_courses_*`` JSON."""
         return cls(
             id=int(raw["id"]),
-            shortname=raw.get("shortname", ""),
-            fullname=raw.get("fullname", ""),
-            category=raw.get("coursecategory"),
+            shortname=_clean(raw.get("shortname", "")),
+            fullname=_clean(raw.get("fullname", "")),
+            category=_clean(raw.get("coursecategory")),
             url=raw.get("viewurl"),
             progress=raw.get("progress"),
             hidden=bool(raw.get("hidden", False)),
@@ -129,12 +139,12 @@ class TimelineEvent:
         timestamp = int(raw.get("timesort") or raw.get("timestart") or 0)
         return cls(
             id=int(raw["id"]),
-            name=raw.get("name", ""),
+            name=_clean(raw.get("name", "")),
             due=datetime.fromtimestamp(timestamp),
             module=raw.get("modulename"),
-            activity_name=raw.get("activityname"),
+            activity_name=_clean(raw.get("activityname")),
             course_id=int(course["id"]) if course.get("id") is not None else None,
-            course_name=course.get("fullname"),
+            course_name=_clean(course.get("fullname")),
             url=raw.get("url") or action.get("url"),
             overdue=bool(raw.get("overdue", False)),
         )
@@ -176,13 +186,13 @@ class CalendarEvent:
         duration = int(raw.get("timeduration") or 0)
         return cls(
             id=int(raw["id"]),
-            name=raw.get("name", ""),
+            name=_clean(raw.get("name", "")),
             start=datetime.fromtimestamp(start_ts),
             end=datetime.fromtimestamp(start_ts + duration) if duration else None,
             event_type=raw.get("eventtype"),
             course_id=int(course["id"]) if course.get("id") is not None else None,
-            course_name=course.get("fullname"),
-            location=raw.get("location") or None,
+            course_name=_clean(course.get("fullname")),
+            location=_clean(raw.get("location")) or None,
             url=raw.get("url"),
         )
 

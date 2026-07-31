@@ -195,8 +195,15 @@ export default function CommandBar() {
         <div
           ref={panelRef}
           style={{
-            maxHeight: "38vh",
+            // Grow with content up to a cap, then scroll. Drag the bottom edge
+            // to make it taller/shorter; overscroll stays inside the panel so
+            // it never scroll-chains the page behind it.
+            height: 170,
+            minHeight: 84,
+            maxHeight: "75vh",
+            resize: "vertical",
             overflowY: "auto",
+            overscrollBehavior: "contain",
             background: "#0e0f16",
             border: "1px solid #1b1e2c",
             borderRadius: 14,

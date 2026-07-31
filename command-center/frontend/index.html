@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover lets the app paint into the notch/safe areas when
-         launched standalone; the app pads for env(safe-area-inset-*). -->
+         launched standalone; the app pads for env(safe-area-inset-*).
+         maximum-scale=1 + user-scalable=no lock the zoom so the installed PWA
+         opens at 1:1 (no pinch-zoom, no zoomed-in launch on iOS). -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="robots" content="noindex, nofollow" />
 
