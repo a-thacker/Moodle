@@ -94,10 +94,12 @@ function Shell() {
   return (
     <div
       style={{
-        width: "100vw",
-        // dvh tracks the real viewport when launched standalone (no jumpy
-        // toolbars); 100vh fallback for older engines.
-        height: "100dvh",
+        // Pin to all four viewport edges. On an iOS standalone PWA, `100dvh`
+        // can resolve shorter than the real screen, leaving a strip of
+        // background below the app (the "bars float too high" bug); fixed +
+        // inset:0 glues the shell — and the bottom rail — to the true edges.
+        position: "fixed",
+        inset: 0,
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
         background: "var(--color-bg)",
