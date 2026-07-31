@@ -18,6 +18,7 @@ import DeadlinesCard from "./DeadlinesCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
 import NotesView from "./NotesView.tsx";
 import PlannerView from "./PlannerView.tsx";
+import CalendarView from "./CalendarView.tsx";
 import AssistantView from "./AssistantView.tsx";
 import ScriptsView from "./ScriptsView.tsx";
 import RipView from "./RipView.tsx";
@@ -70,6 +71,8 @@ function ActiveView() {
       return <NotesView />;
     case "planner":
       return <PlannerView />;
+    case "calendar":
+      return <CalendarView />;
     case "assistant":
       return <AssistantView />;
     case "scripts":

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { api, ApiError, type CapabilityInfo, type UserEntitlements } from "../api/client";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { useCalendarEvents } from "../hooks/useCalendarEvents";
 import { useNav } from "../nav/NavContext.tsx";
 import { RAIL_TOOLS } from "./LauncherRail.tsx";
 import FocusView from "./FocusView.tsx";
@@ -517,8 +518,111 @@ function InstallApp() {
   );
 }
 
+function relTime(iso: string | null): string {
+  if (!iso) return "never";
+  const then = new Date(iso).getTime();
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
+// Manage read-only calendar feeds: the agent-fed eClass source (shown for
+// reference) plus any Google/Apple .ics feeds the user pastes in. Import-only.
+function CalendarFeeds() {
+  const { sources, loaded, addSource, updateSource, removeSource, syncSource } = useCalendarEvents(true);
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<number | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!label.trim() || !url.trim()) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await addSource(label.trim(), url.trim());
+      setLabel("");
+      setUrl("");
+    } catch {
+      setErr("Couldn't add that feed. Check the URL and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doSync(id: number) {
+    setSyncing(id);
+    try {
+      await syncSource(id);
+    } finally {
+      setSyncing(null);
+    }
+  }
+
+  return (
+    <>
+      <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-4)", lineHeight: 1.6 }}>
+        Import read-only calendars into your Command Center calendar and planner.
+        Paste a <strong>Google</strong> "Secret address in iCal format" (Calendar
+        settings → <em>Settings for my calendars</em> → <em>Integrate calendar</em>)
+        or an <strong>Apple/iCloud</strong> public-calendar link (iCloud.com →
+        share a calendar → <em>Public Calendar</em>; a <code style={{ fontFamily: "var(--font-mono)" }}>webcal://</code> link is fine).
+      </p>
+
+      {loaded && sources.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--space-4)" }}>
+          {sources.map((s) => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--color-bg)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color ?? (s.kind === "eclass" ? "#7c9cff" : "#4ec9b0"), flexShrink: 0 }} />
+              <span style={{ color: "var(--color-text)", fontSize: 14 }}>{s.label}</span>
+              <span className={`tag ${s.kind === "eclass" ? "tag-neutral" : "tag-neutral"}`} style={{ fontSize: 11 }}>{s.kind}</span>
+              <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>
+                {s.eventCount} event{s.eventCount === 1 ? "" : "s"} · synced {relTime(s.lastSyncedAt)}
+                {s.lastSyncOk === false && <span style={{ color: "var(--color-accent-200)" }}> · error</span>}
+              </span>
+              <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                {s.kind === "ics" && (
+                  <button type="button" className="btn" disabled={syncing === s.id} onClick={() => doSync(s.id)}>
+                    {syncing === s.id ? "Syncing…" : "Sync now"}
+                  </button>
+                )}
+                {s.kind === "ics" && (
+                  <button type="button" className="btn" title={s.enabled ? "Pause imports" : "Resume imports"} onClick={() => void updateSource(s.id, { enabled: !s.enabled })}>
+                    {s.enabled ? "Pause" : "Resume"}
+                  </button>
+                )}
+                {s.kind === "ics" && (
+                  <button type="button" className="btn" onClick={() => void removeSource(s.id)}>Remove</button>
+                )}
+              </div>
+              {s.lastSyncOk === false && s.lastSyncError && (
+                <div style={{ flexBasis: "100%", fontSize: 12, color: "var(--color-accent-200)", wordBreak: "break-word" }}>{s.lastSyncError}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={submit} style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "center" }}>
+        <input className="input" placeholder="Label (e.g. Dad — iCloud)" value={label} onChange={(e) => setLabel(e.target.value)} style={{ flex: "1 1 160px", minWidth: 140 }} />
+        <input className="input" placeholder="https://…  or  webcal://…" value={url} onChange={(e) => setUrl(e.target.value)} style={{ flex: "2 1 260px", minWidth: 200 }} />
+        <button type="submit" className="btn btn-primary" disabled={busy || !label.trim() || !url.trim()}>
+          {busy ? "Adding…" : "Add feed"}
+        </button>
+      </form>
+      {err && <p style={{ fontSize: 13, color: "var(--color-accent-200)", marginTop: "var(--space-3)" }}>{err}</p>}
+    </>
+  );
+}
+
 export default function SettingsView() {
   const { user } = useAuth();
+  const hasCalendar = user?.capabilities.includes("calendar") ?? false;
 
   return (
     <FocusView title="Settings" icon="ph-gear-six">
@@ -540,6 +644,13 @@ export default function SettingsView() {
         <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Reminders</h3>
         <MyReminders />
       </section>
+
+      {hasCalendar && (
+        <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
+          <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Calendars</h3>
+          <CalendarFeeds />
+        </section>
+      )}
 
       <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
         <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Sidebar</h3>

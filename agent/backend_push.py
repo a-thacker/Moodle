@@ -14,7 +14,7 @@ from typing import Any
 
 import requests
 
-from eclass.models import Course, TimelineEvent
+from eclass.models import CalendarEvent, Course, TimelineEvent
 
 from .diff import GradeChange
 
@@ -91,6 +91,30 @@ class BackendWriter:
                     "course_name": event.course_name,
                     "url": event.url,
                     "overdue": event.overdue,
+                }
+                for event in events
+            ],
+        )
+
+    def replace_calendar(self, events: list[CalendarEvent]) -> None:
+        """Mirror the eClass calendar into the owner's Command Center calendar
+        (upsert-and-prune on the backend, keyed by the Moodle event id)."""
+        self._send(
+            "PUT",
+            "/calendar",
+            [
+                {
+                    "id": event.id,
+                    "name": event.name,
+                    "start": event.start.astimezone().isoformat(timespec="seconds"),
+                    "end": event.end.astimezone().isoformat(timespec="seconds")
+                    if event.end
+                    else None,
+                    "event_type": event.event_type,
+                    "course_id": event.course_id,
+                    "course_name": event.course_name,
+                    "location": event.location,
+                    "url": event.url,
                 }
                 for event in events
             ],

@@ -28,6 +28,7 @@ export const RAIL_TOOLS: RailTool[] = [
   { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
   { icon: "ph-notebook", title: "Notes — Obsidian", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },
+  { icon: "ph-calendar-blank", title: "Calendar", view: "calendar" },
   { icon: "ph-terminal-window", title: "Scripts — on my Mac", view: "scripts" },
   { icon: "ph-film-reel", title: "Movie ripper", view: "rip" },
   { icon: "ph-sparkle", title: "Assistant", view: "assistant" },

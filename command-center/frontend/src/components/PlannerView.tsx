@@ -5,8 +5,10 @@
 
 import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 
+import { useAuth } from "../auth/AuthContext.tsx";
 import { useTasks } from "../hooks/useTasks";
-import type { Task } from "../types";
+import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import type { CalendarEvent, Task, TaskCategory } from "../types";
 import { parseTaskInput, fmtTime } from "../utils/time";
 import { taskColor } from "../utils/category";
 import PageShell from "./PageShell";
@@ -67,9 +69,30 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
   );
 }
 
+// A read-only calendar event mirrored from a source (school / Google / Apple).
+// Not draggable and has no done-toggle; "+" spins off a real task you own.
+function EventCard({ ev, color, onAdd }: { ev: CalendarEvent; color: string; onAdd: () => void }) {
+  const when = ev.allDay ? "all day" : fmtTime(ev.start.slice(11, 19));
+  const meta = ev.courseName || ev.location || null;
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#181a26", border: "1px dashed #2b3048", borderLeft: `3px solid ${color}`, borderRadius: 9, padding: "7px 9px", fontSize: 12.5 }}>
+      <i className="ph ph-calendar-blank" style={{ color, fontSize: 14, marginTop: 1, flexShrink: 0 }} />
+      <span style={{ flex: 1, wordBreak: "break-word" }}>
+        {when && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color, marginRight: 6 }}>{when}</span>}
+        <span style={{ color: "var(--cc-text)" }}>{ev.title}</span>
+        {meta && <span style={{ display: "block", fontSize: 11, color: "var(--cc-dim)", marginTop: 1 }}>{meta}</span>}
+      </span>
+      <button type="button" onClick={onAdd} title="Add as a task" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: 1 }}>
+        <i className="ph ph-plus-circle" style={{ fontSize: 15 }} />
+      </button>
+    </div>
+  );
+}
+
 interface ColumnProps {
   ckey: string; title: string; sub?: string; isToday?: boolean; highlight: boolean; showAdd: boolean;
   list: Task[]; draft: string; indicator: number | "end" | null;
+  events?: CalendarEvent[]; colorFor?: (ev: CalendarEvent) => string; onEventAdd?: (ev: CalendarEvent) => void;
   onDraft: (v: string) => void; onAdd: (e: FormEvent) => void;
   onColumnOver: (e: DragEvent) => void; onLeave: () => void; onColumnDrop: () => void;
   toggle: (t: Task) => void; remove: (id: number) => void;
@@ -90,6 +113,9 @@ function Column(p: ColumnProps) {
         {p.sub && <span className="cc-label">{p.sub}</span>}
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, overflowY: "auto", minHeight: 40, padding: "8px 12px" }}>
+        {p.events?.map((ev) => (
+          <EventCard key={`ev-${ev.id}`} ev={ev} color={p.colorFor?.(ev) ?? "#7c9cff"} onAdd={() => p.onEventAdd?.(ev)} />
+        ))}
         {p.list.map((t) => (
           <div key={t.id}>
             {p.indicator === t.id && <DropBar />}
@@ -117,6 +143,9 @@ function Column(p: ColumnProps) {
 
 export default function PlannerView() {
   const { tasks, add, toggle, remove, patch } = useTasks();
+  const { user } = useAuth();
+  const hasCalendar = user?.capabilities.includes("calendar") ?? false;
+  const { events, colorFor } = useCalendarEvents(hasCalendar);
   const [mode, setMode] = useState<"week" | "day">("week");
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -129,6 +158,22 @@ export default function PlannerView() {
   const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const shownDays = mode === "week" ? weekDays : [anchor];
+
+  // Calendar events grouped by their day (YYYY-MM-DD), each sorted by start.
+  const eventsByDate = useMemo(() => {
+    const m: Record<string, CalendarEvent[]> = {};
+    for (const ev of events) (m[ev.start.slice(0, 10)] ??= []).push(ev);
+    for (const k of Object.keys(m)) m[k].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+    return m;
+  }, [events]);
+
+  // "Add as task": a deliberate one-time copy the user owns — the synced event
+  // is never mutated. eClass events land under the "school" category.
+  function addFromEvent(ev: CalendarEvent) {
+    const time = ev.allDay ? null : `${ev.start.slice(11, 19)}`;
+    const category: TaskCategory | null = ev.source === "eclass" ? "school" : null;
+    add(ev.title, ev.start.slice(0, 10), time, category);
+  }
 
   const byKey = (k: string | null): Task[] => {
     const list = tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate));
@@ -188,6 +233,8 @@ export default function PlannerView() {
         key={key} ckey={key} title={title} sub={sub} isToday={isToday} showAdd={showAdd}
         highlight={overKey === key}
         list={byKey(dateStr)} draft={drafts[key] ?? ""}
+        events={dateStr ? eventsByDate[dateStr] : undefined}
+        colorFor={colorFor} onEventAdd={addFromEvent}
         indicator={indicator?.key === key ? indicator.before : null}
         onDraft={(v) => setDrafts((s) => ({ ...s, [key]: v }))}
         onAdd={(e) => addTo(dateStr, e)}

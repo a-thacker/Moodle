@@ -5,6 +5,8 @@
 // auth layer can log the user out.
 
 import type {
+  CalendarEvent,
+  CalendarSource,
   ClaudeUsage,
   Course,
   Deadline,
@@ -266,6 +268,29 @@ export const api = {
       }),
     remove: (id: number) =>
       apiFetch<void>(`/api/v1/tasks/${id}`, { method: "DELETE" }),
+  },
+
+  // Calendar: the caller's merged events + their .ics feed sources.
+  calendar: {
+    events: () => apiFetch<CalendarEvent[]>("/api/v1/calendar/events"),
+    sources: () => apiFetch<CalendarSource[]>("/api/v1/calendar/sources"),
+    addSource: (label: string, url: string, color?: string | null) =>
+      apiFetch<CalendarSource>("/api/v1/calendar/sources", {
+        method: "POST",
+        body: JSON.stringify({ label, url, color: color ?? null }),
+      }),
+    updateSource: (
+      id: number,
+      patch: Partial<Pick<CalendarSource, "label" | "url" | "color" | "enabled">>,
+    ) =>
+      apiFetch<CalendarSource>(`/api/v1/calendar/sources/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      }),
+    removeSource: (id: number) =>
+      apiFetch<void>(`/api/v1/calendar/sources/${id}`, { method: "DELETE" }),
+    syncSource: (id: number) =>
+      apiFetch<CalendarSource>(`/api/v1/calendar/sources/${id}/sync`, { method: "POST" }),
   },
 
   // eClass reads (owner only).

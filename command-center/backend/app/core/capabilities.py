@@ -37,6 +37,7 @@ class Capability:
 CAPABILITIES: tuple[Capability, ...] = (
     Capability("dashboard", "Dashboard", "ph-squares-four", default_for_new_user=True),
     Capability("planner", "Week planner", "ph-calendar-check", default_for_new_user=True),
+    Capability("calendar", "Calendar", "ph-calendar-blank", default_for_new_user=False),
     Capability("notes", "Notes — Obsidian", "ph-notebook", default_for_new_user=True),
     Capability("assistant", "Assistant", "ph-sparkle", default_for_new_user=True),
     Capability("settings", "Settings", "ph-gear-six", default_for_new_user=True, always=True),

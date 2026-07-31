@@ -8,8 +8,9 @@ Usage (from the project root)::
 
 Configuration comes from the environment / a `.env` file (see
 .env.example): with CC_API_URL/CC_API_KEY configured, each run also pushes
-courses, grade history, grade change events, and the upcoming-timeline mirror
-to the Command Center backend; with NTFY_TOPIC configured, notifications go to
+courses, grade history, grade change events, the upcoming-timeline mirror, and
+the eClass calendar to the Command Center backend; with NTFY_TOPIC configured,
+notifications go to
 your phone. With neither, the agent is the original fully-local tracker.
 
 Exit codes: 0 = ran fine (changes or not), 1 = unexpected error,
@@ -21,12 +22,14 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import date, timedelta
 from typing import Optional
 
 import requests
 
 from eclass import EclassClient
 from eclass.exceptions import EclassError, SessionExpired
+from eclass.models import CalendarEvent
 
 from .backend_push import BackendWriter
 from .config import AgentConfig
@@ -47,6 +50,19 @@ def _push(description: str, operation) -> bool:
     except requests.RequestException as exc:
         logger.warning("Remote push failed (%s): %s", description, exc)
         return False
+
+
+def _gather_calendar(client: EclassClient) -> list[CalendarEvent]:
+    """The eClass calendar to mirror: the upcoming-events view plus the current
+    and next month (which include events the timeline misses), de-duplicated by
+    event id."""
+    events: dict[int, CalendarEvent] = {ev.id: ev for ev in client.get_calendar()}
+    today = date.today()
+    next_month = (today.replace(day=1) + timedelta(days=32)).replace(day=1)
+    for year, month in ((today.year, today.month), (next_month.year, next_month.month)):
+        for ev in client.get_calendar(year=year, month=month):
+            events[ev.id] = ev
+    return list(events.values())
 
 
 def check(
@@ -124,6 +140,16 @@ def check(
         else:
             if _push("timeline", lambda: writer.replace_timeline(timeline)):
                 logger.info("Timeline mirrored: %d upcoming event(s).", len(timeline))
+
+    # Mirror the eClass calendar into the Command Center calendar module.
+    if writer is not None:
+        try:
+            calendar = _gather_calendar(client)
+        except EclassError as exc:
+            logger.warning("Calendar fetch failed: %s", exc)
+        else:
+            if _push("calendar", lambda: writer.replace_calendar(calendar)):
+                logger.info("Calendar mirrored: %d event(s).", len(calendar))
 
     store.log_run(
         f"checked={checked} baselined={baselined} changes={total_changes}"

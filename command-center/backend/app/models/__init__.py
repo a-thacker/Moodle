@@ -5,6 +5,7 @@ Importing every model here gives Alembic (and anything importing
 Add new models to this list as they're created.
 """
 
+from app.models.calendar import CalendarEvent, CalendarSource
 from app.models.chat import ChatMessage
 from app.models.eclass import Course, GradeEvent, GradeSnapshot, TimelineEvent
 from app.models.entitlement import UserEntitlement
@@ -18,6 +19,8 @@ from app.models.user import User
 from app.models.vault import VaultRepo
 
 __all__ = [
+    "CalendarEvent",
+    "CalendarSource",
     "ChatMessage",
     "ClaudeUsage",
     "Course",
