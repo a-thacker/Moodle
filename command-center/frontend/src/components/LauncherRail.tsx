@@ -94,9 +94,10 @@ export default function LauncherRail({
         flexDirection: "row",
         alignItems: "center",
         gap: 4,
-        // Sit at the very bottom: minimal chrome padding + just the home-
-        // indicator safe-area inset underneath.
-        padding: "5px 10px calc(3px + env(safe-area-inset-bottom))",
+        // Flush to the true bottom edge — no safe-area-inset-bottom reservation
+        // (that empty band read like a phantom browser bar). Just a little
+        // breathing room under the icons.
+        padding: "5px 10px 6px",
         overflowX: "auto",
       }
     : {
