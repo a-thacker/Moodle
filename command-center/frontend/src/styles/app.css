@@ -109,6 +109,21 @@ body {
   animation: glow 2.4s ease-in-out infinite;
 }
 
+/* Loading skeleton — a soft left-to-right shimmer placeholder block. */
+@keyframes cc-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.cc-skeleton {
+  background: linear-gradient(90deg, #1a1d2b 25%, #262a3d 50%, #1a1d2b 75%);
+  background-size: 200% 100%;
+  animation: cc-shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-skeleton { animation: none; }
+}
+
 /* Claude Code logomark — the body "types" (hops 1px on a step loop). */
 .cc-claude-body {
   animation: cc-claude-move 1s steps(1, end) infinite;

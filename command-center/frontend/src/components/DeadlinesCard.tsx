@@ -1,8 +1,10 @@
-// Deadlines card — from the eClass timeline (timeline_events). Module drives
-// the row icon; the soonest item gets the accent treatment.
+// Deadlines — from the eClass timeline (timeline_events). Module drives the row
+// icon; near items (soonest / today / tomorrow) get the accent treatment.
+// Rendered inside the Deadlines tool page (PageShell provides the header).
 
 import type { Deadline, DeadlineModule } from "../types";
 import { relativeDay } from "../utils/format";
+import EmptyState from "./EmptyState.tsx";
 
 const MODULE_ICON: Record<DeadlineModule, string> = {
   assign: "ph-file-text",
@@ -15,15 +17,18 @@ function DeadlineRow({ deadline, soonest }: { deadline: Deadline; soonest: boole
   const rel = relativeDay(deadline.due);
   const isNear = soonest || rel === "Today" || rel === "Tomorrow";
   return (
-    <div className="row-hover" style={{ display: "flex", gap: 12, padding: "10px 8px" }}>
+    <div
+      className="row-hover"
+      style={{ display: "flex", gap: 12, padding: "10px 8px", borderRadius: 10, alignItems: "center" }}
+    >
       <div
         style={{
           width: 34,
           height: 34,
           flex: "none",
-          borderRadius: "var(--radius-md)",
-          background: isNear ? "var(--color-accent-900)" : "var(--color-neutral-800)",
-          color: isNear ? "var(--color-accent-200)" : "var(--color-neutral-300)",
+          borderRadius: 10,
+          background: isNear ? "color-mix(in srgb, var(--cc-accent) 18%, transparent)" : "#20233a",
+          color: isNear ? "var(--cc-accent-soft)" : "var(--cc-muted)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -32,63 +37,71 @@ function DeadlineRow({ deadline, soonest }: { deadline: Deadline; soonest: boole
         <i className={`ph ${MODULE_ICON[deadline.module]}`} style={{ fontSize: 17 }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13 }}>{deadline.title}</div>
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--color-neutral-500)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
+        <div style={{ fontSize: 13.5, color: "var(--cc-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {deadline.title}
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--cc-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {deadline.courseName}
         </div>
       </div>
-      {isNear ? (
-        <span className="tag tag-outline" style={{ alignSelf: "flex-start", whiteSpace: "nowrap" }}>
-          {rel}
-        </span>
-      ) : (
-        <span style={{ alignSelf: "flex-start", fontSize: 12, color: "var(--color-neutral-400)", whiteSpace: "nowrap" }}>
-          {rel}
-        </span>
-      )}
+      <span
+        style={{
+          alignSelf: "center",
+          flexShrink: 0,
+          fontSize: 11.5,
+          fontFamily: "var(--font-mono)",
+          whiteSpace: "nowrap",
+          padding: isNear ? "3px 9px" : 0,
+          borderRadius: 999,
+          border: isNear ? "1px solid var(--cc-accent)" : "none",
+          color: isNear ? "var(--cc-accent-soft)" : "var(--cc-dim)",
+        }}
+      >
+        {rel}
+      </span>
     </div>
   );
 }
 
-export default function DeadlinesCard({ deadlines }: { deadlines: Deadline[] }) {
+function SkeletonRow() {
   return (
-    <section className="card" style={{ padding: "var(--space-6)", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <i className="ph ph-calendar-dots" style={{ color: "var(--color-accent)" }} />
-          <span className="card-title" style={{ fontSize: 15 }}>Deadlines</span>
-        </div>
-        <span style={{ fontSize: 11, color: "var(--color-neutral-500)" }}>from eClass timeline</span>
+    <div style={{ display: "flex", gap: 12, padding: "10px 8px", alignItems: "center" }}>
+      <div className="cc-skeleton" style={{ width: 34, height: 34, borderRadius: 10, flex: "none" }} />
+      <div style={{ flex: 1 }}>
+        <div className="cc-skeleton" style={{ height: 12, width: "70%", marginBottom: 6 }} />
+        <div className="cc-skeleton" style={{ height: 10, width: "40%" }} />
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-        {deadlines.map((deadline, i) => (
-          <DeadlineRow key={deadline.id} deadline={deadline} soonest={i === 0} />
+      <div className="cc-skeleton" style={{ width: 48, height: 14 }} />
+    </div>
+  );
+}
+
+export default function DeadlinesCard({ deadlines, loading }: { deadlines: Deadline[]; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <SkeletonRow key={i} />
         ))}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginTop: "var(--space-2)",
-            padding: "10px 10px",
-            border: "1px dashed var(--color-divider)",
-            borderRadius: "var(--radius-md)",
-          }}
-        >
-          <i className="ph ph-tree-structure" style={{ color: "var(--color-neutral-500)", fontSize: 15 }} />
-          <span style={{ fontSize: 12, color: "var(--color-neutral-500)" }}>
-            More arrive as Fall '26 activities open on eClass.
-          </span>
-        </div>
       </div>
-    </section>
+    );
+  }
+
+  if (deadlines.length === 0) {
+    return (
+      <EmptyState
+        icon="ph-calendar-check"
+        title="Nothing due right now"
+        hint="Upcoming assignments and quizzes appear here as Fall '26 activities open on eClass."
+      />
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {deadlines.map((deadline, i) => (
+        <DeadlineRow key={deadline.id} deadline={deadline} soonest={i === 0} />
+      ))}
+    </div>
   );
 }

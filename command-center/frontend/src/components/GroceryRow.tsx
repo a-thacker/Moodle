@@ -35,28 +35,28 @@ export default function GroceryRow({ item, onToggle, onRemove, size = "compact" 
         style={{ position: "absolute", opacity: 0, width: 0, height: 0 }}
       />
       {item.done ? (
-        <i className="ph-fill ph-check-circle" style={{ color: "var(--color-accent)", fontSize: iconSize }} />
+        <i className="ph-fill ph-check-circle" style={{ color: "var(--cc-accent)", fontSize: iconSize }} />
       ) : (
-        <i className="ph ph-circle" style={{ color: "var(--color-neutral-600)", fontSize: iconSize }} />
+        <i className="ph ph-circle" style={{ color: "var(--cc-dim)", fontSize: iconSize }} />
       )}
       <span
         style={{
           flex: 1,
           fontSize: roomy ? 15 : 13,
-          color: item.done ? "var(--color-neutral-500)" : "var(--color-text)",
+          color: item.done ? "var(--cc-muted)" : "var(--cc-text)",
           textDecoration: item.done ? "line-through" : "none",
         }}
       >
         {item.name}
-        {item.quantity && <span style={{ color: "var(--color-neutral-500)" }}> · {item.quantity}</span>}
+        {item.quantity && <span style={{ color: "var(--cc-muted)" }}> · {item.quantity}</span>}
       </span>
       <span
         style={{
           width: avatar,
           height: avatar,
           borderRadius: "50%",
-          background: item.addedByOwner ? "var(--color-accent-800)" : "var(--color-neutral-800)",
-          color: item.addedByOwner ? "var(--color-accent-100)" : "var(--color-neutral-200)",
+          background: item.addedByOwner ? "color-mix(in srgb, var(--cc-accent) 30%, transparent)" : "#20233a",
+          color: item.addedByOwner ? "var(--cc-accent-soft)" : "var(--cc-text)",
           fontSize: 10,
           display: "flex",
           alignItems: "center",

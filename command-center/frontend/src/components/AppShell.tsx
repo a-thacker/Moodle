@@ -45,25 +45,29 @@ function GradesPlaceholder() {
 function ActiveView() {
   const { view } = useNav();
   const { user } = useAuth();
-  const { courses, deadlines } = useDashboardData();
+  const { courses, deadlines, loading } = useDashboardData();
   const isOwner = user?.role === "owner";
 
   switch (view) {
     case "grades":
       return (
-        <FocusView title="Grades" icon="ph-exam">
-          {isOwner ? <GradesCard courses={courses} /> : <GradesPlaceholder />}
+        <FocusView
+          title="Grades"
+          icon="ph-exam"
+          meta={isOwner ? (loading ? "Loading…" : `S26 · ${courses.length} course${courses.length === 1 ? "" : "s"}`) : undefined}
+        >
+          {isOwner ? <GradesCard courses={courses} loading={loading} /> : <GradesPlaceholder />}
         </FocusView>
       );
     case "deadlines":
       return (
-        <FocusView title="Deadlines" icon="ph-calendar-dots">
-          <DeadlinesCard deadlines={deadlines} />
+        <FocusView title="Deadlines" icon="ph-calendar-dots" meta="from the eClass timeline">
+          <DeadlinesCard deadlines={deadlines} loading={loading} />
         </FocusView>
       );
     case "grocery":
       return (
-        <FocusView title="Grocery" icon="ph-basket">
+        <FocusView title="Grocery" icon="ph-basket" meta="Shared list">
           <GroceryCard />
         </FocusView>
       );
