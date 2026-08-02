@@ -6,7 +6,7 @@
 import { useMemo } from "react";
 
 import { useTasks } from "../hooks/useTasks";
-import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import { useCalendarEvents, eventDays } from "../hooks/useCalendarEvents";
 import type { CalendarEvent, TaskCategory } from "../types";
 import { fmtTime } from "../utils/time";
 import PageShell from "./PageShell";
@@ -33,13 +33,15 @@ export default function CalendarView() {
   const today = ymd(new Date());
   const tomorrow = ymd(new Date(Date.now() + 86_400_000));
 
-  // Upcoming (today onward), grouped by day, each day sorted by start.
+  // Upcoming (today onward), grouped by day, each day sorted by start. A
+  // multi-day event appears under every day it spans, not only its start.
   const days = useMemo(() => {
     const m: Record<string, CalendarEvent[]> = {};
     for (const ev of events) {
-      const key = ev.start.slice(0, 10);
-      if (key < today) continue;
-      (m[key] ??= []).push(ev);
+      for (const key of eventDays(ev)) {
+        if (key < today) continue;
+        (m[key] ??= []).push(ev);
+      }
     }
     return Object.keys(m)
       .sort()

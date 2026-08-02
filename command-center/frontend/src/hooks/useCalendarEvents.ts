@@ -23,6 +23,31 @@ const FALLBACK_COLOR: Record<string, string> = {
   manual: "#c9a26b",
 };
 
+// The day-keys (YYYY-MM-DD) an event covers, so a multi-day event shows on
+// EVERY day it spans — not just its start. iCal all-day DTEND is exclusive
+// (lands at midnight of the day after), so a trailing exact-midnight end
+// doesn't add a phantom extra day. Capped so a runaway (e.g. term-long) event
+// can't flood a view.
+export function eventDays(ev: CalendarEvent): string[] {
+  const startKey = ev.start.slice(0, 10);
+  if (!ev.end) return [startKey];
+  let end = new Date(ev.end);
+  if (Number.isNaN(end.getTime())) return [startKey];
+  if (ev.end.slice(11, 19) === "00:00:00") end = new Date(end.getTime() - 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const endKey = key(end);
+  if (endKey <= startKey) return [startKey];
+  const days: string[] = [];
+  const cur = new Date(`${startKey}T00:00:00`);
+  const last = new Date(`${endKey}T00:00:00`);
+  for (let i = 0; cur <= last && i < 120; i++) {
+    days.push(key(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
 export interface UseCalendar {
   events: CalendarEvent[];
   sources: CalendarSource[];

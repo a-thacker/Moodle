@@ -7,7 +7,7 @@ import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react
 
 import { useAuth } from "../auth/AuthContext.tsx";
 import { useTasks } from "../hooks/useTasks";
-import { useCalendarEvents } from "../hooks/useCalendarEvents";
+import { useCalendarEvents, eventDays } from "../hooks/useCalendarEvents";
 import type { CalendarEvent, Task, TaskCategory } from "../types";
 import { parseTaskInput, fmtTime } from "../utils/time";
 import { taskColor } from "../utils/category";
@@ -34,8 +34,8 @@ const DropBar = () => (
   <div style={{ height: 2, background: "var(--cc-accent)", borderRadius: 2, margin: "1px 2px" }} />
 );
 
-function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, onDrop }: {
-  task: Task; onToggle: () => void; onRemove: () => void;
+function TaskCard({ task, onToggle, onRemove, onDuplicate, onDragStart, onDragEnd, onOver, onDrop }: {
+  task: Task; onToggle: () => void; onRemove: () => void; onDuplicate: () => void;
   onDragStart: () => void; onDragEnd: () => void;
   onOver: (e: DragEvent) => void; onDrop: (e: DragEvent) => void;
 }) {
@@ -62,7 +62,10 @@ function TaskCard({ task, onToggle, onRemove, onDragStart, onDragEnd, onOver, on
         {task.dueTime && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cc-accent-soft)", marginRight: 6 }}>{fmtTime(task.dueTime)}</span>}
         {task.title}
       </span>
-      <button type="button" onClick={onRemove} title="Delete" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0 }}>
+      <button type="button" onClick={onDuplicate} title="Duplicate" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+        <i className="ph ph-copy" style={{ fontSize: 13 }} />
+      </button>
+      <button type="button" onClick={onRemove} title="Delete" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0, flexShrink: 0 }}>
         <i className="ph ph-x" style={{ fontSize: 12 }} />
       </button>
     </div>
@@ -95,7 +98,7 @@ interface ColumnProps {
   events?: CalendarEvent[]; colorFor?: (ev: CalendarEvent) => string; onEventAdd?: (ev: CalendarEvent) => void;
   onDraft: (v: string) => void; onAdd: (e: FormEvent) => void;
   onColumnOver: (e: DragEvent) => void; onLeave: () => void; onColumnDrop: () => void;
-  toggle: (t: Task) => void; remove: (id: number) => void;
+  toggle: (t: Task) => void; remove: (id: number) => void; duplicate: (t: Task) => void;
   onCardDragStart: (t: Task) => void; onCardDragEnd: () => void;
   onCardOver: (t: Task, e: DragEvent) => void; onCardDrop: (t: Task, e: DragEvent) => void;
 }
@@ -123,6 +126,7 @@ function Column(p: ColumnProps) {
               task={t}
               onToggle={() => p.toggle(t)}
               onRemove={() => p.remove(t.id)}
+              onDuplicate={() => p.duplicate(t)}
               onDragStart={() => p.onCardDragStart(t)}
               onDragEnd={p.onCardDragEnd}
               onOver={(e) => p.onCardOver(t, e)}
@@ -159,10 +163,11 @@ export default function PlannerView() {
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const shownDays = mode === "week" ? weekDays : [anchor];
 
-  // Calendar events grouped by their day (YYYY-MM-DD), each sorted by start.
+  // Calendar events grouped by day (YYYY-MM-DD), each sorted by start. A
+  // multi-day event is placed on every day it spans, not only its start.
   const eventsByDate = useMemo(() => {
     const m: Record<string, CalendarEvent[]> = {};
-    for (const ev of events) (m[ev.start.slice(0, 10)] ??= []).push(ev);
+    for (const ev of events) for (const day of eventDays(ev)) (m[day] ??= []).push(ev);
     for (const k of Object.keys(m)) m[k].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
     return m;
   }, [events]);
@@ -173,6 +178,12 @@ export default function PlannerView() {
     const time = ev.allDay ? null : `${ev.start.slice(11, 19)}`;
     const category: TaskCategory | null = ev.source === "eclass" ? "school" : null;
     add(ev.title, ev.start.slice(0, 10), time, category);
+  }
+
+  // Duplicate a task: a fresh copy on the same day/time/category. It lands at
+  // the end of the day's list, ready to drag elsewhere.
+  function duplicate(task: Task) {
+    add(task.title, task.dueDate, task.dueTime, task.category);
   }
 
   const byKey = (k: string | null): Task[] => {
@@ -241,7 +252,7 @@ export default function PlannerView() {
         onColumnOver={(e) => { e.preventDefault(); setOverKey(key); setIndicator({ key, before: "end" }); }}
         onLeave={() => setOverKey((k) => (k === key ? null : k))}
         onColumnDrop={() => dropColumn(dateStr)}
-        toggle={toggle} remove={remove}
+        toggle={toggle} remove={remove} duplicate={duplicate}
         onCardDragStart={(t) => { dragRef.current = t; setDragActive(true); }}
         onCardDragEnd={endDrag}
         onCardOver={(t, e) => { e.preventDefault(); e.stopPropagation(); setOverKey(key); setIndicator({ key, before: t.id }); }}
