@@ -11,7 +11,14 @@ from __future__ import annotations
 from functools import lru_cache
 from urllib.parse import quote
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Code defaults that are safe for local dev but must never reach production.
+_INSECURE_DEFAULTS = {
+    "jwt_secret": "dev-insecure-change-me",
+    "postgres_password": "changeme",
+}
 
 
 class Settings(BaseSettings):
@@ -137,6 +144,22 @@ class Settings(BaseSettings):
     postgres_password: str = "changeme"
     postgres_db: str = "commandcenter"
     db_echo: bool = False  # log every SQL statement (noisy; dev only)
+
+    @model_validator(mode="after")
+    def _no_insecure_defaults_in_prod(self) -> "Settings":
+        """Fail closed: refuse to boot in production if a secret is still the
+        code default (e.g. a deploy that forgot its .env). No-op in dev/tests."""
+        if self.environment == "production":
+            leaked = [
+                name for name, default in _INSECURE_DEFAULTS.items()
+                if getattr(self, name) == default
+            ]
+            if leaked:
+                raise ValueError(
+                    "Insecure default(s) in production: "
+                    f"{', '.join(sorted(leaked))}. Set them in the server .env."
+                )
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:
