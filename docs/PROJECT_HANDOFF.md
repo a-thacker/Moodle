@@ -201,6 +201,16 @@ Supabase ◄──(Realtime)──► Hub dashboard (Netlify) ◄── Alden + 
 - Implement `get_calendar()` / `get_assignments()` in the eClass client.
 - Measure eClass session lifetime; tune sync schedule.
 
+### Projects module — LANDED (2026-08-04)
+
+Completes the Phase-3 CRUD set. A per-user **Projects** module groups tasks
+under a goal: `projects` (name/description/color/status/position) + a
+`tasks.project_id` FK (ON DELETE SET NULL, so deleting a project leaves its
+tasks as loose to-dos). Progress is derived (done/total of the project's tasks).
+Tasks stay real tasks — a filed task still appears in the Planner. `projects` is
+a default capability. See `command-center/backend/app/{models,services,api/routes}/project*`
+and `frontend/src/components/ProjectsView.tsx`.
+
 ### Calendar module — LANDED (2026-07-31)
 
 A provider-agnostic, per-user calendar now exists (supersedes the "Calendar"

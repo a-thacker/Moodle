@@ -25,6 +25,7 @@ export type View =
   | "notes"
   | "planner"
   | "calendar"
+  | "projects"
   | "scripts"
   | "rip"
   | "assistant"
@@ -39,6 +40,7 @@ const VIEW_ORDER: View[] = [
   "notes",
   "planner",
   "calendar",
+  "projects",
   "scripts",
   "rip",
   "assistant",

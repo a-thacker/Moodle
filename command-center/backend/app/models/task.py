@@ -38,6 +38,11 @@ class Task(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    # Optional parent project. NULL = a loose task. On project delete the row
+    # survives with project_id reset to NULL (ON DELETE SET NULL).
+    project_id: Mapped[int | None] = mapped_column(
+        _AutoBigInt, ForeignKey("projects.id", ondelete="SET NULL"), default=None, index=True
+    )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, default=None)
     done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -64,8 +64,25 @@ export interface Task {
   dueTime: string | null; // HH:MM:SS
   category: TaskCategory | null;
   position: number;
+  projectId: number | null;
   createdAt: string;
   doneAt: string | null;
+}
+
+// A project groups tasks under a goal; progress is derived from its tasks.
+export type ProjectStatus = "active" | "done" | "archived";
+
+export interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string | null;
+  status: ProjectStatus;
+  position: number;
+  createdAt: string;
+  doneAt: string | null;
+  taskCount: number;
+  doneCount: number;
 }
 
 // Calendar -----------------------------------------------------------------
@@ -169,6 +186,7 @@ export interface TaskPatch {
   due_time?: string | null;
   category?: TaskCategory | null;
   position?: number;
+  project_id?: number | null; // negative or null clears the project
 }
 
 export interface UsageBucket {

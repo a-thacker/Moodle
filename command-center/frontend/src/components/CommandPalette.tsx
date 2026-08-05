@@ -20,6 +20,7 @@ const COMMANDS: Command[] = [
   { view: "notes", label: "Notes & Tasks", icon: "ph-note", hint: "Quick capture" },
   { view: "planner", label: "Week planner", icon: "ph-calendar-check", hint: "Plan tasks by day" },
   { view: "calendar", label: "Calendar", icon: "ph-calendar-blank", hint: "Imported school & personal events" },
+  { view: "projects", label: "Projects", icon: "ph-kanban", hint: "Group tasks toward a goal" },
   { view: "scripts", label: "Scripts", icon: "ph-terminal-window", hint: "Run scripts on my Mac" },
   { view: "assistant", label: "Assistant", icon: "ph-sparkle", hint: "Chat with the AI" },
   { view: "settings", label: "Settings", icon: "ph-gear-six", hint: "Password & account" },

@@ -135,6 +135,36 @@ def main() -> None:
           client.patch(f"/api/v1/tasks/{task_id}", json={"done": False}, headers=room_auth).status_code == 404)
     check("delete task -> 204", client.delete(f"/api/v1/tasks/{task_id}", headers=owner_auth).status_code == 204)
 
+    # --- projects (per-user; group tasks, derive progress) ---
+    r = client.post("/api/v1/projects", json={"name": "Capstone", "color": "#8b7cf0"}, headers=owner_auth)
+    proj = r.json()
+    check("create project -> 201, camelCase, taskCount 0",
+          r.status_code == 201 and proj["name"] == "Capstone" and proj["taskCount"] == 0 and proj["status"] == "active")
+    pid = proj["id"]
+
+    r = client.post("/api/v1/tasks", json={"title": "Draft proposal", "project_id": pid}, headers=owner_auth)
+    check("create task in project -> projectId set", r.status_code == 201 and r.json()["projectId"] == pid)
+    ptask_id = r.json()["id"]
+
+    r = client.get("/api/v1/projects", headers=owner_auth)
+    check("GET /projects -> taskCount 1, doneCount 0",
+          len(r.json()) == 1 and r.json()[0]["taskCount"] == 1 and r.json()[0]["doneCount"] == 0)
+
+    client.patch(f"/api/v1/tasks/{ptask_id}", json={"done": True}, headers=owner_auth)
+    check("complete the task -> project doneCount 1",
+          client.get("/api/v1/projects", headers=owner_auth).json()[0]["doneCount"] == 1)
+
+    r = client.patch(f"/api/v1/projects/{pid}", json={"status": "done"}, headers=owner_auth)
+    check("patch project done -> status+doneAt", r.status_code == 200 and r.json()["status"] == "done" and r.json()["doneAt"] is not None)
+
+    check("roommate sees no owner projects", len(client.get("/api/v1/projects", headers=room_auth).json()) == 0)
+    check("roommate can't patch owner project -> 404",
+          client.patch(f"/api/v1/projects/{pid}", json={"name": "x"}, headers=room_auth).status_code == 404)
+
+    check("delete project -> 204", client.delete(f"/api/v1/projects/{pid}", headers=owner_auth).status_code == 204)
+    check("task survives the project delete (unfiled)",
+          any(t["id"] == ptask_id for t in client.get("/api/v1/tasks", headers=owner_auth).json()))
+
     # --- calendar: eClass ingest (API key) -> owner's eclass source ---
     # The agent sends tz-aware times (local offset); they must be stored as
     # naive local wall-clock (10:00 EDT -> "10:00:00", not UTC-shifted 14:00).

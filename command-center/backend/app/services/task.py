@@ -9,8 +9,21 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.project import Project
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
+
+
+async def _owned_project_id(
+    session: AsyncSession, user_id: uuid.UUID, project_id: int | None
+) -> int | None:
+    """Resolve a task's project: keep it only if the project exists and belongs
+    to this user; None/negative clears it. Prevents filing a task under someone
+    else's project id."""
+    if project_id is None or project_id < 0:
+        return None
+    project = await session.get(Project, project_id)
+    return project_id if (project is not None and project.user_id == user_id) else None
 
 
 async def list_tasks(session: AsyncSession, user_id: uuid.UUID) -> list[Task]:
@@ -44,6 +57,7 @@ async def create_task(
         due_date=data.due_date,
         due_time=data.due_time,
         category=data.category,
+        project_id=await _owned_project_id(session, user_id, data.project_id),
         position=(max_pos or 0.0) + 1.0,
     )
     session.add(task)
@@ -68,6 +82,8 @@ async def update_task(
         task.notified_before = task.notified_after = False
     if "category" in fields:
         task.category = fields["category"]
+    if "project_id" in fields:
+        task.project_id = await _owned_project_id(session, task.user_id, fields["project_id"])
     if "position" in fields and fields["position"] is not None:
         task.position = fields["position"]
     if "done" in fields and fields["done"] is not None:

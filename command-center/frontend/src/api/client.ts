@@ -14,6 +14,7 @@ import type {
   GroceryItem,
   NoteContent,
   NoteMeta,
+  Project,
   RipJob,
   RipRequest,
   ScriptInfo,
@@ -256,10 +257,22 @@ export const api = {
 
   tasks: {
     list: () => apiFetch<Task[]>("/api/v1/tasks"),
-    add: (title: string, dueDate?: string | null, dueTime?: string | null, category?: TaskCategory | null) =>
+    add: (
+      title: string,
+      dueDate?: string | null,
+      dueTime?: string | null,
+      category?: TaskCategory | null,
+      projectId?: number | null,
+    ) =>
       apiFetch<Task>("/api/v1/tasks", {
         method: "POST",
-        body: JSON.stringify({ title, due_date: dueDate ?? null, due_time: dueTime ?? null, category: category ?? null }),
+        body: JSON.stringify({
+          title,
+          due_date: dueDate ?? null,
+          due_time: dueTime ?? null,
+          category: category ?? null,
+          project_id: projectId ?? null,
+        }),
       }),
     update: (id: number, patch: TaskPatch) =>
       apiFetch<Task>(`/api/v1/tasks/${id}`, {
@@ -268,6 +281,16 @@ export const api = {
       }),
     remove: (id: number) =>
       apiFetch<void>(`/api/v1/tasks/${id}`, { method: "DELETE" }),
+  },
+
+  // Projects — group tasks under a goal; list carries derived progress counts.
+  projects: {
+    list: () => apiFetch<Project[]>("/api/v1/projects"),
+    create: (body: { name: string; description?: string | null; color?: string | null }) =>
+      apiFetch<Project>("/api/v1/projects", { method: "POST", body: JSON.stringify(body) }),
+    update: (id: number, patch: Partial<Pick<Project, "name" | "description" | "color" | "status" | "position">>) =>
+      apiFetch<Project>(`/api/v1/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    remove: (id: number) => apiFetch<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
   },
 
   // Calendar: the caller's merged events + their .ics feed sources.

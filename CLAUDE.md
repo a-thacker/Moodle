@@ -54,6 +54,11 @@ AI (Ollama tool-calling) is a later phase, not now.
   the Planner (never copied into `tasks` — an "add as task" button spins off a
   real to-do). `calendar` is an owner-grant capability, so a non-owner (e.g. Dad)
   can have Apple/Google feeds with no eClass infrastructure.
+- **Projects** (2026-08-04) — a per-user module that groups tasks under a goal
+  (`projects` table + `tasks.project_id` FK, ON DELETE SET NULL). Progress is
+  derived from the project's tasks (done/total). `projects` is a default-for-new-user
+  capability. Reuses the tasks API for membership; a project task still shows in
+  the Planner. Completes the Phase-3 CRUD set (tasks/notes/calendar/projects).
 - `docs/PLAN.md` — the tracker-era architecture doc; superseded by
   docs/PROJECT_HANDOFF.md where they disagree.
 

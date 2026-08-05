@@ -23,6 +23,7 @@ class TaskCreate(BaseModel):
     due_date: date | None = None
     due_time: time | None = None
     category: str | None = None
+    project_id: int | None = None
 
     @field_validator("category")
     @classmethod
@@ -38,6 +39,8 @@ class TaskUpdate(BaseModel):
     due_time: time | None = None
     category: str | None = None
     position: float | None = None
+    # -1 (or any negative) clears the project; a positive id assigns one.
+    project_id: int | None = None
 
     @field_validator("category")
     @classmethod
@@ -56,5 +59,6 @@ class TaskRead(BaseModel):
     due_time: time | None
     category: str | None
     position: float
+    project_id: int | None
     created_at: datetime
     done_at: datetime | None

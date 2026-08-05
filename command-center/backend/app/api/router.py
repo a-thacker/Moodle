@@ -18,6 +18,7 @@ from app.api.routes import (
     eclass,
     grocery,
     prefs,
+    projects,
     rip,
     scripts,
     tasks,
@@ -36,6 +37,7 @@ api_router.include_router(calendar.router)
 api_router.include_router(scripts.router)
 api_router.include_router(rip.router)
 api_router.include_router(tasks.router)
+api_router.include_router(projects.router)
 api_router.include_router(vaults.router)
 api_router.include_router(assistant.router)
 api_router.include_router(usage.router)
