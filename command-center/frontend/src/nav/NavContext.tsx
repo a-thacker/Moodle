@@ -20,7 +20,6 @@ import { usePrefs } from "../prefs/PrefsContext.tsx";
 export type View =
   | "dashboard"
   | "grades"
-  | "deadlines"
   | "grocery"
   | "notes"
   | "planner"
@@ -35,7 +34,6 @@ export type View =
 const VIEW_ORDER: View[] = [
   "dashboard",
   "grades",
-  "deadlines",
   "grocery",
   "notes",
   "planner",

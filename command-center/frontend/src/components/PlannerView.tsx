@@ -59,6 +59,11 @@ function TaskCard({ task, onToggle, onRemove, onDuplicate, onDragStart, onDragEn
         {task.done ? <i className="ph-fill ph-check-circle" style={{ color: "var(--cc-accent)", fontSize: 16 }} /> : <i className="ph ph-circle" style={{ color: "var(--cc-muted)", fontSize: 16 }} />}
       </button>
       <span style={{ flex: 1, color: task.done ? "var(--cc-dim)" : "var(--cc-text)", textDecoration: task.done ? "line-through" : "none", wordBreak: "break-word" }}>
+        {task.source === "eclass" ? (
+          <i className="ph ph-graduation-cap" title="eClass assignment" style={{ color: "var(--cc-accent-soft)", fontSize: 13, marginRight: 5 }} />
+        ) : task.kind === "reminder" ? (
+          <i className="ph ph-bell" title="Reminder — fires once" style={{ color: "var(--cc-warn)", fontSize: 13, marginRight: 5 }} />
+        ) : null}
         {task.dueTime && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cc-accent-soft)", marginRight: 6 }}>{fmtTime(task.dueTime)}</span>}
         {task.title}
       </span>
@@ -151,6 +156,7 @@ export default function PlannerView() {
   const hasCalendar = user?.capabilities.includes("calendar") ?? false;
   const { events, colorFor } = useCalendarEvents(hasCalendar);
   const [mode, setMode] = useState<"week" | "day">("week");
+  const [newKind, setNewKind] = useState<"task" | "reminder">("task");
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const dragRef = useRef<Task | null>(null);
@@ -183,7 +189,7 @@ export default function PlannerView() {
   // Duplicate a task: a fresh copy on the same day/time/category. It lands at
   // the end of the day's list, ready to drag elsewhere.
   function duplicate(task: Task) {
-    add(task.title, task.dueDate, task.dueTime, task.category);
+    add(task.title, task.dueDate, task.dueTime, task.category, task.projectId, task.kind);
   }
 
   const byKey = (k: string | null): Task[] => {
@@ -229,7 +235,7 @@ export default function PlannerView() {
     // Column already fixes the day, so we only take the time + #category here.
     const { title, time, category } = parseTaskInput(drafts[key] ?? "");
     if (!title.trim()) return;
-    add(title, dateStr, time, category);
+    add(title, dateStr, time, category, null, newKind);
     setDrafts((s) => ({ ...s, [key]: "" }));
   }
 
@@ -270,6 +276,14 @@ export default function PlannerView() {
         <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }}>
           {(["week", "day"] as const).map((m) => (
             <button key={m} onClick={() => setMode(m)} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: mode === m ? "var(--cc-accent)" : "transparent", color: mode === m ? "#100f1c" : "var(--cc-muted)", textTransform: "capitalize" }}>{m}</button>
+          ))}
+        </div>
+        {/* What the day "+ add" boxes create: a nagging task, or a one-shot reminder. */}
+        <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }} title="What the '+ add' boxes create">
+          {([["task", "ph-check-circle", "Task"], ["reminder", "ph-bell", "Reminder"]] as const).map(([k, icon, label]) => (
+            <button key={k} onClick={() => setNewKind(k)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: newKind === k ? "var(--cc-accent)" : "transparent", color: newKind === k ? "#100f1c" : "var(--cc-muted)" }}>
+              <i className={`ph ${icon}`} style={{ fontSize: 14 }} />{label}
+            </button>
           ))}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>

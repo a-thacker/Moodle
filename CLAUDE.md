@@ -42,9 +42,15 @@ AI (Ollama tool-calling) is a later phase, not now.
   `EclassClient(auto_relogin=False)` + `login(interactive=False)` — no browser
   ever opens on a schedule. Push (CC backend) + ntfy are optional, env-configured
   via `.env` (CC_API_URL/CC_API_KEY). Runs on the Mac via launchd. Pushes courses,
-  grades, the timeline mirror, AND the eClass **calendar** (2026-07-31) — the
-  calendar (`get_calendar()`) is now the primary school-events source since the
-  timeline is often empty.
+  grades, the eClass **calendar** (informational events → `calendar_events`), AND
+  eClass **assignments → the owner's tasks** (2026-08-07, `/ingest/assignments`):
+  the timeline now becomes checkable, nag-until-done tasks, retiring the old
+  read-only Deadlines view.
+- **Notifications / task kinds** (2026-08-07) — tasks carry a `kind`:
+  `task` (nags each morning at `remind_hour` until checked off, + a one-shot ping
+  at its due time) or `reminder` (fires once at its time/day, then stays silent).
+  eClass assignments are `kind=task, source=eclass` (deduped by `external_id`,
+  done-state preserved, never pruned). See `services/reminders.py`.
 - **Calendar** (2026-07-31) — a provider-agnostic, per-user calendar layer:
   `calendar_sources` (a user's feeds: `eclass` agent-fed, or `ics` a read-only
   Google/Apple feed URL) + `calendar_events` (imported mirrors, upserted by

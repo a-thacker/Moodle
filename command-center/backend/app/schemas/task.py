@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 CATEGORIES = {"school", "meeting", "home", "work"}
+KINDS = {"task", "reminder"}
 
 
 def _norm_category(value: str | None) -> str | None:
@@ -17,9 +18,17 @@ def _norm_category(value: str | None) -> str | None:
     return v if v in CATEGORIES else None
 
 
+def _norm_kind(value: str | None) -> str | None:
+    if not value:
+        return None
+    v = value.strip().lower()
+    return v if v in KINDS else None
+
+
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     body: str | None = None
+    kind: str = "task"
     due_date: date | None = None
     due_time: time | None = None
     category: str | None = None
@@ -29,6 +38,11 @@ class TaskCreate(BaseModel):
     @classmethod
     def _cat(cls, v: str | None) -> str | None:
         return _norm_category(v)
+
+    @field_validator("kind")
+    @classmethod
+    def _kind(cls, v: str | None) -> str:
+        return _norm_kind(v) or "task"
 
 
 class TaskUpdate(BaseModel):
@@ -38,6 +52,7 @@ class TaskUpdate(BaseModel):
     due_date: date | None = None
     due_time: time | None = None
     category: str | None = None
+    kind: str | None = None
     position: float | None = None
     # -1 (or any negative) clears the project; a positive id assigns one.
     project_id: int | None = None
@@ -47,6 +62,11 @@ class TaskUpdate(BaseModel):
     def _cat(cls, v: str | None) -> str | None:
         return _norm_category(v)
 
+    @field_validator("kind")
+    @classmethod
+    def _kind(cls, v: str | None) -> str | None:
+        return _norm_kind(v)
+
 
 class TaskRead(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
@@ -55,6 +75,8 @@ class TaskRead(BaseModel):
     title: str
     body: str | None
     done: bool
+    kind: str
+    source: str
     due_date: date | None
     due_time: time | None
     category: str | None

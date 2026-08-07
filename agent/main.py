@@ -131,15 +131,16 @@ def check(
                 )
         store.save(course.id, course.fullname, report)
 
-    # Mirror "what's upcoming" for the Deadlines widget.
+    # Mirror the eClass timeline into the owner's tasks (checkable coursework
+    # that nags until done). Replaces the old read-only Deadlines mirror.
     if writer is not None:
         try:
             timeline = client.get_timeline(limit=50)
         except EclassError as exc:
             logger.warning("Timeline fetch failed: %s", exc)
         else:
-            if _push("timeline", lambda: writer.replace_timeline(timeline)):
-                logger.info("Timeline mirrored: %d upcoming event(s).", len(timeline))
+            if _push("assignments", lambda: writer.replace_assignments(timeline)):
+                logger.info("Assignments mirrored: %d item(s) → tasks.", len(timeline))
 
     # Mirror the eClass calendar into the Command Center calendar module.
     if writer is not None:

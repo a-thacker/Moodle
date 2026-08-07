@@ -14,7 +14,6 @@ import CommandPalette from "./CommandPalette.tsx";
 import DashboardView from "./DashboardView.tsx";
 import FocusView from "./FocusView.tsx";
 import GradesCard from "./GradesCard.tsx";
-import DeadlinesCard from "./DeadlinesCard.tsx";
 import GroceryCard from "./GroceryCard.tsx";
 import NotesView from "./NotesView.tsx";
 import PlannerView from "./PlannerView.tsx";
@@ -46,7 +45,7 @@ function GradesPlaceholder() {
 function ActiveView() {
   const { view } = useNav();
   const { user } = useAuth();
-  const { courses, deadlines, loading } = useDashboardData();
+  const { courses, loading } = useDashboardData();
   const isOwner = user?.role === "owner";
 
   switch (view) {
@@ -58,12 +57,6 @@ function ActiveView() {
           meta={isOwner ? (loading ? "Loading…" : `S26 · ${courses.length} course${courses.length === 1 ? "" : "s"}`) : undefined}
         >
           {isOwner ? <GradesCard courses={courses} loading={loading} /> : <GradesPlaceholder />}
-        </FocusView>
-      );
-    case "deadlines":
-      return (
-        <FocusView title="Deadlines" icon="ph-calendar-dots" meta="from the eClass timeline">
-          <DeadlinesCard deadlines={deadlines} loading={loading} />
         </FocusView>
       );
     case "grocery":

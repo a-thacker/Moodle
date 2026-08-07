@@ -165,6 +165,32 @@ def main() -> None:
     check("task survives the project delete (unfiled)",
           any(t["id"] == ptask_id for t in client.get("/api/v1/tasks", headers=owner_auth).json()))
 
+    # --- task kinds + eClass assignments-as-tasks ---
+    r = client.post("/api/v1/tasks", json={"title": "Water plants", "kind": "reminder", "due_date": "2026-08-10"}, headers=owner_auth)
+    check("create reminder -> kind reminder, source manual",
+          r.status_code == 201 and r.json()["kind"] == "reminder" and r.json()["source"] == "manual")
+
+    r = client.put("/api/v1/ingest/assignments", headers=KEY, json=[
+        {"id": 9001, "name": "Essay 1", "due": "2026-08-15T23:59:00-04:00", "module": "assign", "course_name": "ENGL", "overdue": False},
+        {"id": 9002, "name": "Quiz 2", "due": "2026-08-12T10:00:00-04:00", "module": "quiz", "course_name": "BIO", "overdue": False},
+    ])
+    check("ingest assignments -> synced 2", r.status_code == 200 and r.json()["synced"] == 2)
+
+    eclass_tasks = [t for t in client.get("/api/v1/tasks", headers=owner_auth).json() if t["source"] == "eclass"]
+    check("assignments -> eClass tasks (kind task, school, dated)",
+          len(eclass_tasks) == 2 and all(t["kind"] == "task" and t["category"] == "school" and t["dueDate"] for t in eclass_tasks))
+    essay = next(t for t in eclass_tasks if t["title"] == "Essay 1")
+    check("assignment due time = local wall-clock 23:59", essay["dueTime"] == "23:59:00")
+
+    client.patch(f"/api/v1/tasks/{essay['id']}", json={"done": True}, headers=owner_auth)
+    client.put("/api/v1/ingest/assignments", headers=KEY, json=[
+        {"id": 9001, "name": "Essay 1 (revised)", "due": "2026-08-15T23:59:00-04:00", "module": "assign", "course_name": "ENGL", "overdue": False},
+    ])
+    eclass2 = [t for t in client.get("/api/v1/tasks", headers=owner_auth).json() if t["source"] == "eclass"]
+    essay2 = next(t for t in eclass2 if t["id"] == essay["id"])
+    check("re-ingest: no dup, preserves done, updates title",
+          len(eclass2) == 2 and essay2["title"] == "Essay 1 (revised)" and essay2["done"] is True)
+
     # --- calendar: eClass ingest (API key) -> owner's eclass source ---
     # The agent sends tz-aware times (local offset); they must be stored as
     # naive local wall-clock (10:00 EDT -> "10:00:00", not UTC-shifted 14:00).

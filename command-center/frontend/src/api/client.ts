@@ -21,6 +21,7 @@ import type {
   ScriptJob,
   Task,
   TaskCategory,
+  TaskKind,
   TaskPatch,
   Vault,
   Weather,
@@ -263,6 +264,7 @@ export const api = {
       dueTime?: string | null,
       category?: TaskCategory | null,
       projectId?: number | null,
+      kind?: TaskKind | null,
     ) =>
       apiFetch<Task>("/api/v1/tasks", {
         method: "POST",
@@ -272,6 +274,7 @@ export const api = {
           due_time: dueTime ?? null,
           category: category ?? null,
           project_id: projectId ?? null,
+          kind: kind ?? "task",
         }),
       }),
     update: (id: number, patch: TaskPatch) =>

@@ -43,7 +43,6 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability("assistant", "Assistant", "ph-sparkle", default_for_new_user=True),
     Capability("settings", "Settings", "ph-gear-six", default_for_new_user=True, always=True),
     Capability("grades", "Grades", "ph-exam", default_for_new_user=False),
-    Capability("deadlines", "Deadlines", "ph-calendar-dots", default_for_new_user=False),
     Capability("grocery", "Grocery — shared", "ph-basket", default_for_new_user=False),
     Capability("scripts", "Scripts — on my Mac", "ph-terminal-window", default_for_new_user=False),
     Capability("rip", "Movie ripper", "ph-film-reel", default_for_new_user=False),

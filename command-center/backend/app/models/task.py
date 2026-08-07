@@ -46,6 +46,13 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, default=None)
     done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # "task"  → nags each morning until checked off.
+    # "reminder" → fires once at its time/day, then stays silent.
+    kind: Mapped[str] = mapped_column(String(12), default="task", nullable=False)
+    # "manual" (user-created) or "eclass" (auto-synced assignment).
+    source: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
+    # Provider id for dedup of synced items (Moodle event id); NULL for manual.
+    external_id: Mapped[str | None] = mapped_column(String(64), default=None, index=True)
     due_date: Mapped[date | None] = mapped_column(Date, default=None, index=True)
     due_time: Mapped[time | None] = mapped_column(Time, default=None)
     # Optional category tag (school / meeting / home / work) driving the
@@ -53,9 +60,11 @@ class Task(Base):
     category: Mapped[str | None] = mapped_column(String(20), default=None)
     # Manual sort order (within a day / list). Lower = higher up.
     position: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    # ntfy reminders sent for a timed event (reset when the time changes).
-    notified_before: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    notified_after: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Notification bookkeeping (reset when the due date/time changes):
+    #   notified_at_time — the one-shot "it's due now" ping was sent.
+    #   last_nudge_date  — date of the most recent daily "still open" nudge.
+    notified_at_time: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_nudge_date: Mapped[date | None] = mapped_column(Date, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), index=True, nullable=False
     )

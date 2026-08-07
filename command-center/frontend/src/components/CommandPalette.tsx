@@ -15,7 +15,6 @@ interface Command {
 const COMMANDS: Command[] = [
   { view: "dashboard", label: "Dashboard", icon: "ph-squares-four", hint: "Overview" },
   { view: "grades", label: "Grades", icon: "ph-exam", hint: "Course totals" },
-  { view: "deadlines", label: "Deadlines", icon: "ph-calendar-dots", hint: "Upcoming due dates" },
   { view: "grocery", label: "Grocery", icon: "ph-basket", hint: "Shared list" },
   { view: "notes", label: "Notes & Tasks", icon: "ph-note", hint: "Quick capture" },
   { view: "planner", label: "Week planner", icon: "ph-calendar-check", hint: "Plan tasks by day" },

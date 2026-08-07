@@ -65,6 +65,14 @@ async def ingest_timeline(
     return {"synced": await eclass_service.replace_timeline(session, events)}
 
 
+@ingest.put("/assignments")
+async def ingest_assignments(
+    events: list[TimelineEventIn], session: AsyncSession = Depends(get_db)
+) -> dict[str, int]:
+    """eClass timeline → the owner's tasks (checkable, nag-until-done)."""
+    return {"synced": await eclass_service.replace_eclass_assignments(session, events)}
+
+
 # --- Reads (owner only) --------------------------------------------------
 reads = APIRouter(dependencies=[Depends(require_owner)])
 

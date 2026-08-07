@@ -54,12 +54,18 @@ export interface AgentStatus {
 }
 
 export type TaskCategory = "school" | "meeting" | "home" | "work";
+// "task" nags each morning until checked off; "reminder" fires once then stays.
+export type TaskKind = "task" | "reminder";
+// "manual" = user-created; "eclass" = auto-synced assignment.
+export type TaskSource = "manual" | "eclass";
 
 export interface Task {
   id: number;
   title: string;
   body: string | null;
   done: boolean;
+  kind: TaskKind;
+  source: TaskSource;
   dueDate: string | null; // YYYY-MM-DD
   dueTime: string | null; // HH:MM:SS
   category: TaskCategory | null;

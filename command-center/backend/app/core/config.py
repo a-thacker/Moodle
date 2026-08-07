@@ -125,8 +125,11 @@ class Settings(BaseSettings):
     # The ntfy app fetches + caches this URL (reachable on the tailnet); set
     # NTFY_ICON_URL to "" to disable, or to a public URL to always show.
     ntfy_icon_url: str = "https://athacker.cc/android-chrome-192x192.png"
-    remind_before_minutes: int = 15  # notify this long before a timed event
-    remind_after_minutes: int = 30   # nudge this long after, if not done
+    remind_before_minutes: int = 15  # (legacy) notify this long before a timed event
+    remind_after_minutes: int = 30   # (legacy) nudge this long after, if not done
+    # Hour (0-23, local tz) for the daily "still open" nudge on tasks that are
+    # due-or-overdue and not checked off, and for date-only reminders.
+    remind_hour: int = 8
 
     # --- Proactive AI notifications -------------------------------------
     # A background loop asks each AI-enabled user's assistant whether to send a

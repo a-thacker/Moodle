@@ -24,7 +24,6 @@ export interface RailTool {
 export const RAIL_TOOLS: RailTool[] = [
   { icon: "ph-squares-four", title: "Dashboard", view: "dashboard" },
   { icon: "ph-exam", title: "Grades", view: "grades" },
-  { icon: "ph-calendar-dots", title: "Deadlines", view: "deadlines" },
   { icon: "ph-basket", title: "Grocery — shared", view: "grocery" },
   { icon: "ph-notebook", title: "Notes — Obsidian", view: "notes" },
   { icon: "ph-calendar-check", title: "Week planner", view: "planner" },

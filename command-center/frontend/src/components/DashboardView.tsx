@@ -25,8 +25,7 @@ import { useTasks } from "../hooks/useTasks";
 import { useNav, type View } from "../nav/NavContext.tsx";
 import { usePrefs } from "../prefs/PrefsContext.tsx";
 import { api } from "../api/client";
-import type { ClaudeUsage, Deadline, RipJob, Task, Weather } from "../types";
-import { relativeDay } from "../utils/format";
+import type { ClaudeUsage, RipJob, Task, Weather } from "../types";
 import { CAT_COLOR, CAT_LEGEND, taskColor } from "../utils/category";
 import ClaudeMark from "./ClaudeMark.tsx";
 import WeatherLocationPicker, { type WeatherLoc } from "./WeatherLocationPicker.tsx";
@@ -162,7 +161,7 @@ const DEFAULT: Record<Footprint, WidgetId[]> = {
 // home in sync with the rail so a user never sees a tool they lack.
 const WIDGET_CAP: Record<WidgetId, string | null> = {
   hero: null,
-  dueSoon: "deadlines",
+  dueSoon: "planner",
   planner: "planner",
   grades: "grades",
   lists: "grocery",
@@ -187,7 +186,7 @@ function visibleWidgets(caps: string[], isOwner: boolean): Record<Footprint, Wid
 
 const META: Record<WidgetId, { footprint: Footprint; className?: string; style?: CSSProperties; view?: View }> = {
   hero: { footprint: "wide", style: { background: "linear-gradient(135deg,#8b7cf0,#6857c8)", borderRadius: "var(--cc-radius)", padding: "26px 28px", color: "#100f1c", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" } },
-  dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "deadlines" },
+  dueSoon: { footprint: "wide", className: "cc-tile cc-clickable", view: "planner" },
   planner: { footprint: "big", className: "cc-tile cc-clickable", view: "planner" },
   grades: { footprint: "small", className: "cc-tile cc-clickable", view: "grades" },
   claude: { footprint: "small", className: "cc-tile" },
@@ -206,10 +205,25 @@ function Label({ children, extra }: { children: ReactNode; extra?: ReactNode }) 
   );
 }
 
-function dotColor(d: Deadline): string {
-  const rel = relativeDay(d.due);
-  if (d.overdue || rel === "Today" || rel === "Tomorrow") return "var(--cc-bad)";
-  if (["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].includes(rel)) return "var(--cc-warn)";
+// Days from today to a YYYY-MM-DD due date (local); negative = overdue.
+function daysUntil(dueDate: string): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [y, m, d] = dueDate.split("-").map(Number);
+  return Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86_400_000);
+}
+
+function dueLabel(days: number, dueDate: string): string {
+  if (days < 0) return "Overdue";
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  const [y, m, d] = dueDate.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return days < 7 ? dt.toLocaleDateString(undefined, { weekday: "short" }) : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function taskDotColor(days: number): string {
+  if (days <= 1) return "var(--cc-bad)";
+  if (days < 7) return "var(--cc-warn)";
   return "var(--cc-dim)";
 }
 
@@ -234,7 +248,7 @@ export default function DashboardView() {
   const isMobile = useIsMobile();
   const clock = useClock();
   const { setView } = useNav();
-  const { courses, deadlines } = useDashboardData();
+  const { courses } = useDashboardData();
   const { items: grocery } = useGrocery();
   const { tasks, toggle } = useTasks();
   const [usage, setUsage] = useState<ClaudeUsage | null>(null);
@@ -335,6 +349,14 @@ export default function DashboardView() {
   const remToday = todayTasks.filter((t) => !t.done).length;
   const remTomorrow = tomorrowTasks.filter((t) => !t.done).length;
   const openCount = tasks.filter((t) => !t.done).length;
+  // "Due soon" = the next open, dated tasks (includes eClass assignments).
+  const upcoming = tasks
+    .filter((t) => t.dueDate && !t.done)
+    .sort((a, b) =>
+      a.dueDate! < b.dueDate! ? -1 : a.dueDate! > b.dueDate! ? 1
+        : (a.dueTime ?? "~") < (b.dueTime ?? "~") ? -1 : 1,
+    )
+    .slice(0, 4);
 
   // Inner content per widget (closes over the live data above).
   const content = useMemo<Record<WidgetId, ReactNode>>(() => ({
@@ -375,20 +397,21 @@ export default function DashboardView() {
     ),
     dueSoon: (
       <>
-        <Label extra="eClass timeline">DUE SOON</Label>
-        {deadlines.length === 0 ? (
-          <div style={{ color: "var(--cc-muted)", fontSize: 13 }}>Nothing upcoming — Fall '26 activities populate after the next sync.</div>
+        <Label extra="tasks &amp; assignments">DUE SOON</Label>
+        {upcoming.length === 0 ? (
+          <div style={{ color: "var(--cc-muted)", fontSize: 13 }}>Nothing due — you're all caught up.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
-            {deadlines.slice(0, 4).map((d) => {
-              const rel = relativeDay(d.due);
-              const soon = d.overdue || rel === "Today" || rel === "Tomorrow";
+            {upcoming.map((t) => {
+              const days = daysUntil(t.dueDate!);
+              const soon = days <= 1;
               return (
-                <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 13, fontSize: 14 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: dotColor(d) }} />
-                  <span style={{ flex: 1, color: "var(--cc-bright)" }}>{d.title}</span>
-                  <span style={{ fontFamily: MONO, color: "var(--cc-muted)", fontSize: 12 }}>{d.courseName}</span>
-                  <span style={{ color: soon ? "var(--cc-bad)" : "var(--cc-muted)", fontSize: 13, width: 74, textAlign: "right" }}>{rel}</span>
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 14 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: taskDotColor(days), flexShrink: 0 }} />
+                  {t.source === "eclass" && <i className="ph ph-graduation-cap" title="eClass assignment" style={{ color: "var(--cc-accent-soft)", fontSize: 13, flexShrink: 0 }} />}
+                  {t.kind === "reminder" && <i className="ph ph-bell" title="Reminder" style={{ color: "var(--cc-warn)", fontSize: 13, flexShrink: 0 }} />}
+                  <span style={{ flex: 1, color: "var(--cc-bright)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                  <span style={{ color: soon ? "var(--cc-bad)" : "var(--cc-muted)", fontSize: 13, width: 74, textAlign: "right", flexShrink: 0 }}>{dueLabel(days, t.dueDate!)}</span>
                 </div>
               );
             })}
@@ -544,7 +567,7 @@ export default function DashboardView() {
         </div>
       );
     })(),
-  }), [clock, firstName, weather, deadlines, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, ripJobs, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
+  }), [clock, firstName, weather, upcoming, courses, grocery, grocOutstanding, gradePct, gradeColor, gradeChip, topCourse, usage, ripJobs, todayItems, tomorrowItems, remToday, remTomorrow, openCount, now, tmr, todayStr, tomorrowStr, toggle]);
 
   // When the rip strip is present, the desktop grid needs a 4th (short) row.
   const hasStrip = (arrangement.strip?.length ?? 0) > 0;

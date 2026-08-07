@@ -96,6 +96,28 @@ class BackendWriter:
             ],
         )
 
+    def replace_assignments(self, events: list[TimelineEvent]) -> None:
+        """Mirror the eClass timeline into the owner's tasks (checkable,
+        nag-until-done). Same payload as the timeline; the backend upserts them
+        as tasks keyed by the Moodle event id."""
+        self._send(
+            "PUT",
+            "/assignments",
+            [
+                {
+                    "id": event.id,
+                    "name": event.name,
+                    "due": event.due.astimezone().isoformat(timespec="seconds"),
+                    "module": event.module,
+                    "course_id": event.course_id,
+                    "course_name": event.course_name,
+                    "url": event.url,
+                    "overdue": event.overdue,
+                }
+                for event in events
+            ],
+        )
+
     def replace_calendar(self, events: list[CalendarEvent]) -> None:
         """Mirror the eClass calendar into the owner's Command Center calendar
         (upsert-and-prune on the backend, keyed by the Moodle event id)."""

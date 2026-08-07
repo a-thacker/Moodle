@@ -6,12 +6,17 @@ total from the newest snapshot and a human title/detail for each change.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.models.eclass import Course, GradeEvent, GradeSnapshot, TimelineEvent
+from app.models.task import Task
+from app.models.user import User
 from app.schemas.eclass import (
     CourseIn,
     CourseRead,
@@ -23,6 +28,22 @@ from app.schemas.eclass import (
 )
 
 _EMPTY = {None, "", "-", "–", "—"}
+
+
+def _naive_local(dt: datetime) -> datetime:
+    """Agent sends tz-aware due times; store naive local wall-clock so the
+    date/time split matches how the user reads them."""
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(ZoneInfo(get_settings().timezone)).replace(tzinfo=None)
+
+
+async def _owner(session: AsyncSession) -> User | None:
+    return (
+        await session.execute(
+            select(User).where(User.role == "owner").order_by(User.created_at.asc()).limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 # --- Ingest --------------------------------------------------------------
@@ -71,6 +92,56 @@ async def replace_timeline(
     if keep_ids:
         stmt = stmt.where(TimelineEvent.id.notin_(keep_ids))
     await session.execute(stmt)
+    await session.commit()
+    return len(events)
+
+
+async def replace_eclass_assignments(
+    session: AsyncSession, events: list[TimelineEventIn]
+) -> int:
+    """Mirror the eClass timeline into the owner's tasks as checkable,
+    nagging-until-done items (kind=task, source=eclass), deduped by the Moodle
+    event id. The user's done-state and edits are preserved; nothing is pruned
+    (a past assignment simply stops updating, so completed tasks never vanish)."""
+    owner = await _owner(session)
+    if owner is None:
+        return 0
+
+    existing = {
+        t.external_id: t
+        for t in (
+            await session.execute(
+                select(Task).where(Task.user_id == owner.id, Task.source == "eclass")
+            )
+        ).scalars().all()
+    }
+
+    for e in events:
+        ext = str(e.id)
+        due = _naive_local(e.due)
+        row = existing.get(ext)
+        if row is None:
+            session.add(
+                Task(
+                    user_id=owner.id,
+                    title=e.name,
+                    kind="task",
+                    source="eclass",
+                    external_id=ext,
+                    due_date=due.date(),
+                    due_time=due.time(),
+                    category="school",
+                )
+            )
+        else:
+            # Reset notification flags only if the deadline actually moved;
+            # never touch done/done_at (the user owns completion).
+            if row.due_date != due.date() or row.due_time != due.time():
+                row.notified_at_time = False
+                row.last_nudge_date = None
+            row.title = e.name
+            row.due_date = due.date()
+            row.due_time = due.time()
     await session.commit()
     return len(events)
 
