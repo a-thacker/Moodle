@@ -27,6 +27,9 @@ import {
 } from "../utils/flags";
 
 const POPUP_W = 248;
+// Keys handled on keydown while the popup is open — never trigger a refresh on
+// their key-up (that would reset the highlighted row back to the top).
+const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"]);
 
 // Pixel width of `text` in the input's own font — to place the popup at the caret.
 let _canvas: HTMLCanvasElement | null = null;
@@ -67,6 +70,7 @@ export default function FlagInput({
   const ownRef = useRef<HTMLInputElement>(null);
   const ref = inputRef ?? ownRef;
   const pendingCaret = useRef<number | null>(null);
+  const itemsKey = useRef(""); // identity of the current suggestion set
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<FlagDef[]>([]);
@@ -81,11 +85,13 @@ export default function FlagInput({
     const a = activeFlag(el.value, caret, triggers);
     if (!a) {
       setOpen(false);
+      itemsKey.current = "";
       return;
     }
     const found = suggestFlags(a.trigger, a.partial, triggers);
     if (!found.length) {
       setOpen(false);
+      itemsKey.current = "";
       return;
     }
     const cs = getComputedStyle(el);
@@ -96,8 +102,14 @@ export default function FlagInput({
       bottom: window.innerHeight - rect.top + 6,
     });
     setActive(a);
-    setItems(found);
-    setSel(0);
+    // Only reset the highlighted row when the suggestion set actually changes;
+    // otherwise a caret move / re-measure would clobber the arrow-key selection.
+    const key = found.map((f) => `${f.trigger}${f.token}`).join(",");
+    if (key !== itemsKey.current) {
+      itemsKey.current = key;
+      setItems(found);
+      setSel(0);
+    }
     setOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggers.join("")]);
@@ -157,7 +169,7 @@ export default function FlagInput({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onKeyUp={refresh}
+        onKeyUp={(e) => { if (!NAV_KEYS.has(e.key)) refresh(); }}
         onClick={refresh}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         placeholder={placeholder}
