@@ -11,6 +11,7 @@ import { useCalendarEvents, eventDays } from "../hooks/useCalendarEvents";
 import type { CalendarEvent, Task, TaskCategory } from "../types";
 import { parseTaskInput, fmtTime } from "../utils/time";
 import { taskColor } from "../utils/category";
+import FlagInput from "./FlagInput.tsx";
 import PageShell from "./PageShell";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -143,7 +144,8 @@ function Column(p: ColumnProps) {
       </div>
       {p.showAdd && (
         <form onSubmit={p.onAdd} style={{ padding: "0 12px 10px" }}>
-          <input className="input" placeholder="+ add" value={p.draft} onChange={(e) => p.onDraft(e.target.value)} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
+          {/* Column already fixes the day, so only category ("#") flags apply. */}
+          <FlagInput className="input" placeholder="+ add" value={p.draft} onChange={p.onDraft} triggers={["#"]} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
         </form>
       )}
     </div>

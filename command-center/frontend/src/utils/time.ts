@@ -47,8 +47,9 @@ const DAY_FLAG: Record<string, number> = {
   saturday: 6, sat: 6, sa: 6,
 };
 // Longest alternatives first so "-th" beats "-t", "-sat" beats "-sa", etc.
+// "-today"/"-tomorrow" (and -tod/-tmr) set an explicit date.
 const FLAG_RE =
-  /(?:^|\s)-(every|weekdays|weekend|sunday|saturday|thursday|wednesday|tuesday|monday|friday|thurs|thur|tues|sun|sat|mon|tue|wed|thu|fri|wd|we|su|sa|th|e|m|t|w|f)(?=\s|$)/gi;
+  /(?:^|\s)-(tomorrow|today|every|weekdays|weekend|sunday|saturday|thursday|wednesday|tuesday|monday|friday|thurs|thur|tues|tmr|tod|sun|sat|mon|tue|wed|thu|fri|wd|we|su|sa|th|e|m|t|w|f)(?=\s|$)/gi;
 
 // Category tags: "#school #meeting #home #work" (also #s #m #h #w, #sch #mtg …).
 export type Category = "school" | "meeting" | "home" | "work";
@@ -78,6 +79,7 @@ function weekDates(): Date[] {
 export function parseTaskInput(text: string): { title: string; time: string | null; dates: string[]; category: Category | null } {
   const t = extractTime(text);
   const days = new Set<number>();
+  const explicit = new Set<string>(); // -today / -tomorrow → concrete dates
   let every = false;
   let weekdays = false;
   let weekend = false;
@@ -86,7 +88,9 @@ export function parseTaskInput(text: string): { title: string; time: string | nu
     .replace(CAT_RE, (_m, g: string) => { category = CAT_FLAG[g.toLowerCase()] ?? category; return " "; })
     .replace(FLAG_RE, (_m, g: string) => {
       const f = g.toLowerCase();
-      if (f === "every" || f === "e") every = true;
+      if (f === "today" || f === "tod") explicit.add(ymdLocal(new Date()));
+      else if (f === "tomorrow" || f === "tmr") { const x = new Date(); x.setDate(x.getDate() + 1); explicit.add(ymdLocal(x)); }
+      else if (f === "every" || f === "e") every = true;
       else if (f === "weekdays" || f === "wd") weekdays = true;
       else if (f === "weekend" || f === "we") weekend = true;
       else if (f in DAY_FLAG) days.add(DAY_FLAG[f]);
@@ -102,6 +106,6 @@ export function parseTaskInput(text: string): { title: string; time: string | nu
       : weekend
         ? [0, 6]
         : [...days];
-  const dates = weekDates().filter((d) => picked.includes(d.getDay())).map(ymdLocal);
+  const dates = [...new Set([...explicit, ...weekDates().filter((d) => picked.includes(d.getDay())).map(ymdLocal)])];
   return { title, time: t.time, dates, category };
 }

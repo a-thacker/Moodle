@@ -21,6 +21,7 @@ import { notifyTasksChanged } from "../hooks/useTasks";
 import { useNav } from "../nav/NavContext.tsx";
 import { parseTaskInput } from "../utils/time";
 import type { ScriptInfo } from "../types";
+import FlagInput from "./FlagInput.tsx";
 
 type Mode = "task" | "ask" | "script";
 
@@ -243,11 +244,12 @@ export default function CommandBar() {
           {m.label}
         </button>
         <form onSubmit={submit} style={{ flex: 1, display: "flex" }}>
-          <input
-            ref={inputRef}
+          <FlagInput
+            inputRef={inputRef}
             value={input}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
             onKeyDown={onKeyDown}
+            triggers={mode === "task" ? ["-", "#"] : []}
             placeholder={m.placeholder}
             spellCheck={mode === "script" ? false : undefined}
             autoCapitalize={mode === "script" ? "off" : undefined}
