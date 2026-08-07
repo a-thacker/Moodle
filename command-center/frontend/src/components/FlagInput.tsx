@@ -71,6 +71,7 @@ export default function FlagInput({
   const ref = inputRef ?? ownRef;
   const pendingCaret = useRef<number | null>(null);
   const itemsKey = useRef(""); // identity of the current suggestion set
+  const listRef = useRef<HTMLDivElement>(null);
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<FlagDef[]>([]);
@@ -125,6 +126,13 @@ export default function FlagInput({
       window.removeEventListener("resize", onMove);
     };
   }, [open, refresh]);
+
+  // Keep the highlighted row visible as you arrow through a scrolling list.
+  useEffect(() => {
+    if (!open) return;
+    const row = listRef.current?.querySelector('[aria-selected="true"]') as HTMLElement | null;
+    row?.scrollIntoView({ block: "nearest" });
+  }, [sel, open]);
 
   // Restore the caret after a completion changes the controlled value.
   useLayoutEffect(() => {
@@ -181,6 +189,7 @@ export default function FlagInput({
       />
       {open && items.length > 0 && (
         <div
+          ref={listRef}
           role="listbox"
           style={{
             position: "fixed",
