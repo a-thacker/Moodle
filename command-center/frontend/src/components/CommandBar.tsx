@@ -147,15 +147,16 @@ export default function CommandBar() {
     setBusy(true);
     try {
       if (mode === "task") {
-        const { title, time, dates, category } = parseTaskInput(body);
+        const { title, time, dates, category, kind } = parseTaskInput(body);
         const todayStr = new Date().toLocaleDateString("en-CA");
         const fallback = time ? todayStr : pendingDate.current;
         const targets: (string | null)[] = dates.length ? dates : [fallback];
         pendingDate.current = null;
-        for (const d of targets) await api.tasks.add(title, d, time, category);
+        for (const d of targets) await api.tasks.add(title, d, time, category, null, kind);
         notifyTasksChanged();
         const suffix = dates.length > 1 ? ` on ${dates.length} days` : dates.length === 1 ? ` for ${dates[0]}` : "";
-        update(id, { output: `Added "${title}"${time ? ` at ${time}` : ""}${category ? ` #${category}` : ""}${suffix}.`, ok: true, pending: false });
+        const noun = kind === "reminder" ? "Reminder" : "Added";
+        update(id, { output: `${noun} "${title}"${time ? ` at ${time}` : ""}${category ? ` #${category}` : ""}${suffix}.`, ok: true, pending: false });
       } else if (mode === "script") {
         const name = body.split(/\s+/)[0];
         const argStr = body.slice(name.length).trim();

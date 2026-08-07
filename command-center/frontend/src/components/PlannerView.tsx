@@ -235,9 +235,9 @@ export default function PlannerView() {
     e.preventDefault();
     const key = dateStr ?? "none";
     // Column already fixes the day, so we only take the time + #category here.
-    const { title, time, category } = parseTaskInput(drafts[key] ?? "");
+    const { title, time, category, kind } = parseTaskInput(drafts[key] ?? "");
     if (!title.trim()) return;
-    add(title, dateStr, time, category, null, newKind);
+    add(title, dateStr, time, category, null, kind ?? newKind);
     setDrafts((s) => ({ ...s, [key]: "" }));
   }
 

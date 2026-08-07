@@ -47,9 +47,10 @@ const DAY_FLAG: Record<string, number> = {
   saturday: 6, sat: 6, sa: 6,
 };
 // Longest alternatives first so "-th" beats "-t", "-sat" beats "-sa", etc.
-// "-today"/"-tomorrow" (and -tod/-tmr) set an explicit date.
+// "-today"/"-tomorrow" (and -tod/-tmr) set a date; "-reminder"/-remind/-rem/-r
+// make it a one-shot reminder.
 const FLAG_RE =
-  /(?:^|\s)-(tomorrow|today|every|weekdays|weekend|sunday|saturday|thursday|wednesday|tuesday|monday|friday|thurs|thur|tues|tmr|tod|sun|sat|mon|tue|wed|thu|fri|wd|we|su|sa|th|e|m|t|w|f)(?=\s|$)/gi;
+  /(?:^|\s)-(tomorrow|reminder|remind|today|every|weekdays|weekend|sunday|saturday|thursday|wednesday|tuesday|monday|friday|thurs|thur|tues|tmr|tod|rem|sun|sat|mon|tue|wed|thu|fri|wd|we|su|sa|th|e|m|t|w|f|r)(?=\s|$)/gi;
 
 // Category tags: "#school #meeting #home #work" (also #s #m #h #w, #sch #mtg …).
 export type Category = "school" | "meeting" | "home" | "work";
@@ -76,7 +77,7 @@ function weekDates(): Date[] {
   });
 }
 
-export function parseTaskInput(text: string): { title: string; time: string | null; dates: string[]; category: Category | null } {
+export function parseTaskInput(text: string): { title: string; time: string | null; dates: string[]; category: Category | null; kind: "reminder" | null } {
   const t = extractTime(text);
   const days = new Set<number>();
   const explicit = new Set<string>(); // -today / -tomorrow → concrete dates
@@ -84,11 +85,13 @@ export function parseTaskInput(text: string): { title: string; time: string | nu
   let weekdays = false;
   let weekend = false;
   let category: Category | null = null;
+  let kind: "reminder" | null = null; // -reminder / -r → one-shot reminder
   const title = t.title
     .replace(CAT_RE, (_m, g: string) => { category = CAT_FLAG[g.toLowerCase()] ?? category; return " "; })
     .replace(FLAG_RE, (_m, g: string) => {
       const f = g.toLowerCase();
-      if (f === "today" || f === "tod") explicit.add(ymdLocal(new Date()));
+      if (f === "reminder" || f === "remind" || f === "rem" || f === "r") kind = "reminder";
+      else if (f === "today" || f === "tod") explicit.add(ymdLocal(new Date()));
       else if (f === "tomorrow" || f === "tmr") { const x = new Date(); x.setDate(x.getDate() + 1); explicit.add(ymdLocal(x)); }
       else if (f === "every" || f === "e") every = true;
       else if (f === "weekdays" || f === "wd") weekdays = true;
@@ -107,5 +110,5 @@ export function parseTaskInput(text: string): { title: string; time: string | nu
         ? [0, 6]
         : [...days];
   const dates = [...new Set([...explicit, ...weekDates().filter((d) => picked.includes(d.getDay())).map(ymdLocal)])];
-  return { title, time: t.time, dates, category };
+  return { title, time: t.time, dates, category, kind };
 }
