@@ -212,7 +212,14 @@ async def complete(user: User, system: str, message: str, *, thread: str = "") -
         except httpx.HTTPError as exc:
             logger.warning("Proactive Claude bridge call failed: %s", exc)
             return None
-        return (result.get("reply") or "").strip() or None
+        reply = (result.get("reply") or "").strip()
+        # The bridge relays failures (e.g. an expired subscription login) as the
+        # reply text; never surface those as a proactive phone nudge — stay quiet.
+        if not reply or result.get("available") is False or reply.lower().startswith("assistant error"):
+            if reply:
+                logger.warning("Claude bridge returned an error; suppressing nudge: %s", reply[:140])
+            return None
+        return reply
 
     if not (settings.codex_bridge_url or settings.openai_api_key
             or settings.anthropic_api_key or settings.ollama_model):
