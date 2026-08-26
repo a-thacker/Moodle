@@ -69,7 +69,10 @@ def _lines(tasks: list[Task]) -> str:
 async def check_reminders() -> None:
     settings = get_settings()
     tz = ZoneInfo(settings.timezone)
-    now = datetime.now(tz)
+    # Naive local wall-clock — matches how due dates/times and slot_at are stored
+    # (the DB columns are TIMESTAMP WITHOUT TIME ZONE). Comparing/storing an
+    # aware datetime against those raises, so drop the tzinfo up front.
+    now = datetime.now(tz).replace(tzinfo=None)
     today = now.date()
 
     # The scheduled slot (if any) whose hour has passed this tick.
@@ -100,7 +103,7 @@ async def check_reminders() -> None:
             # 1) One-shot timed alerts — fire once at the task's alert_time.
             for t in tasks:
                 if t.alert and t.alert_time is not None and not t.notified_at_time:
-                    moment = datetime.combine(t.due_date or today, t.alert_time, tzinfo=tz)
+                    moment = datetime.combine(t.due_date or today, t.alert_time)
                     if now >= moment and await _send(topic, settings, t.title, f"⏰ {_fmt(t.alert_time)}"):
                         t.notified_at_time = True
                         changed = True
@@ -108,7 +111,7 @@ async def check_reminders() -> None:
             # 2) The morning digest / midday-evening re-pings — one per slot/day.
             if slot_hour is None:
                 continue
-            slot_dt = datetime.combine(today, dtime(hour=slot_hour), tzinfo=tz)
+            slot_dt = datetime.combine(today, dtime(hour=slot_hour))
             if user.slot_at is not None and user.slot_at >= slot_dt:
                 continue  # this slot already sent today
 
