@@ -99,13 +99,18 @@ async def replace_timeline(
 async def replace_eclass_assignments(
     session: AsyncSession, events: list[TimelineEventIn]
 ) -> int:
-    """Mirror the eClass timeline into the owner's tasks as checkable,
-    nagging-until-done items (kind=task, source=eclass), deduped by the Moodle
-    event id. The user's done-state and edits are preserved; nothing is pruned
-    (a past assignment simply stops updating, so completed tasks never vanish)."""
+    """Mirror eClass **assignments** into the owner's tasks as checkable items
+    (source=eclass), deduped by the Moodle event id. Only assignment-type events
+    (module == "assign") become tasks — other timeline/calendar events are course
+    noise and are dropped here (defense in depth; the agent already filters).
+    Silent by default — the owner opts a specific one into alerts. The user's
+    done-state and edits are preserved; nothing is pruned (a past assignment
+    simply stops updating, so completed tasks never vanish)."""
     owner = await _owner(session)
     if owner is None:
         return 0
+
+    events = [e for e in events if (e.module or "").lower() == "assign"]
 
     existing = {
         t.external_id: t
@@ -125,7 +130,6 @@ async def replace_eclass_assignments(
                 Task(
                     user_id=owner.id,
                     title=e.name,
-                    kind="task",
                     source="eclass",
                     external_id=ext,
                     due_date=due.date(),
@@ -134,11 +138,10 @@ async def replace_eclass_assignments(
                 )
             )
         else:
-            # Reset notification flags only if the deadline actually moved;
+            # Reset the alert flag only if the deadline actually moved;
             # never touch done/done_at (the user owns completion).
             if row.due_date != due.date() or row.due_time != due.time():
                 row.notified_at_time = False
-                row.last_nudge_date = None
             row.title = e.name
             row.due_date = due.date()
             row.due_time = due.time()

@@ -16,10 +16,12 @@ conflict.
 The project moved off Netlify/Supabase to a **self-hosted stack** on an
 Ubuntu server (`athacker-cc`, reached via Tailscale; user builds locally in
 `command-center/` and syncs to `~/command-center` there). New stack:
-FastAPI + PostgreSQL + Alembic + Ollama, all in Docker Compose. **Postgres
+FastAPI + PostgreSQL + Alembic, all in Docker Compose. **Postgres
 is the single source of truth; the backend is the only thing that touches
-it** — frontend and the future LLM go through the API. Build backend-first;
-AI (Ollama tool-calling) is a later phase, not now.
+it** — the frontend goes through the API. Build backend-first. (An on-server
+LLM/Ollama phase was planned but is **shelved indefinitely** as of 2026-08-25;
+if AI is ever revived it'll be via a hosted API, e.g. Anthropic — not local
+Ollama. OpenNotebook is the likely path for a future notes/research module.)
 
 - `command-center/` — the self-hosted app (FastAPI backend + React/Vite/TS
   frontend, Docker Compose). This is where active work happens. Deploy with
@@ -43,28 +45,46 @@ AI (Ollama tool-calling) is a later phase, not now.
   ever opens on a schedule. Push (CC backend) + ntfy are optional, env-configured
   via `.env` (CC_API_URL/CC_API_KEY). Runs on the Mac via launchd. Pushes courses,
   grades, the eClass **calendar** (informational events → `calendar_events`), AND
-  eClass **assignments → the owner's tasks** (2026-08-07, `/ingest/assignments`):
-  the timeline now becomes checkable, nag-until-done tasks, retiring the old
-  read-only Deadlines view.
-- **Notifications / task kinds** (2026-08-07) — tasks carry a `kind`:
-  `task` (nags each morning at `remind_hour` until checked off, + a one-shot ping
-  at its due time) or `reminder` (fires once at its time/day, then stays silent).
-  eClass assignments are `kind=task, source=eclass` (deduped by `external_id`,
-  done-state preserved, never pruned). See `services/reminders.py`.
+  eClass **assignments → the owner's tasks** (`/ingest/assignments`). As of
+  2026-08-25 the agent pushes **only real assignments** (timeline events with
+  `module == "assign"`; the `/ingest/assignments` service re-filters defensively);
+  other timeline/calendar events stay in `calendar_events` (the Planner's opt-in
+  Events overlay), not tasks.
+- **Notifications — silent by default** (reworked 2026-08-25, replacing the old
+  `kind` model) — a task is a quiet checklist item unless opted in. Task columns:
+  `alert` (on → it pings), `alert_time` (fire once at this time; NULL = ride the
+  digest + midday/evening re-pings), `important` (⭐, the only thing that
+  resurfaces once overdue). No more per-task daily nag. What fires: one-shot timed
+  alerts; a **morning digest** at `remind_hour` (due-today + open alert tasks +
+  ⭐-overdue, skipped if empty); **1 PM / 6 PM** re-pings of no-time alert tasks.
+  The three slots are gated per user by `users.slot_at`. eClass assignments are
+  `source=eclass`, silent, deduped by `external_id`, done-state preserved, never
+  pruned. The `kind` column was dropped (migration 0021, which also clears the
+  old undone eClass calendar-event pollution). See `services/reminders.py`; the
+  frontend surfaces alert/important as per-card 🔔/⭐ toggles.
 - **Calendar** (2026-07-31) — a provider-agnostic, per-user calendar layer:
   `calendar_sources` (a user's feeds: `eclass` agent-fed, or `ics` a read-only
   Google/Apple feed URL) + `calendar_events` (imported mirrors, upserted by
   `(source_id, external_uid)`). `.ics` feeds are fetched on a background loop
   (`services/calendar_ics.py`, `icalendar` + `recurring_ical_events`); eClass
-  events map to the owner. Read-only imports show in the Calendar view AND overlay
-  the Planner (never copied into `tasks` — an "add as task" button spins off a
-  real to-do). `calendar` is an owner-grant capability, so a non-owner (e.g. Dad)
-  can have Apple/Google feeds with no eClass infrastructure.
+  events map to the owner. Read-only imports overlay the Planner behind an opt-in
+  **Events** toggle (never copied into `tasks` — an "add as task" button spins off
+  a real to-do). **The standalone Calendar tab was removed from the nav 2026-08-25**;
+  the backend layer + `calendar` capability stay intact (dormant) so it can be
+  reintegrated later. `calendar` is an owner-grant capability, so a non-owner
+  (e.g. Dad) can have Apple/Google feeds with no eClass infrastructure.
 - **Projects** (2026-08-04) — a per-user module that groups tasks under a goal
   (`projects` table + `tasks.project_id` FK, ON DELETE SET NULL). Progress is
-  derived from the project's tasks (done/total). `projects` is a default-for-new-user
-  capability. Reuses the tasks API for membership; a project task still shows in
-  the Planner. Completes the Phase-3 CRUD set (tasks/notes/calendar/projects).
+  derived from the project's tasks (done/total). Reuses the tasks API for
+  membership; a project task still shows in the Planner. **The Projects tab was
+  removed from the nav 2026-08-25** (table + API kept, dormant).
+- **Nav slimmed** (2026-08-25) — the Calendar, Projects, and **Notes** tabs were
+  removed from the launcher rail + command palette at the owner's request; all
+  backend code/tables are kept (dormant), so removal is frontend-only and
+  reversible. Notes/Obsidian is retired (OpenNotebook is the intended future
+  replacement). Tasks now live solely in the reworked **Planner**: filter chips
+  (All / School / Personal), per-card 🔔/⭐, a prominent **Unscheduled** capture
+  zone, and the Events overlay toggle.
 - `docs/PLAN.md` — the tracker-era architecture doc; superseded by
   docs/PROJECT_HANDOFF.md where they disagree.
 

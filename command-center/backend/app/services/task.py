@@ -54,9 +54,11 @@ async def create_task(
         user_id=user_id,
         title=data.title.strip(),
         body=data.body,
-        kind=data.kind,
         due_date=data.due_date,
         due_time=data.due_time,
+        alert=data.alert,
+        alert_time=data.alert_time,
+        important=data.important,
         category=data.category,
         project_id=await _owned_project_id(session, user_id, data.project_id),
         position=(max_pos or 0.0) + 1.0,
@@ -78,15 +80,19 @@ async def update_task(
     if "due_date" in fields:
         task.due_date = fields["due_date"]
         task.notified_at_time = False
-        task.last_nudge_date = None
     if "due_time" in fields:
         task.due_time = fields["due_time"]
         task.notified_at_time = False
-        task.last_nudge_date = None
+    if "alert" in fields and fields["alert"] is not None:
+        task.alert = fields["alert"]
+        task.notified_at_time = False
+    if "alert_time" in fields:
+        task.alert_time = fields["alert_time"]
+        task.notified_at_time = False
+    if "important" in fields and fields["important"] is not None:
+        task.important = fields["important"]
     if "category" in fields:
         task.category = fields["category"]
-    if "kind" in fields and fields["kind"]:
-        task.kind = fields["kind"]
     if "project_id" in fields:
         task.project_id = await _owned_project_id(session, task.user_id, fields["project_id"])
     if "position" in fields and fields["position"] is not None:

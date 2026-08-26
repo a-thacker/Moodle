@@ -409,7 +409,8 @@ export default function DashboardView() {
                 <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 14 }}>
                   <span style={{ width: 9, height: 9, borderRadius: "50%", background: taskDotColor(days), flexShrink: 0 }} />
                   {t.source === "eclass" && <i className="ph ph-graduation-cap" title="eClass assignment" style={{ color: "var(--cc-accent-soft)", fontSize: 13, flexShrink: 0 }} />}
-                  {t.kind === "reminder" && <i className="ph ph-bell" title="Reminder" style={{ color: "var(--cc-warn)", fontSize: 13, flexShrink: 0 }} />}
+                  {t.important && <i className="ph-fill ph-star" title="Important" style={{ color: "var(--cc-warn)", fontSize: 12, flexShrink: 0 }} />}
+                  {t.alert && <i className="ph ph-bell" title="Alert on" style={{ color: "var(--cc-accent-soft)", fontSize: 13, flexShrink: 0 }} />}
                   <span style={{ flex: 1, color: "var(--cc-bright)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
                   <span style={{ color: soon ? "var(--cc-bad)" : "var(--cc-muted)", fontSize: 13, width: 74, textAlign: "right", flexShrink: 0 }}>{dueLabel(days, t.dueDate!)}</span>
                 </div>

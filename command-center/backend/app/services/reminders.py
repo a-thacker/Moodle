@@ -1,23 +1,29 @@
-"""Task & reminder notifications over ntfy.
+"""Task notifications over ntfy — silent by default.
 
-A background loop (every minute) drives the three-type model:
+The old model nagged every open task every morning forever; every eClass
+assignment was one of those, so the phone drowned. This one flips it: a task is
+a quiet checklist item unless *you* opt it in.
 
-- a **task** that is due-or-overdue and not checked off gets a "still open"
-  nudge once each morning (at `remind_hour`) until it's done, plus a one-shot
-  "it's due now" ping at its exact time if it has one.
-- a **reminder** fires exactly once — at its time (timed) or on its day
-  (date-only) — then never notifies again, though it stays as a checkable item.
+What can fire, per user (topic required), in the configured timezone:
 
-`notified_at_time` gates the one-shot ping; `last_nudge_date` gates the daily
-task nudge (once per day). Both reset when the due date/time changes. Off for
-any user without an ntfy topic.
+- **Timed alert** — a task with `alert` on and an `alert_time` set fires **once**
+  at that time (on its due date, else today). Gated by `notified_at_time`.
+- **Morning digest** — at `remind_hour`, one push summarizing what's actually
+  worth seeing: tasks due today, any open `alert` task, and ⭐ `important` tasks
+  that have slipped overdue. Skipped silently if that list is empty.
+- **Midday & evening re-pings** — at 1 PM / 6 PM, one push listing open `alert`
+  tasks that have *no* set time (the "don't let me forget" pile), until checked
+  off.
+
+The three scheduled slots are gated per user by `users.slot_at` (one send per
+slot per day). Everything is off for a user without an ntfy topic.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -32,6 +38,32 @@ from app.services import ntfy
 logger = logging.getLogger(__name__)
 
 _TICK_SECONDS = 60
+_MIDDAY_HOUR = 13
+_EVENING_HOUR = 18
+
+
+def _fmt(t: dtime) -> str:
+    return t.strftime("%-I:%M %p")
+
+
+def _digest_tasks(tasks: list[Task], today) -> list[Task]:
+    """The morning digest's contents: due today, opted-in (alert), or an
+    ⭐ important item that's now overdue. Deduped, timed items first."""
+    picked: dict[int, Task] = {}
+    for t in tasks:
+        due_today = t.due_date == today
+        important_overdue = t.important and t.due_date is not None and t.due_date < today
+        if due_today or t.alert or important_overdue:
+            picked[t.id] = t
+    return sorted(picked.values(), key=lambda t: (t.due_time is None, t.due_time or dtime.min))
+
+
+def _lines(tasks: list[Task]) -> str:
+    out = []
+    for t in tasks:
+        prefix = f"{_fmt(t.due_time)}  " if t.due_time else ""
+        out.append(f"• {prefix}{t.title}")
+    return "\n".join(out)
 
 
 async def check_reminders() -> None:
@@ -39,56 +71,62 @@ async def check_reminders() -> None:
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz)
     today = now.date()
-    hour = settings.remind_hour
+
+    # The scheduled slot (if any) whose hour has passed this tick.
+    slot_hours = sorted({settings.remind_hour, _MIDDAY_HOUR, _EVENING_HOUR})
+    passed = [h for h in slot_hours if now.hour >= h]
+    slot_hour = passed[-1] if passed else None
 
     async with SessionFactory() as session:
-        rows = await session.execute(select(User.id, User.ntfy_topic))
-        topic_by_user = {uid: topic for uid, topic in rows.all() if topic}
-        if not topic_by_user:
+        users = (
+            await session.execute(select(User).where(User.ntfy_topic.is_not(None)))
+        ).scalars().all()
+        if not users:
             return
 
-        # Everything that could need a notification today: not done, dated, and
-        # due today or overdue. (Future-dated items fire on their own day.)
-        result = await session.execute(
-            select(Task).where(
-                Task.done.is_(False),
-                Task.due_date.is_not(None),
-                Task.due_date <= today,
-            )
-        )
         changed = False
-        for t in result.scalars().all():
-            topic = topic_by_user.get(t.user_id)
+        for user in users:
+            topic = user.ntfy_topic
             if not topic:
                 continue
-            timed = t.due_time is not None
-            when = t.due_time.strftime("%-I:%M %p") if timed else None
+            tasks = list(
+                (
+                    await session.execute(
+                        select(Task).where(Task.user_id == user.id, Task.done.is_(False))
+                    )
+                ).scalars().all()
+            )
 
-            # 1) One-shot "it's due now" ping for a timed item (task or reminder).
-            if timed and not t.notified_at_time:
-                moment = datetime.combine(t.due_date, t.due_time, tzinfo=tz)  # type: ignore[arg-type]
-                if now >= moment:
-                    if await _send(topic, settings, f"Now: {t.title}", f"scheduled for {when}"):
+            # 1) One-shot timed alerts — fire once at the task's alert_time.
+            for t in tasks:
+                if t.alert and t.alert_time is not None and not t.notified_at_time:
+                    moment = datetime.combine(t.due_date or today, t.alert_time, tzinfo=tz)
+                    if now >= moment and await _send(topic, settings, t.title, f"⏰ {_fmt(t.alert_time)}"):
                         t.notified_at_time = True
                         changed = True
 
-            # 2) Daily nudge, at/after the morning hour, at most once per day.
-            due_this_morning = now.hour >= hour and (t.last_nudge_date is None or t.last_nudge_date < today)
-            if due_this_morning:
-                if t.kind == "reminder":
-                    # Date-only reminder: fire once on (or after) its day, then never again.
-                    if not timed and not t.notified_at_time:
-                        if await _send(topic, settings, f"Reminder: {t.title}", when or ""):
-                            t.notified_at_time = True
-                            t.last_nudge_date = today
-                            changed = True
-                else:  # task — repeats each morning until checked off
-                    overdue = t.due_date < today
-                    label = "Overdue" if overdue else "Due today"
-                    detail = f"at {when}" if when else "still open — check it off when done"
-                    if await _send(topic, settings, f"{label}: {t.title}", detail):
-                        t.last_nudge_date = today
-                        changed = True
+            # 2) The morning digest / midday-evening re-pings — one per slot/day.
+            if slot_hour is None:
+                continue
+            slot_dt = datetime.combine(today, dtime(hour=slot_hour), tzinfo=tz)
+            if user.slot_at is not None and user.slot_at >= slot_dt:
+                continue  # this slot already sent today
+
+            sent_ok = True
+            if slot_hour == settings.remind_hour:  # morning digest
+                digest = _digest_tasks(tasks, today)
+                if digest:
+                    n = len(digest)
+                    title = f"Today · {n} item{'' if n == 1 else 's'}"
+                    sent_ok = await _send(topic, settings, title, _lines(digest))
+            else:  # midday / evening — only the no-time "don't forget" pile
+                flagged = [t for t in tasks if t.alert and t.alert_time is None]
+                if flagged:
+                    sent_ok = await _send(topic, settings, "Don't forget", _lines(flagged))
+
+            if sent_ok:  # advance even when there was nothing to send (slot consumed)
+                user.slot_at = now
+                changed = True
 
         if changed:
             await session.commit()
@@ -105,7 +143,7 @@ async def _send(topic: str, settings, title: str, body: str) -> bool:
 
 
 async def reminder_loop() -> None:
-    logger.info("Reminder loop started (per-user ntfy topics via %s).",
+    logger.info("Reminder loop started (silent-by-default; per-user ntfy topics via %s).",
                 get_settings().ntfy_server)
     while True:
         try:

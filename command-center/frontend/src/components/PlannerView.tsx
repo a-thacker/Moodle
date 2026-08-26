@@ -1,20 +1,26 @@
-// Weekly / daily planner. Drag a task card between days to reschedule, onto
-// another card to reorder (a bar shows where it'll land), or onto the "every
-// day" zone (appears while dragging) to add it to all 7 days. Week or Day
-// view. Backed by the tasks API; stays in sync via useTasks.
+// Weekly / daily planner — one place for every task. Drag a task card between
+// days to reschedule, onto another card to reorder (a bar shows where it'll
+// land), or onto the "every day" zone (appears while dragging) to add it to all
+// 7 days. Filter chips scope the list to All / School (eClass) / Personal; each
+// card has a one-tap 🔔 alert and ⭐ important; an Events toggle overlays the
+// read-only calendar. Unscheduled is a first-class capture zone at the bottom.
+// Backed by the tasks API; stays in sync via useTasks.
 
 import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 
-import { useAuth } from "../auth/AuthContext.tsx";
 import { useTasks } from "../hooks/useTasks";
 import { useCalendarEvents, eventDays } from "../hooks/useCalendarEvents";
 import type { CalendarEvent, Task, TaskCategory } from "../types";
 import { parseTaskInput, fmtTime } from "../utils/time";
 import { taskColor } from "../utils/category";
+import type { Trigger } from "../utils/flags";
 import FlagInput from "./FlagInput.tsx";
 import PageShell from "./PageShell";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+type SrcFilter = "all" | "school" | "personal";
+const FILTERS: readonly [SrcFilter, string][] = [["all", "All"], ["school", "School"], ["personal", "Personal"]];
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -35,8 +41,21 @@ const DropBar = () => (
   <div style={{ height: 2, background: "var(--cc-accent)", borderRadius: 2, margin: "1px 2px" }} />
 );
 
-function TaskCard({ task, onToggle, onRemove, onDuplicate, onDragStart, onDragEnd, onOver, onDrop }: {
+function IconBtn({ icon, active, activeColor, title, onClick }: {
+  icon: string; active: boolean; activeColor: string; title: string; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} title={title}
+      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginTop: 1 }}>
+      <i className={active ? `ph-fill ${icon}` : `ph ${icon}`}
+        style={{ fontSize: 13, color: active ? activeColor : "var(--cc-dim)" }} />
+    </button>
+  );
+}
+
+function TaskCard({ task, onToggle, onRemove, onDuplicate, onAlert, onImportant, onDragStart, onDragEnd, onOver, onDrop }: {
   task: Task; onToggle: () => void; onRemove: () => void; onDuplicate: () => void;
+  onAlert: () => void; onImportant: () => void;
   onDragStart: () => void; onDragEnd: () => void;
   onOver: (e: DragEvent) => void; onDrop: (e: DragEvent) => void;
 }) {
@@ -44,7 +63,7 @@ function TaskCard({ task, onToggle, onRemove, onDuplicate, onDragStart, onDragEn
     <div
       onDragOver={onOver}
       onDrop={onDrop}
-      style={{ display: "flex", alignItems: "flex-start", gap: 7, background: "#1c1f2e", border: "1px solid #2b3048", borderLeft: `3px solid ${taskColor(task)}`, borderRadius: 9, padding: "8px 9px", fontSize: 13, userSelect: "none" }}
+      style={{ display: "flex", alignItems: "flex-start", gap: 6, background: "#1c1f2e", border: "1px solid #2b3048", borderLeft: `3px solid ${taskColor(task)}`, borderRadius: 9, padding: "8px 9px", fontSize: 13, userSelect: "none" }}
     >
       {/* Grip is the drag source — reliable, and never grabs text. */}
       <span
@@ -60,14 +79,16 @@ function TaskCard({ task, onToggle, onRemove, onDuplicate, onDragStart, onDragEn
         {task.done ? <i className="ph-fill ph-check-circle" style={{ color: "var(--cc-accent)", fontSize: 16 }} /> : <i className="ph ph-circle" style={{ color: "var(--cc-muted)", fontSize: 16 }} />}
       </button>
       <span style={{ flex: 1, color: task.done ? "var(--cc-dim)" : "var(--cc-text)", textDecoration: task.done ? "line-through" : "none", wordBreak: "break-word" }}>
-        {task.source === "eclass" ? (
+        {task.source === "eclass" && (
           <i className="ph ph-graduation-cap" title="eClass assignment" style={{ color: "var(--cc-accent-soft)", fontSize: 13, marginRight: 5 }} />
-        ) : task.kind === "reminder" ? (
-          <i className="ph ph-bell" title="Reminder — fires once" style={{ color: "var(--cc-warn)", fontSize: 13, marginRight: 5 }} />
-        ) : null}
+        )}
         {task.dueTime && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--cc-accent-soft)", marginRight: 6 }}>{fmtTime(task.dueTime)}</span>}
         {task.title}
       </span>
+      <IconBtn icon="ph-star" active={task.important} activeColor="var(--cc-warn)"
+        title={task.important ? "Important — tap to unstar" : "Mark important"} onClick={onImportant} />
+      <IconBtn icon="ph-bell" active={task.alert} activeColor="var(--cc-accent)"
+        title={task.alert ? "Alert on — tap to silence" : (task.dueTime ? "Alert me at its time" : "Alert me (morning · midday · evening)")} onClick={onAlert} />
       <button type="button" onClick={onDuplicate} title="Duplicate" style={{ background: "none", border: "none", color: "var(--cc-dim)", cursor: "pointer", padding: 0, flexShrink: 0 }}>
         <i className="ph ph-copy" style={{ fontSize: 13 }} />
       </button>
@@ -100,11 +121,13 @@ function EventCard({ ev, color, onAdd }: { ev: CalendarEvent; color: string; onA
 
 interface ColumnProps {
   ckey: string; title: string; sub?: string; isToday?: boolean; highlight: boolean; showAdd: boolean;
+  triggers?: Trigger[]; placeholder?: string;
   list: Task[]; draft: string; indicator: number | "end" | null;
   events?: CalendarEvent[]; colorFor?: (ev: CalendarEvent) => string; onEventAdd?: (ev: CalendarEvent) => void;
   onDraft: (v: string) => void; onAdd: (e: FormEvent) => void;
   onColumnOver: (e: DragEvent) => void; onLeave: () => void; onColumnDrop: () => void;
   toggle: (t: Task) => void; remove: (id: number) => void; duplicate: (t: Task) => void;
+  alertT: (t: Task) => void; importantT: (t: Task) => void;
   onCardDragStart: (t: Task) => void; onCardDragEnd: () => void;
   onCardOver: (t: Task, e: DragEvent) => void; onCardDrop: (t: Task, e: DragEvent) => void;
 }
@@ -133,6 +156,8 @@ function Column(p: ColumnProps) {
               onToggle={() => p.toggle(t)}
               onRemove={() => p.remove(t.id)}
               onDuplicate={() => p.duplicate(t)}
+              onAlert={() => p.alertT(t)}
+              onImportant={() => p.importantT(t)}
               onDragStart={() => p.onCardDragStart(t)}
               onDragEnd={p.onCardDragEnd}
               onOver={(e) => p.onCardOver(t, e)}
@@ -144,8 +169,7 @@ function Column(p: ColumnProps) {
       </div>
       {p.showAdd && (
         <form onSubmit={p.onAdd} style={{ padding: "0 12px 10px" }}>
-          {/* Column already fixes the day, so only category ("#") flags apply. */}
-          <FlagInput className="input" placeholder="+ add" value={p.draft} onChange={p.onDraft} triggers={["#"]} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
+          <FlagInput className="input" placeholder={p.placeholder ?? "+ add"} value={p.draft} onChange={p.onDraft} triggers={p.triggers ?? ["#"]} style={{ fontSize: 12, minHeight: 28, width: "100%" }} />
         </form>
       )}
     </div>
@@ -154,11 +178,10 @@ function Column(p: ColumnProps) {
 
 export default function PlannerView() {
   const { tasks, add, toggle, remove, patch } = useTasks();
-  const { user } = useAuth();
-  const hasCalendar = user?.capabilities.includes("calendar") ?? false;
-  const { events, colorFor } = useCalendarEvents(hasCalendar);
   const [mode, setMode] = useState<"week" | "day">("week");
-  const [newKind, setNewKind] = useState<"task" | "reminder">("task");
+  const [filter, setFilter] = useState<SrcFilter>("all");
+  const [showEvents, setShowEvents] = useState(false);
+  const { events, colorFor } = useCalendarEvents(showEvents);
   const [anchor, setAnchor] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const dragRef = useRef<Task | null>(null);
@@ -170,6 +193,9 @@ export default function PlannerView() {
   const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const shownDays = mode === "week" ? weekDays : [anchor];
+
+  const matchesFilter = (t: Task) =>
+    filter === "all" || (filter === "school" ? t.source === "eclass" : t.source === "manual");
 
   // Calendar events grouped by day (YYYY-MM-DD), each sorted by start. A
   // multi-day event is placed on every day it spans, not only its start.
@@ -188,14 +214,22 @@ export default function PlannerView() {
     add(ev.title, ev.start.slice(0, 10), time, category);
   }
 
-  // Duplicate a task: a fresh copy on the same day/time/category. It lands at
-  // the end of the day's list, ready to drag elsewhere.
+  // Duplicate a task: a fresh copy on the same day/time/category, alert carried.
   function duplicate(task: Task) {
-    add(task.title, task.dueDate, task.dueTime, task.category, task.projectId, task.kind);
+    add(task.title, task.dueDate, task.dueTime, task.category, task.projectId, task.alert);
+  }
+
+  // 🔔 toggle: turning alert on binds it to the task's time if it has one
+  // (fires once then), else it rides the digest + midday/evening re-pings.
+  function toggleAlert(t: Task) {
+    void patch(t.id, { alert: !t.alert, alert_time: !t.alert ? (t.dueTime ?? null) : null }).catch(() => {});
+  }
+  function toggleImportant(t: Task) {
+    void patch(t.id, { important: !t.important }).catch(() => {});
   }
 
   const byKey = (k: string | null): Task[] => {
-    const list = tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate));
+    const list = tasks.filter((t) => (k ? t.dueDate === k : !t.dueDate) && matchesFilter(t));
     // Manual order (position) is authoritative so drag-to-reorder sticks for
     // every card — timed or not. Ties fall back to time, then creation order.
     return list.sort((a, b) =>
@@ -234,10 +268,11 @@ export default function PlannerView() {
   function addTo(dateStr: string | null, e: FormEvent) {
     e.preventDefault();
     const key = dateStr ?? "none";
-    // Column already fixes the day, so we only take the time + #category here.
-    const { title, time, category, kind } = parseTaskInput(drafts[key] ?? "");
+    const { title, time, dates, category, alert } = parseTaskInput(drafts[key] ?? "");
     if (!title.trim()) return;
-    add(title, dateStr, time, category, null, kind ?? newKind);
+    // A day column fixes the date; Unscheduled honors a typed -today/-tomorrow.
+    const target = dateStr ?? dates[0] ?? null;
+    add(title, target, time, category, null, alert);
     setDrafts((s) => ({ ...s, [key]: "" }));
   }
 
@@ -245,11 +280,12 @@ export default function PlannerView() {
     ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
     : anchor.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
 
-  function column(dateStr: string | null, title: string, sub?: string, isToday?: boolean, showAdd = true) {
+  function column(dateStr: string | null, title: string, sub?: string, isToday?: boolean, showAdd = true, extra?: { triggers?: Trigger[]; placeholder?: string }) {
     const key = dateStr ?? "none";
     return (
       <Column
         key={key} ckey={key} title={title} sub={sub} isToday={isToday} showAdd={showAdd}
+        triggers={extra?.triggers} placeholder={extra?.placeholder}
         highlight={overKey === key}
         list={byKey(dateStr)} draft={drafts[key] ?? ""}
         events={dateStr ? eventsByDate[dateStr] : undefined}
@@ -261,6 +297,7 @@ export default function PlannerView() {
         onLeave={() => setOverKey((k) => (k === key ? null : k))}
         onColumnDrop={() => dropColumn(dateStr)}
         toggle={toggle} remove={remove} duplicate={duplicate}
+        alertT={toggleAlert} importantT={toggleImportant}
         onCardDragStart={(t) => { dragRef.current = t; setDragActive(true); }}
         onCardDragEnd={endDrag}
         onCardOver={(t, e) => { e.preventDefault(); e.stopPropagation(); setOverKey(key); setIndicator({ key, before: t.id }); }}
@@ -270,6 +307,8 @@ export default function PlannerView() {
   }
 
   const step = mode === "week" ? 7 : 1;
+  const seg = (active: boolean) => ({ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: active ? "var(--cc-accent)" : "transparent", color: active ? "#100f1c" : "var(--cc-muted)" });
+  const unscheduledCount = byKey(null).length;
 
   return (
     <PageShell title="Planner" icon="ph-calendar-check" subtitle={rangeLabel} scroll={false}>
@@ -277,17 +316,20 @@ export default function PlannerView() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }}>
           {(["week", "day"] as const).map((m) => (
-            <button key={m} onClick={() => setMode(m)} style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: mode === m ? "var(--cc-accent)" : "transparent", color: mode === m ? "#100f1c" : "var(--cc-muted)", textTransform: "capitalize" }}>{m}</button>
+            <button key={m} onClick={() => setMode(m)} style={{ ...seg(mode === m), textTransform: "capitalize" }}>{m}</button>
           ))}
         </div>
-        {/* What the day "+ add" boxes create: a nagging task, or a one-shot reminder. */}
-        <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }} title="What the '+ add' boxes create">
-          {([["task", "ph-check-circle", "Task"], ["reminder", "ph-bell", "Reminder"]] as const).map(([k, icon, label]) => (
-            <button key={k} onClick={() => setNewKind(k)} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: newKind === k ? "var(--cc-accent)" : "transparent", color: newKind === k ? "#100f1c" : "var(--cc-muted)" }}>
-              <i className={`ph ${icon}`} style={{ fontSize: 14 }} />{label}
-            </button>
+        {/* Scope the list to everything, just eClass, or just your own tasks. */}
+        <div style={{ display: "flex", gap: 4, background: "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: 3 }} title="Filter by source">
+          {FILTERS.map(([k, label]) => (
+            <button key={k} onClick={() => setFilter(k)} style={seg(filter === k)}>{label}</button>
           ))}
         </div>
+        {/* Overlay the read-only calendar (eClass / feeds) on the days. Off by default. */}
+        <button onClick={() => setShowEvents((v) => !v)} title="Show calendar events"
+          style={{ display: "flex", alignItems: "center", gap: 5, ...seg(showEvents), background: showEvents ? "var(--cc-accent)" : "#161824", border: "1px solid #262a3b", borderRadius: 9, padding: "5px 12px" }}>
+          <i className="ph ph-calendar-blank" style={{ fontSize: 14 }} />Events
+        </button>
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           <button className="btn btn-ghost" onClick={() => setAnchor((a) => addDays(a, -step))}>‹ Prev</button>
           <button className="btn btn-ghost" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setAnchor(d); }}>Today</button>
@@ -311,8 +353,10 @@ export default function PlannerView() {
         {shownDays.map((d) => column(ymd(d), DAY_NAMES[d.getDay()], String(d.getDate()), ymd(d) === today))}
       </div>
 
-      <div style={{ maxHeight: "24%", display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {column(null, "Unscheduled", String(byKey(null).length), false, false)}
+      {/* Unscheduled — a prominent capture bucket: jot it now, schedule it later. */}
+      <div style={{ maxHeight: "32%", display: "flex", flexDirection: "column", minHeight: 96 }}>
+        {column(null, "Unscheduled", unscheduledCount ? `${unscheduledCount}` : "jot it now, schedule later", false, true,
+          { triggers: ["#", "-"], placeholder: "+ jot anything — schedule it later by dragging onto a day" })}
       </div>
       </div>
     </PageShell>

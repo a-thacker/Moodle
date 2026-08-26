@@ -54,8 +54,6 @@ export interface AgentStatus {
 }
 
 export type TaskCategory = "school" | "meeting" | "home" | "work";
-// "task" nags each morning until checked off; "reminder" fires once then stays.
-export type TaskKind = "task" | "reminder";
 // "manual" = user-created; "eclass" = auto-synced assignment.
 export type TaskSource = "manual" | "eclass";
 
@@ -64,10 +62,14 @@ export interface Task {
   title: string;
   body: string | null;
   done: boolean;
-  kind: TaskKind;
   source: TaskSource;
   dueDate: string | null; // YYYY-MM-DD
   dueTime: string | null; // HH:MM:SS
+  // Opt-in notification. alert on → it pings; with alertTime it fires once at
+  // that time, else it rides the morning digest + midday/evening re-pings.
+  alert: boolean;
+  alertTime: string | null; // HH:MM:SS
+  important: boolean; // ⭐ — resurfaces in the digest once overdue
   category: TaskCategory | null;
   position: number;
   projectId: number | null;
@@ -190,6 +192,9 @@ export interface TaskPatch {
   done?: boolean;
   due_date?: string | null;
   due_time?: string | null;
+  alert?: boolean;
+  alert_time?: string | null;
+  important?: boolean;
   category?: TaskCategory | null;
   position?: number;
   project_id?: number | null; // negative or null clears the project
