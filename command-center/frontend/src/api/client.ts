@@ -21,7 +21,6 @@ import type {
   ScriptJob,
   Task,
   TaskCategory,
-  TaskKind,
   TaskPatch,
   Vault,
   Weather,
@@ -133,6 +132,22 @@ export const api = {
       apiFetch<void>("/api/v1/auth/change-password", {
         method: "POST",
         body: JSON.stringify({ current_password, new_password }),
+      }),
+  },
+
+  // Web Push (the PWA's own notification channel — daily task reminders).
+  push: {
+    vapidPublicKey: () =>
+      apiFetch<{ public_key: string }>("/api/v1/push/vapid-public-key"),
+    subscribe: (subscription: unknown) =>
+      apiFetch<void>("/api/v1/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify(subscription),
+      }),
+    unsubscribe: (endpoint: string) =>
+      apiFetch<void>("/api/v1/push/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint }),
       }),
   },
 
@@ -264,7 +279,7 @@ export const api = {
       dueTime?: string | null,
       category?: TaskCategory | null,
       projectId?: number | null,
-      kind?: TaskKind | null,
+      alert?: boolean | null,
     ) =>
       apiFetch<Task>("/api/v1/tasks", {
         method: "POST",
@@ -272,9 +287,12 @@ export const api = {
           title,
           due_date: dueDate ?? null,
           due_time: dueTime ?? null,
+          // An alert with a time fires once at that time; without one it rides
+          // the digest + midday/evening re-pings.
+          alert: alert ?? false,
+          alert_time: alert && dueTime ? dueTime : null,
           category: category ?? null,
           project_id: projectId ?? null,
-          kind: kind ?? "task",
         }),
       }),
     update: (id: number, patch: TaskPatch) =>

@@ -165,20 +165,22 @@ def main() -> None:
     check("task survives the project delete (unfiled)",
           any(t["id"] == ptask_id for t in client.get("/api/v1/tasks", headers=owner_auth).json()))
 
-    # --- task kinds + eClass assignments-as-tasks ---
-    r = client.post("/api/v1/tasks", json={"title": "Water plants", "kind": "reminder", "due_date": "2026-08-10"}, headers=owner_auth)
-    check("create reminder -> kind reminder, source manual",
-          r.status_code == 201 and r.json()["kind"] == "reminder" and r.json()["source"] == "manual")
+    # --- task alert/important + eClass assignments-as-tasks ---
+    r = client.post("/api/v1/tasks", json={"title": "Water plants", "alert": True, "important": True, "due_date": "2026-08-10"}, headers=owner_auth)
+    check("create task -> alert on, important on, source manual",
+          r.status_code == 201 and r.json()["alert"] is True and r.json()["important"] is True and r.json()["source"] == "manual")
 
+    # Only module=="assign" events become tasks; a quiz is course noise, dropped.
     r = client.put("/api/v1/ingest/assignments", headers=KEY, json=[
         {"id": 9001, "name": "Essay 1", "due": "2026-08-15T23:59:00-04:00", "module": "assign", "course_name": "ENGL", "overdue": False},
         {"id": 9002, "name": "Quiz 2", "due": "2026-08-12T10:00:00-04:00", "module": "quiz", "course_name": "BIO", "overdue": False},
     ])
-    check("ingest assignments -> synced 2", r.status_code == 200 and r.json()["synced"] == 2)
+    check("ingest assignments -> only the assign synced (quiz dropped)",
+          r.status_code == 200 and r.json()["synced"] == 1)
 
     eclass_tasks = [t for t in client.get("/api/v1/tasks", headers=owner_auth).json() if t["source"] == "eclass"]
-    check("assignments -> eClass tasks (kind task, school, dated)",
-          len(eclass_tasks) == 2 and all(t["kind"] == "task" and t["category"] == "school" and t["dueDate"] for t in eclass_tasks))
+    check("assignment -> eClass task (school, dated, silent)",
+          len(eclass_tasks) == 1 and all(t["category"] == "school" and t["dueDate"] and t["alert"] is False for t in eclass_tasks))
     essay = next(t for t in eclass_tasks if t["title"] == "Essay 1")
     check("assignment due time = local wall-clock 23:59", essay["dueTime"] == "23:59:00")
 
@@ -189,7 +191,7 @@ def main() -> None:
     eclass2 = [t for t in client.get("/api/v1/tasks", headers=owner_auth).json() if t["source"] == "eclass"]
     essay2 = next(t for t in eclass2 if t["id"] == essay["id"])
     check("re-ingest: no dup, preserves done, updates title",
-          len(eclass2) == 2 and essay2["title"] == "Essay 1 (revised)" and essay2["done"] is True)
+          len(eclass2) == 1 and essay2["title"] == "Essay 1 (revised)" and essay2["done"] is True)
 
     # --- calendar: eClass ingest (API key) -> owner's eclass source ---
     # The agent sends tz-aware times (local offset); they must be stored as

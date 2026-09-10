@@ -15,7 +15,7 @@ export interface FlagDef {
 
 export const FLAGS: FlagDef[] = [
   // Kind ("-")
-  { trigger: "-", token: "reminder", label: "Reminder", hint: "fires once · -r", priority: 88 },
+  { trigger: "-", token: "reminder", label: "Alert", hint: "notify me · -r", priority: 88 },
   // Dates / recurrence ("-")
   { trigger: "-", token: "today", label: "Today", hint: "due today", priority: 100 },
   { trigger: "-", token: "tomorrow", label: "Tomorrow", hint: "due tomorrow", priority: 95 },

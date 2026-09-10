@@ -11,6 +11,7 @@ import { useNav } from "../nav/NavContext.tsx";
 import { RAIL_TOOLS } from "./LauncherRail.tsx";
 import FocusView from "./FocusView.tsx";
 import { canInstall, isIos, isStandalone, promptInstall, subscribeInstall } from "../pwa";
+import { disablePush, enablePush, isPushSubscribed, pushPermission, pushSupported } from "../push";
 
 function SidebarCustomizer() {
   const { available, hidden, toggleHidden } = useNav();
@@ -430,6 +431,98 @@ function ProactiveTest() {
   );
 }
 
+// The PWA's own notification channel (Web Push). This is where the daily task
+// reminders — morning digest, timed alerts, midday/evening nudges — now land.
+// Web Push only works in the installed app; on iOS that means Add to Home
+// Screen first (see InstallApp above), so we guide the user there when needed.
+function DeviceNotifications() {
+  const hint = { fontSize: 13, color: "var(--color-neutral-400)", margin: 0, lineHeight: 1.6 } as const;
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(() => pushPermission());
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    isPushSubscribed().then(setSubscribed).catch(() => {});
+  }, []);
+
+  if (!pushSupported()) {
+    if (isIos() && !isStandalone()) {
+      return (
+        <p style={hint}>
+          To get notifications on iPhone/iPad, first add this app to your Home
+          Screen (see <strong>Install app</strong> above), then open it and turn
+          them on here.
+        </p>
+      );
+    }
+    return <p style={hint}>This browser doesn't support push notifications.</p>;
+  }
+
+  if (perm === "denied") {
+    return (
+      <p style={hint}>
+        Notifications are blocked for this app. Turn them back on in your device
+        settings (under this app's notifications), then reload.
+      </p>
+    );
+  }
+
+  const enable = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await enablePush();
+      setPerm(result);
+      setSubscribed(await isPushSubscribed());
+      if (result === "denied") setError("Permission was denied.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't enable notifications.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await disablePush();
+      setSubscribed(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't turn off notifications.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <p style={{ ...hint, margin: "0 0 var(--space-3)" }}>
+        Your daily task reminders — the morning digest, timed alerts, and midday
+        &amp; evening nudges — arrive as notifications on this device.
+      </p>
+      {subscribed ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span className="tag" style={{ color: "var(--cc-accent-soft)" }}>
+            <i className="ph ph-bell-ringing" style={{ marginRight: 6 }} />
+            On for this device
+          </span>
+          <button type="button" className="btn" disabled={busy} onClick={disable}>
+            Turn off
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="btn btn-primary" disabled={busy} onClick={enable}>
+          <i className="ph ph-bell" style={{ marginRight: 6 }} />
+          {busy ? "Enabling…" : "Enable notifications on this device"}
+        </button>
+      )}
+      {error && <p style={{ ...hint, marginTop: "var(--space-3)", color: "var(--cc-warn)" }}>{error}</p>}
+    </>
+  );
+}
+
 function MyReminders() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
@@ -445,10 +538,11 @@ function MyReminders() {
   return (
     <>
       <p style={{ fontSize: 13, color: "var(--color-neutral-400)", margin: "0 0 var(--space-3)", lineHeight: 1.6 }}>
-        Install the <strong>ntfy</strong> app (or open{" "}
+        A separate channel for occasional nudges (not your daily task reminders,
+        which now come through the app above). Install the <strong>ntfy</strong> app
+        (or open{" "}
         <a href="https://ntfy.sh" target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent-200)" }}>ntfy.sh</a>)
-        and subscribe to this topic to get your reminders and nudges on your phone.
-        Keep it private — the topic name is the password.
+        and subscribe to this topic. Keep it private — the topic name is the password.
       </p>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <code style={{ fontSize: 13, background: "var(--color-bg)", padding: "6px 10px", borderRadius: "var(--radius-sm)", userSelect: "all", wordBreak: "break-all" }}>
@@ -641,7 +735,10 @@ export default function SettingsView() {
       </section>
 
       <section className="cc-panel" style={{ padding: "var(--space-6)", marginTop: "var(--space-4)" }}>
-        <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Reminders</h3>
+        <h3 style={{ margin: "0 0 var(--space-4)", fontSize: 14 }}>Notifications</h3>
+        <DeviceNotifications />
+        <div style={{ borderTop: "1px solid var(--color-divider)", margin: "var(--space-5) 0 var(--space-4)" }} />
+        <h4 style={{ margin: "0 0 var(--space-3)", fontSize: 13, color: "var(--color-neutral-300)" }}>Other nudges (ntfy)</h4>
         <MyReminders />
       </section>
 

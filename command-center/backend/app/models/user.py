@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
 
@@ -31,6 +33,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # random string). Generated on account creation; owner shares it so the
     # user can subscribe their phone. Null = no reminder channel.
     ntfy_topic: Mapped[str | None] = mapped_column(String(80), default=None)
+    # Last time a scheduled slot notification (morning digest / midday / evening
+    # alert re-ping) was sent to this user — gates them to one per slot per day.
+    slot_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     # Per-account UI preferences (sidebar order/visibility, dashboard tile
     # arrangement, weather location, …). A single JSON blob so it ports across
     # every device the user signs in on — the client owns the shape.
