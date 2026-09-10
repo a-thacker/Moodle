@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     # don't send. `vapid_subject` is the contact the push service can reach us at
     # (a `mailto:` or `https:` URL), sent in the signed VAPID claim.
     vapid_public_key: str = (
-        "BFwOVcvohB7w4Q36xGZWa_wpvlCQ1xSy0FPr86PkWaprHIkIhjZaE-vhIGynhBmoCSVtF_bhpnV-etqZCDr95v8"
+        "BGLMx-xYuAbZwCafFiASaSfdihmFYuNr4SL9wSn77NQIizg5Fz6zndmIfVogP-gHNBsvX0ytPvcH8Ouv6QHu6HY"
     )
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:athacker@southern.edu"
