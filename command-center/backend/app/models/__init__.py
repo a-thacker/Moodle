@@ -12,6 +12,7 @@ from app.models.entitlement import UserEntitlement
 from app.models.grocery import GroceryItem
 from app.models.proactive import ProactiveLog
 from app.models.project import Project
+from app.models.push import PushSubscription
 from app.models.rip import RipJob
 from app.models.script import ScriptJob, ScriptRegistry
 from app.models.task import Task
@@ -30,6 +31,7 @@ __all__ = [
     "GroceryItem",
     "ProactiveLog",
     "Project",
+    "PushSubscription",
     "RipJob",
     "ScriptJob",
     "ScriptRegistry",

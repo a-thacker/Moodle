@@ -135,6 +135,22 @@ export const api = {
       }),
   },
 
+  // Web Push (the PWA's own notification channel — daily task reminders).
+  push: {
+    vapidPublicKey: () =>
+      apiFetch<{ public_key: string }>("/api/v1/push/vapid-public-key"),
+    subscribe: (subscription: unknown) =>
+      apiFetch<void>("/api/v1/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify(subscription),
+      }),
+    unsubscribe: (endpoint: string) =>
+      apiFetch<void>("/api/v1/push/unsubscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint }),
+      }),
+  },
+
   // Per-account UI preferences (sidebar/dashboard layout, weather location):
   // stored server-side so they follow the user across devices. PUT shallow-
   // merges a patch of top-level keys and returns the full preferences.

@@ -1,10 +1,15 @@
-"""Task notifications over ntfy — silent by default.
+"""Task notifications over Web Push — silent by default.
 
 The old model nagged every open task every morning forever; every eClass
 assignment was one of those, so the phone drowned. This one flips it: a task is
 a quiet checklist item unless *you* opt it in.
 
-What can fire, per user (topic required), in the configured timezone:
+As of the notification rework these go out over **Web Push to the installed
+PWA** (VAPID), not ntfy — ntfy still carries proactive nudges + the owner
+broadcast. A user gets task notifications on every browser/device where they've
+turned them on (a `push_subscriptions` row); dead subscriptions are pruned.
+
+What can fire, per user (a push subscription required), in the configured tz:
 
 - **Timed alert** — a task with `alert` on and an `alert_time` set fires **once**
   at that time (on its due date, else today). Gated by `notified_at_time`.
@@ -16,7 +21,8 @@ What can fire, per user (topic required), in the configured timezone:
   off.
 
 The three scheduled slots are gated per user by `users.slot_at` (one send per
-slot per day). Everything is off for a user without an ntfy topic.
+slot per day). Everything is off for a user with no push subscription (and for
+everyone if VAPID_PRIVATE_KEY is unset — Web Push is then disabled).
 """
 
 from __future__ import annotations
@@ -26,14 +32,14 @@ import logging
 from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo
 
-import httpx
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import SessionFactory
+from app.models.push import PushSubscription
 from app.models.task import Task
 from app.models.user import User
-from app.services import ntfy
+from app.services import webpush
 
 logger = logging.getLogger(__name__)
 
@@ -81,17 +87,19 @@ async def check_reminders() -> None:
     slot_hour = passed[-1] if passed else None
 
     async with SessionFactory() as session:
+        # Only users with at least one Web Push subscription — task
+        # notifications go to the PWA now, not ntfy.
         users = (
-            await session.execute(select(User).where(User.ntfy_topic.is_not(None)))
+            await session.execute(
+                select(User).where(
+                    User.id.in_(select(PushSubscription.user_id).distinct())
+                )
+            )
         ).scalars().all()
         if not users:
             return
 
-        changed = False
         for user in users:
-            topic = user.ntfy_topic
-            if not topic:
-                continue
             tasks = list(
                 (
                     await session.execute(
@@ -104,9 +112,10 @@ async def check_reminders() -> None:
             for t in tasks:
                 if t.alert and t.alert_time is not None and not t.notified_at_time:
                     moment = datetime.combine(t.due_date or today, t.alert_time)
-                    if now >= moment and await _send(topic, settings, t.title, f"⏰ {_fmt(t.alert_time)}"):
+                    if now >= moment and await _push(
+                        session, user, t.title, f"⏰ {_fmt(t.alert_time)}"
+                    ):
                         t.notified_at_time = True
-                        changed = True
 
             # 2) The morning digest / midday-evening re-pings — one per slot/day.
             if slot_hour is None:
@@ -121,33 +130,41 @@ async def check_reminders() -> None:
                 if digest:
                     n = len(digest)
                     title = f"Today · {n} item{'' if n == 1 else 's'}"
-                    sent_ok = await _send(topic, settings, title, _lines(digest))
+                    sent_ok = await _push(session, user, title, _lines(digest))
             else:  # midday / evening — only the no-time "don't forget" pile
                 flagged = [t for t in tasks if t.alert and t.alert_time is None]
                 if flagged:
-                    sent_ok = await _send(topic, settings, "Don't forget", _lines(flagged))
+                    sent_ok = await _push(session, user, "Don't forget", _lines(flagged))
 
             if sent_ok:  # advance even when there was nothing to send (slot consumed)
                 user.slot_at = now
-                changed = True
 
-        if changed:
-            await session.commit()
+        # Always commit: picks up notified_at_time flips, slot_at advances, and
+        # any dead-subscription prunes from _push. A no-op if nothing changed.
+        await session.commit()
 
 
-async def _send(topic: str, settings, title: str, body: str) -> bool:
-    """Send one ntfy message; a failure warns but doesn't abort the tick."""
-    try:
-        await ntfy.send(topic, settings.ntfy_server, title, body)
-        return True
-    except httpx.HTTPError as exc:
-        logger.warning("ntfy send failed (%s): %s", title, exc)
+async def _push(session, user: User, title: str, body: str) -> bool:
+    """Deliver one notification to every push subscription the user has, pruning
+    any the push service reports as gone. Returns True if at least one send was
+    dispatched; failures warn but don't abort the tick."""
+    subs = await webpush.list_for_user(session, user.id)
+    if not subs:
         return False
+    any_ok = False
+    for sub in subs:
+        try:
+            if await webpush.send(sub.to_info(), title, body):
+                any_ok = True
+        except webpush.PushGone:
+            await webpush.prune_endpoint(session, sub.endpoint)
+        except Exception as exc:  # a bad send shouldn't kill the loop
+            logger.warning("web push send failed (%s): %s", title, exc)
+    return any_ok
 
 
 async def reminder_loop() -> None:
-    logger.info("Reminder loop started (silent-by-default; per-user ntfy topics via %s).",
-                get_settings().ntfy_server)
+    logger.info("Reminder loop started (silent-by-default; task notifications via Web Push).")
     while True:
         try:
             await check_reminders()

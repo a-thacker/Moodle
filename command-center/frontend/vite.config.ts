@@ -68,6 +68,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Pull in our Web Push listeners (push / notificationclick). The
+        // generated SW does importScripts("push-sw.js") at its top, so the
+        // handlers live in the same scope as the caching logic. The file is
+        // served from the site root (frontend/public/push-sw.js).
+        importScripts: ["push-sw.js"],
         // Precache the built app shell (hashed JS/CSS/HTML) plus the self-hosted
         // font + icon files, so the installed app renders fully offline. Unknown
         // routes fall back to index.html so client-side routing works offline.

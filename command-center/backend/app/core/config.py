@@ -131,6 +131,24 @@ class Settings(BaseSettings):
     # due-or-overdue and not checked off, and for date-only reminders.
     remind_hour: int = 8
 
+    # --- Web Push (PWA notifications) -----------------------------------
+    # VAPID keypair for browser Web Push — the PWA's *own* notification channel,
+    # distinct from ntfy. As of the notification rework the daily task reminders
+    # (morning digest / timed alerts / midday & evening re-pings) go out over
+    # this; ntfy still carries proactive nudges + the owner broadcast.
+    #
+    # The PUBLIC key is not a secret — the frontend fetches it and passes it as
+    # `applicationServerKey` when subscribing, so it ships as a default here.
+    # The PRIVATE key IS a secret: set VAPID_PRIVATE_KEY in the backend env
+    # (never commit it). Empty → Web Push is disabled and task reminders simply
+    # don't send. `vapid_subject` is the contact the push service can reach us at
+    # (a `mailto:` or `https:` URL), sent in the signed VAPID claim.
+    vapid_public_key: str = (
+        "BFwOVcvohB7w4Q36xGZWa_wpvlCQ1xSy0FPr86PkWaprHIkIhjZaE-vhIGynhBmoCSVtF_bhpnV-etqZCDr95v8"
+    )
+    vapid_private_key: str = ""
+    vapid_subject: str = "mailto:athacker@southern.edu"
+
     # --- Proactive AI notifications -------------------------------------
     # A background loop asks each AI-enabled user's assistant whether to send a
     # timely nudge. OFF by default (it auto-messages phones) — enable per

@@ -62,6 +62,21 @@ Ollama. OpenNotebook is the likely path for a future notes/research module.)
   pruned. The `kind` column was dropped (migration 0021, which also clears the
   old undone eClass calendar-event pollution). See `services/reminders.py`; the
   frontend surfaces alert/important as per-card 🔔/⭐ toggles.
+- **Task notifications moved to Web Push** (2026-09-10) — the daily task
+  reminders above are now delivered to the installed **PWA over Web Push
+  (VAPID)**, not ntfy; ntfy stays for the *other* nudges (proactive AI in
+  `services/proactive.py`, the owner broadcast in `admin.py`). New
+  `push_subscriptions` table (migration 0022; one row per browser/device a user
+  turned notifications on for) + `services/webpush.py` (send via `pywebpush`,
+  runs in a thread; 404/410 → prune) + `/api/v1/push/*` (`vapid-public-key`,
+  `subscribe`, `unsubscribe`). Config: `VAPID_PUBLIC_KEY` (code default, safe to
+  ship), `VAPID_PRIVATE_KEY` (secret, env-only; empty disables Web Push),
+  `VAPID_SUBJECT`. `reminders.py` now iterates users with ≥1 push subscription
+  and fans each notification out to all their subscriptions. Frontend: a
+  push handler injected into the Workbox SW (`public/push-sw.js` via
+  `workbox.importScripts`), `src/push.ts` (permission + subscribe), and an
+  "Enable notifications on this device" control in Settings → Notifications.
+  **iOS: Web Push only works in the home-screen-installed PWA (iOS 16.4+).**
 - **Calendar** (2026-07-31) — a provider-agnostic, per-user calendar layer:
   `calendar_sources` (a user's feeds: `eclass` agent-fed, or `ics` a read-only
   Google/Apple feed URL) + `calendar_events` (imported mirrors, upserted by
